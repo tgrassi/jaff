@@ -25,6 +25,10 @@ class Reaction:
         self.check(errors)
         self.serialized_exploded = self.serialize_exploded()
         self.serialized = self.serialize()
+        self.metadata: dict = {}
+
+        # Add type metadata to reaction
+        self.guess_type()
 
     def __repr__(self):
         return (
@@ -55,6 +59,8 @@ class Reaction:
                 rtype = "photo_av"
             elif self.rate.has(symbols("ntot")):
                 rtype = "3_body"
+
+        self.metadata["type"] = rtype
 
         return rtype
 
