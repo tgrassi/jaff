@@ -428,6 +428,7 @@ class Network:
                     )
                     or rate
                 )
+
             # create a Reaction object
             rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, srow)
 
@@ -1537,23 +1538,22 @@ class Network:
         xsec = sympy.sympify(rows[0]["xsecs"])
         c = 30_000_000_000  # Speed of light
 
-        if rad_number_density:
-            photden = MatrixSymbol("nden", len(rad_bands) - 1, 1)
-        else:
-            radeden = MatrixSymbol("nden", len(rad_bands) - 1, 1)
+        den = MatrixSymbol(
+            "photden" if rad_number_density else "radeden", len(rad_bands) - 1, 1
+        )
 
         for i, lower in enumerate(rad_bands[:-1]):
             upper = rad_bands[i + 1]
-            n_tot = sympy.integrate(n_profile, (E, lower, upper))
-            xsec_avg = sympy.integrate(xsec * n_profile, (E, lower, upper)) / n_tot
+            n_tot = sympy.Integral(n_profile, (E, lower, upper)).evalf()
+            xsec_avg = sympy.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
 
             if not rad_number_density:
-                e_avg = sympy.integrate(E * n_profile) / n_tot
-                rate += radeden[Idx(i)] * xsec_avg / e_avg
+                e_avg = sympy.Integral(E * n_profile, (E, lower, upper) / n_tot).evalf()
+                rate += den[Idx(i)] * xsec_avg / e_avg
 
                 continue
 
-            rate += photden[Idx(i)] * xsec_avg
+            rate += den[Idx(i)] * xsec_avg
 
         return c * rate
 
