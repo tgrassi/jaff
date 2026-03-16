@@ -1,0 +1,4 @@
+[radiation]
+bands = [0, 14.8, 22.5, "inf"]
+power = 0.01
+number_density = false

@@ -26,6 +26,7 @@ from pathlib import Path
 
 from jaff import Codegen as cg
 from jaff import Network
+from jaff.drivers.toml import Toml
 from jaff.file_parser import Fileparser
 
 
@@ -223,8 +224,29 @@ For more information, visit: https://github.com/tgrassi/jaff
     if default_lang and default_lang not in cg.get_language_tokens():
         raise ValueError(f"Unsupported language specified: {default_lang}")
 
+    # Get index of jaff.toml config file
+    net_kwargs = {"fname": str(netfile)}
+    jaff_config_index: int | None = next(
+        (i for i, f in enumerate(files) if f.name == "jaff.toml"), None
+    )
+
+    # Set radiation related props in radiation in present
+    if jaff_config_index is not None:
+        jaff_config_file = files[jaff_config_index]
+        rad_props = Toml(jaff_config_file).get_key("radiation")
+        bands: list = rad_props.get("bands", [])
+        power: int | float = rad_props.get("power", 0)
+        number_density: bool = rad_props.get("number_density", False)
+
+        net_kwargs = {
+            **net_kwargs,
+            "rad_bands": bands,
+            "rad_profile_power": power,
+            "rad_number_density": number_density,
+        }
+
     # Create a new network instance
-    net: Network = Network(str(netfile))
+    net: Network = Network(**net_kwargs)
 
     # Process each template file
     for file in files:
