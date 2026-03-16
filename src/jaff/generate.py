@@ -223,7 +223,7 @@ For more information, visit: https://github.com/tgrassi/jaff
     if default_lang and default_lang not in cg.get_language_tokens():
         raise ValueError(f"Unsupported language specified: {default_lang}")
 
-    # Create a new network instance for each file
+    # Create a new network instance
     net: Network = Network(str(netfile))
 
     # Process each template file
