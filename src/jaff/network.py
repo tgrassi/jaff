@@ -48,7 +48,7 @@ class Network:
         replace_nH=True,
         rad_bands=[],
         rad_profile_power: int | float = 0,
-        rad_number_density: bool = False,
+        rad_energy_density: bool = False,
     ):
         self.motd()
 
@@ -71,7 +71,7 @@ class Network:
         self.photochemistry = Photochemistry()
 
         self.load_network(
-            fname, funcfile, replace_nH, rad_bands, rad_profile_power, rad_number_density
+            fname, funcfile, replace_nH, rad_bands, rad_profile_power, rad_energy_density
         )
 
         self.check_sink_sources(errors)
@@ -122,7 +122,7 @@ class Network:
         replace_nH,
         rad_bands,
         rad_power_profile,
-        rad_number_density,
+        rad_energy_density,
     ):
         default_species = []  # ["dummy", "CR", "CRP", "Photon"]
         self.species = [
@@ -420,11 +420,11 @@ class Network:
                     if not did_replace:
                         break
 
-            if is_photoreaction:
+            if is_photoreaction and rad_bands:
                 # Get photo rates
                 rate = (
                     self.get_prate_from_db(
-                        rr, rad_bands, rad_power_profile, rad_number_density
+                        rr, rad_bands, rad_power_profile, rad_energy_density
                     )
                     or rate
                 )
@@ -1508,9 +1508,9 @@ class Network:
         reactants: list[Species],
         rad_bands: list[int | float | str | sympy.Basic],
         rad_power_profile: int | float,
-        rad_number_density,
+        rad_energy_density,
     ) -> sympy.Basic | None:
-        if not rad_number_density and not rad_power_profile:
+        if rad_energy_density and not rad_power_profile:
             raise RuntimeError(
                 f"rad_power_profile cannot be {rad_power_profile} if rad_number density is False"
             )
@@ -1539,7 +1539,7 @@ class Network:
         c = 30_000_000_000  # Speed of light
 
         den = MatrixSymbol(
-            "photden" if rad_number_density else "radeden", len(rad_bands) - 1, 1
+            "radeden" if rad_energy_density else "photden", len(rad_bands) - 1, 1
         )
 
         for i, lower in enumerate(rad_bands[:-1]):
@@ -1547,7 +1547,7 @@ class Network:
             n_tot = sympy.Integral(n_profile, (E, lower, upper)).evalf()
             xsec_avg = sympy.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
 
-            if not rad_number_density:
+            if rad_energy_density:
                 e_avg = sympy.Integral(E * n_profile, (E, lower, upper)).evalf() / n_tot
                 rate += den[Idx(i)] * xsec_avg / e_avg
 
