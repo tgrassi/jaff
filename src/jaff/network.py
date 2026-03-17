@@ -1512,7 +1512,7 @@ class Network:
     ) -> sympy.Basic | None:
         if rad_energy_density and not rad_power_profile:
             raise RuntimeError(
-                f"rad_power_profile cannot be {rad_power_profile} if rad_number density is False"
+                f"rad_power_profile cannot be {rad_power_profile} if rad_energy_density is True"
             )
 
         with JaffDb() as jdb:

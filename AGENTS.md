@@ -34,7 +34,7 @@ ruff check --fix src/                   # Fix linting issues
 
 ### Python Version
 
-- Support Python 3.9+
+- Support Python 3.11+
 - Use `List`, `Dict` from `typing` (not built-in generics)
 
 ### Formatting (Ruff)

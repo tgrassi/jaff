@@ -20,9 +20,4 @@ class Toml:
         return data
 
     def get_key(self, key) -> Any:
-        if key not in self.data:
-            raise KeyError(
-                f"Invalid field requested\n{self.file} doesn't contain any field named {key}"
-            )
-
-        return self.data[key]
+        return self.data.get(key, None)

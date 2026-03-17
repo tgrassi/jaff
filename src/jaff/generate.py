@@ -233,16 +233,18 @@ For more information, visit: https://github.com/tgrassi/jaff
     if jaff_config_index is not None:
         jaff_config_file = files[jaff_config_index]
         rad_props = Toml(jaff_config_file).get_key("radiation")
-        bands: list = rad_props.get("bands", [])
-        power: int | float = rad_props.get("power", 0)
-        energy_density: bool = rad_props.get("energy_density", False)
 
-        net_kwargs = {
-            **net_kwargs,
-            "rad_bands": bands,
-            "rad_profile_power": power,
-            "rad_energy_density": energy_density,
-        }
+        if rad_props:
+            bands: list = rad_props.get("bands", [])
+            power: int | float = rad_props.get("power", 0)
+            energy_density: bool = rad_props.get("energy_density", False)
+
+            net_kwargs = {
+                **net_kwargs,
+                "rad_bands": bands,
+                "rad_profile_power": power,
+                "rad_energy_density": energy_density,
+            }
 
     # Create a new network instance
     net: Network = Network(**net_kwargs)

@@ -29,8 +29,10 @@ class Db:
     def close(self) -> None:
         self.__verify_cursor_instance()
         assert self.cursor is not None
+        assert self.connection is not None
 
         self.cursor.close()
+        self.connection.close()
 
     def delete(self) -> None:
         self.db_path.unlink()
@@ -76,15 +78,6 @@ class Db:
             )
         """)
         df.to_sql(name=name, con=self.connection, if_exists="replace", index=True)
-
-        return Table(name, self.connection, self.cursor)
-
-        # def table_from_dataframe(self, name: str, df: pd.DataFrame) -> Table:
-        self.__verify_cursor_instance()
-        assert self.cursor is not None
-        assert self.connection is not None
-
-        df.to_sql(name=name, con=self.connection, if_exists="fail", index=True)
 
         return Table(name, self.connection, self.cursor)
 
@@ -179,12 +172,13 @@ class Table:
         vals = [
             f"'{value}'" if isinstance(value, str) else f"{value}" for value in values
         ]
-        comm = f"INSERT INTO {self.name} VALUES {','.join(vals)})"
+        comm = f"INSERT INTO {self.name} VALUES ({','.join(vals)})"
 
         self.cur.execute(comm)
 
     def insert_rows(self, rows: list[list[str | float | int]]) -> None:
-        [self.insert_row(row) for row in rows]
+        for row in rows:
+            self.insert_row(row)
 
     def delete(self) -> None:
         comm = f"DROP TABLE {self.name}"
