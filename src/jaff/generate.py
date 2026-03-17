@@ -189,14 +189,13 @@ For more information, visit: https://github.com/tgrassi/jaff
         preprocesor_files = [
             file for file in preprocessor_template_path.rglob("*") if not file.is_dir()
         ]
+        files.extend(generator_files)
 
         # Keep preproc files that don't have a corresponding generator file, otherwise use the generator file
         generator_file_names = [file.name for file in generator_files]
         for file in preprocesor_files:
-            if file.name in generator_file_names:
-                files.append(generator_files[generator_file_names.index(file.name)])
-                continue
-            files.append(file)
+            if file.name not in generator_file_names:
+                files.append(file)
 
     # Collect files from input directory if specified
     if input_dir is not None:
