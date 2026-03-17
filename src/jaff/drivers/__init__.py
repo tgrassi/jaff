@@ -1,3 +1,3 @@
-from . import sqlite
+from . import sqlite, toml
 
-__all__ = [sqlite]
+__all__ = [sqlite, toml]
