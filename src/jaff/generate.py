@@ -235,13 +235,13 @@ For more information, visit: https://github.com/tgrassi/jaff
         rad_props = Toml(jaff_config_file).get_key("radiation")
         bands: list = rad_props.get("bands", [])
         power: int | float = rad_props.get("power", 0)
-        number_density: bool = rad_props.get("number_density", False)
+        energy_density: bool = rad_props.get("energy_density", False)
 
         net_kwargs = {
             **net_kwargs,
             "rad_bands": bands,
             "rad_profile_power": power,
-            "rad_number_density": number_density,
+            "rad_energy_density": energy_density,
         }
 
     # Create a new network instance
