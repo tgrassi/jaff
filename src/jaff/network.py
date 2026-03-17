@@ -1548,7 +1548,7 @@ class Network:
             xsec_avg = sympy.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
 
             if not rad_number_density:
-                e_avg = sympy.Integral(E * n_profile, (E, lower, upper) / n_tot).evalf()
+                e_avg = sympy.Integral(E * n_profile, (E, lower, upper)).evalf() / n_tot
                 rate += den[Idx(i)] * xsec_avg / e_avg
 
                 continue
