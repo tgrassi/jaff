@@ -121,7 +121,7 @@ class Network:
         funcfile,
         replace_nH,
         rad_bands,
-        rad_power_profile,
+        rad_powerlaw_index,
         rad_energy_density,
     ):
         default_species = []  # ["dummy", "CR", "CRP", "Photon"]
@@ -424,7 +424,7 @@ class Network:
                 # Get photo rates
                 rate = (
                     self.get_prate_from_db(
-                        rr, rad_bands, rad_power_profile, rad_energy_density
+                        rr, rad_bands, rad_powerlaw_index, rad_energy_density
                     )
                     or rate
                 )
@@ -1507,12 +1507,12 @@ class Network:
     def get_prate_from_db(
         reactants: list[Species],
         rad_bands: list[int | float | str | sympy.Basic],
-        rad_power_profile: int | float,
+        rad_powerlaw_index: int | float,
         rad_energy_density,
     ) -> sympy.Basic | None:
-        if rad_energy_density and not rad_power_profile:
+        if rad_energy_density and not rad_powerlaw_index:
             raise RuntimeError(
-                f"rad_power_profile cannot be {rad_power_profile} if rad_energy_density is True"
+                f"rad_powerlaw_index cannot be {rad_powerlaw_index} if rad_energy_density is True"
             )
 
         with JaffDb() as jdb:
@@ -1533,10 +1533,10 @@ class Network:
             rad_bands[inf_index] = sympy.oo
 
         E = sympy.Symbol("E")
-        n_profile = E ** (rad_power_profile - 2)
+        n_profile = E ** (rad_powerlaw_index - 2)
         rate = sympy.Float(0.0)
         xsec = sympy.sympify(rows[0]["xsecs"])
-        c = 30_000_000_000  # Speed of light
+        c = 2.99792458e10  # Speed of light in cgs unit
 
         den = MatrixSymbol(
             "radeden" if rad_energy_density else "photden", len(rad_bands) - 1, 1

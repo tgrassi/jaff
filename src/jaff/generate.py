@@ -242,7 +242,7 @@ For more information, visit: https://github.com/tgrassi/jaff
             net_kwargs = {
                 **net_kwargs,
                 "rad_bands": bands,
-                "rad_profile_power": power,
+                "rad_powerlaw_index": power,
                 "rad_energy_density": energy_density,
             }
 
