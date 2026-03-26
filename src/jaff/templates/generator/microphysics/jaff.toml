@@ -1,4 +1,4 @@
 [radiation]
 bands = [0, 1e-5, 14.8, 100, "inf"]
-power = 0.01
+power = -2
 energy_density = true
