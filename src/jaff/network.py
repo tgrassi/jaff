@@ -47,7 +47,7 @@ class Network:
         funcfile=None,
         replace_nH=True,
         rad_bands=[],
-        rad_profile_power: int | float = 0,
+        rad_powerlaw_index: int | float = 0,
         rad_energy_density: bool = False,
     ):
         self.motd()
@@ -71,7 +71,7 @@ class Network:
         self.photochemistry = Photochemistry()
 
         self.load_network(
-            fname, funcfile, replace_nH, rad_bands, rad_profile_power, rad_energy_density
+            fname, funcfile, replace_nH, rad_bands, rad_powerlaw_index, rad_energy_density
         )
 
         self.check_sink_sources(errors)
@@ -1508,12 +1508,33 @@ class Network:
         reactants: list[Species],
         rad_bands: list[int | float | str | sympy.Basic],
         rad_powerlaw_index: int | float,
-        rad_energy_density,
+        rad_energy_density: bool,
     ) -> sympy.Basic | None:
-        if rad_energy_density and not rad_powerlaw_index:
-            raise RuntimeError(
-                f"rad_powerlaw_index cannot be {rad_powerlaw_index} if rad_energy_density is True"
-            )
+        if rad_energy_density:
+            pl_index: float = float(rad_powerlaw_index) - 1.0
+            if pl_index == -1.0:
+                if isinstance(rad_bands[0], (float, int)) and float(rad_bands[0]) == 0.0:
+                    raise RuntimeError(
+                        f"The integral for average energy will diverge since the radiation band starts from rad_bands[0]: {rad_bands[0]}\n"
+                        "Please try a non-zero value"
+                    )
+                if rad_bands[-1] == sympy.oo:
+                    raise RuntimeError(
+                        f'The integral for average energy will diverge since the radiation band ends at rad_bands[{len(rad_bands) - 1}]: "inf"\n'
+                        "Please try a non-infinite value or change the power_law_index"
+                    )
+            elif pl_index + 1.0 > 0.0:
+                if rad_bands[-1] == sympy.oo:
+                    raise RuntimeError(
+                        f'The integral for average energy will diverge since the radiation band ends at rad_bands[{len(rad_bands) - 1}]: "inf"\n'
+                        "Please try a non-infinite value or change the power_law_index"
+                    )
+            elif pl_index + 1.0 < 0.0:
+                if isinstance(rad_bands[0], (float, int)) and float(rad_bands[0]) == 0.0:
+                    raise RuntimeError(
+                        f"The integral for average energy will diverge since the radiation band starts from rad_bands[0]: {rad_bands[0]}\n"
+                        "Please try a non-zero value"
+                    )
 
         with JaffDb() as jdb:
             table = jdb.table("verner_cross_sections")

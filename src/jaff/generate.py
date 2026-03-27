@@ -236,7 +236,7 @@ For more information, visit: https://github.com/tgrassi/jaff
 
         if rad_props:
             bands: list = rad_props.get("bands", [])
-            power: int | float = rad_props.get("power", 0)
+            power: int | float = rad_props.get("power_law_index", 0)
             energy_density: bool = rad_props.get("energy_density", False)
 
             net_kwargs = {
