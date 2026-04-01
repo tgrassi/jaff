@@ -22,6 +22,7 @@ Examples:
 
 import argparse
 import warnings
+from inspect import signature
 from pathlib import Path
 
 from jaff import Codegen as cg
@@ -239,19 +240,26 @@ For more information, visit: https://github.com/tgrassi/jaff
 
     # Set radiation related props in radiation in present
     if jaff_config_index is not None:
+        net_params = signature(Network.__init__).parameters
         jaff_config_file = files[jaff_config_index]
         rad_props = Toml(jaff_config_file).get_key("radiation")
 
         if rad_props:
-            bands: list = rad_props.get("bands", [])
-            power: int | float = rad_props.get("power_law_index", 0)
-            energy_density: bool = rad_props.get("energy_density", False)
+            bands: list = rad_props.get("bands", net_params["rad_bands"].default)
+            power: int | float = rad_props.get(
+                "power_law_index", net_params["rad_powerlaw_index"].default
+            )
+            energy_density: bool = rad_props.get(
+                "energy_density", net_params["rad_energy_density"].default
+            )
+            c: bool = rad_props.get("rsl", net_params["c"].default)
 
             net_kwargs = {
                 **net_kwargs,
                 "rad_bands": bands,
                 "rad_powerlaw_index": power,
                 "rad_energy_density": energy_density,
+                "c": c,
             }
 
     # Create a new network instance

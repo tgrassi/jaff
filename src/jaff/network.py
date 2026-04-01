@@ -49,6 +49,7 @@ class Network:
         rad_bands=[],
         rad_powerlaw_index: int | float = 0,
         rad_energy_density: bool = False,
+        c: float = 2.99792458e10,  # Speed of light in cgs unit
     ):
         self.motd()
 
@@ -71,7 +72,13 @@ class Network:
         self.photochemistry = Photochemistry()
 
         self.load_network(
-            fname, funcfile, replace_nH, rad_bands, rad_powerlaw_index, rad_energy_density
+            fname,
+            funcfile,
+            replace_nH,
+            rad_bands,
+            rad_powerlaw_index,
+            rad_energy_density,
+            c,
         )
 
         self.check_sink_sources(errors)
@@ -123,6 +130,7 @@ class Network:
         rad_bands,
         rad_powerlaw_index,
         rad_energy_density,
+        c: float,
     ):
         default_species = []  # ["dummy", "CR", "CRP", "Photon"]
         self.species = [
@@ -424,7 +432,7 @@ class Network:
                 # Get photo rates
                 rate = (
                     self.get_prate_from_db(
-                        rr, rad_bands, rad_powerlaw_index, rad_energy_density
+                        rr, rad_bands, rad_powerlaw_index, rad_energy_density, c
                     )
                     or rate
                 )
@@ -1509,6 +1517,7 @@ class Network:
         rad_bands: list[int | float | str | sympy.Basic],
         rad_powerlaw_index: int | float,
         rad_energy_density: bool,
+        c: float,  # Speed of light in cgs unit
     ) -> sympy.Basic | None:
         if rad_energy_density:
             pl_index: float = float(rad_powerlaw_index) - 1.0
@@ -1557,7 +1566,6 @@ class Network:
         n_profile = E ** (rad_powerlaw_index - 2)
         rate = sympy.Float(0.0)
         xsec = sympy.sympify(rows[0]["xsecs"])
-        c = 2.99792458e10  # Speed of light in cgs unit
 
         den = MatrixSymbol(
             "radeden" if rad_energy_density else "photden", len(rad_bands) - 1, 1
