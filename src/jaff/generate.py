@@ -134,6 +134,7 @@ For more information, visit: https://github.com/tgrassi/jaff
     # Locate JAFF package directory and built-in template directory
     # Templates are stored in jaff/templates/generator/
     jaff_dir: Path = Path(__file__).parent
+    network_dir: Path = jaff_dir.parent.parent / "networks"
     generator_template_dir: Path = jaff_dir / "templates" / "generator"
     preprocessor_template_dir: Path = jaff_dir / "templates" / "preprocessor"
 
@@ -142,9 +143,16 @@ For more information, visit: https://github.com/tgrassi/jaff
         raise RuntimeError("No network file supplied. Please enter a network file")
 
     # Resolve and validate network file path
-    netfile: Path = Path(network_file).resolve()
-    if not netfile.exists():
+    netfile = Path(network_file)
+    netfile: Path = network_file.resolve() if netfile.is_symlink() else netfile
+    networks = {f.name for f in network_dir.iterdir() if f.is_file()}
+    is_predefined_network = str(netfile) in networks
+
+    if not netfile.exists() and not is_predefined_network:
         raise FileNotFoundError(f"Unable to find network file: {netfile}")
+
+    if is_predefined_network:
+        netfile = network_dir / netfile
 
     if not netfile.is_file():
         raise FileNotFoundError(f"{netfile} is not a valid file")
