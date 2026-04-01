@@ -33,6 +33,7 @@ from .parsers import (
     parse_udfa,
 )
 from .photochemistry import Photochemistry
+from .radiation import Radiation
 from .reaction import Reaction
 from .species import Species
 
@@ -65,6 +66,11 @@ class Network:
         self.dEdt_other = parse_expr("0")
         self.file_name = fname
         self.label = label if label else os.path.basename(fname).split(".")[0]
+        self.radiation: Radiation | None = (
+            Radiation(rad_bands, rad_powerlaw_index, rad_energy_density, c)
+            if rad_bands
+            else None
+        )
 
         print("Loading network from %s" % fname)
         print("Network label = %s" % self.label)
@@ -75,10 +81,6 @@ class Network:
             fname,
             funcfile,
             replace_nH,
-            rad_bands,
-            rad_powerlaw_index,
-            rad_energy_density,
-            c,
         )
 
         self.check_sink_sources(errors)
@@ -127,10 +129,6 @@ class Network:
         fname,
         funcfile,
         replace_nH,
-        rad_bands,
-        rad_powerlaw_index,
-        rad_energy_density,
-        c: float,
     ):
         default_species = []  # ["dummy", "CR", "CRP", "Photon"]
         self.species = [
@@ -428,17 +426,17 @@ class Network:
                     if not did_replace:
                         break
 
-            if is_photoreaction and rad_bands:
+            band_coeffs: list[sympy.Basic] | None = None
+            if is_photoreaction and self.radiation is not None:
                 # Get photo rates
-                rate = (
-                    self.get_prate_from_db(
-                        rr, rad_bands, rad_powerlaw_index, rad_energy_density, c
-                    )
-                    or rate
-                )
+                prate, band_coeffs = self.radiation.total_prate_coeff(rr, pp)
+                rate = prate or rate
 
             # create a Reaction object
             rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, srow)
+
+            if band_coeffs is not None and self.radiation is not None:
+                self.radiation.add_reaction_to_group(rea, band_coeffs)
 
             if rea.guess_type() == "photo":
                 rea.xsecs = self.photochemistry.get_xsec(rea)
@@ -1510,81 +1508,6 @@ class Network:
                 sodes[idx] += fluxes[i]
 
         return sodes
-
-    @staticmethod
-    def get_prate_from_db(
-        reactants: list[Species],
-        rad_bands: list[int | float | str | sympy.Basic],
-        rad_powerlaw_index: int | float,
-        rad_energy_density: bool,
-        c: float,  # Speed of light in cgs unit
-    ) -> sympy.Basic | None:
-        if rad_energy_density:
-            pl_index: float = float(rad_powerlaw_index) - 1.0
-            if pl_index == -1.0:
-                if isinstance(rad_bands[0], (float, int)) and float(rad_bands[0]) == 0.0:
-                    raise RuntimeError(
-                        f"The integral for average energy will diverge since the radiation band starts from rad_bands[0]: {rad_bands[0]}\n"
-                        "Please try a non-zero value"
-                    )
-                if rad_bands[-1] == sympy.oo:
-                    raise RuntimeError(
-                        f'The integral for average energy will diverge since the radiation band ends at rad_bands[{len(rad_bands) - 1}]: "inf"\n'
-                        "Please try a non-infinite value or change the power_law_index"
-                    )
-            elif pl_index + 1.0 > 0.0:
-                if rad_bands[-1] == sympy.oo:
-                    raise RuntimeError(
-                        f'The integral for average energy will diverge since the radiation band ends at rad_bands[{len(rad_bands) - 1}]: "inf"\n'
-                        "Please try a non-infinite value or change the power_law_index"
-                    )
-            elif pl_index + 1.0 < 0.0:
-                if isinstance(rad_bands[0], (float, int)) and float(rad_bands[0]) == 0.0:
-                    raise RuntimeError(
-                        f"The integral for average energy will diverge since the radiation band starts from rad_bands[0]: {rad_bands[0]}\n"
-                        "Please try a non-zero value"
-                    )
-
-        with JaffDb() as jdb:
-            table = jdb.table("verner_cross_sections")
-            xsec_present = False
-            rows = []
-            for reactant in reactants:
-                rows = table.rows(conditions=f"Ion = '{str(reactant)}'")
-                if rows:
-                    xsec_present = True
-                    break
-
-            if not xsec_present:
-                return None
-
-        if "inf" in rad_bands:
-            inf_index = rad_bands.index("inf")
-            rad_bands[inf_index] = sympy.oo
-
-        E = sympy.Symbol("E")
-        n_profile = E ** (rad_powerlaw_index - 2)
-        rate = sympy.Float(0.0)
-        xsec = sympy.sympify(rows[0]["xsecs"])
-
-        den = MatrixSymbol(
-            "radeden" if rad_energy_density else "photden", len(rad_bands) - 1, 1
-        )
-
-        for i, lower in enumerate(rad_bands[:-1]):
-            upper = rad_bands[i + 1]
-            n_tot = sympy.Integral(n_profile, (E, lower, upper)).evalf()
-            xsec_avg = sympy.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
-
-            if rad_energy_density:
-                e_avg = sympy.Integral(E * n_profile, (E, lower, upper)).evalf() / n_tot
-                rate += den[Idx(i)] * xsec_avg / e_avg
-
-                continue
-
-            rate += den[Idx(i)] * xsec_avg
-
-        return c * rate
 
     # *****************
     def write_table(

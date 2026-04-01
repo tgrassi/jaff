@@ -25,10 +25,10 @@ import warnings
 from inspect import signature
 from pathlib import Path
 
-from jaff import Codegen as cg
-from jaff import Network
-from jaff.drivers.toml import Toml
-from jaff.file_parser import Fileparser
+from . import Codegen as cg
+from . import Network
+from .drivers.toml import Toml
+from .file_parser import Fileparser
 
 
 def main() -> None:
