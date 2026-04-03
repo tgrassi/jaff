@@ -13,6 +13,7 @@ class RadiationGroup:
         self.band: tuple = (lower, upper)
         self.dE: float | sp.Basic = self.upper - self.lower
         self.k: dict[Reaction, sp.Basic] = {}  # Rate coeffiecients for each reaction
+        self.eavg: sp.Basic | None = None
 
     def __repr__(self):
         return f"Rad_group({self.index}, band={self.band})"
@@ -75,18 +76,13 @@ class Radiation:
             upper = self.bands[i + 1]
             n_tot = sp.Integral(n_profile, (E, lower, upper)).evalf()
             xsec_avg = sp.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
-
-            if self.energy_density:
-                e_avg = sp.Integral(E * n_profile, (E, lower, upper)).evalf() / n_tot
-                ks[i] = (
-                    self.c * den[sp.Idx(i)] * xsec_avg / e_avg
-                )  # This energy average will probably not be there. Will get back to this. Fix this
-                k_total += ks[i]
-
-                continue
-
             ks[i] = self.c * den[sp.Idx(i)] * xsec_avg
             k_total += ks[i]
+
+            if self.groups[i].eavg is None:
+                self.groups[i].eavg = (
+                    sp.Integral(E * n_profile, (E, lower, upper)).evalf() / n_tot
+                )
 
         return k_total, ks
 

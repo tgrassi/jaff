@@ -1212,7 +1212,6 @@ class Codegen:
             right = jacobian_matrix[:, n_species:]
 
             jacobian_matrix = left.row_join(dde).row_join(right)
-        print("Shape ", jacobian_matrix.shape)
 
         # Precompile regex for fast substitution
         dpattern = re.compile(r"\by_(\d+)\b")
