@@ -11,7 +11,14 @@ class RadiationGroup:
         self.lower: float | int = lower
         self.upper: float | int | sp.Basic = upper
         self.band: tuple = (lower, upper)
+        self.dE: float | sp.Basic = self.upper - self.lower
         self.k: dict[Reaction, sp.Basic] = {}  # Rate coeffiecients for each reaction
+
+    def __repr__(self):
+        return f"Rad_group({self.index}, band={self.band})"
+
+    def __str__(self):
+        return f"Radiation group {self.index}"
 
 
 class Radiation:
@@ -23,13 +30,15 @@ class Radiation:
         c: float,
     ):
         self.bands: list[int | float | str | sp.Basic] = bands
+        self.nbands: int = len(self.bands) - 1
         self.powerlaw_idx: int | float = powerlaw_idx
         self.energy_density: bool = energy_density
         self.c: float = c
 
         self.__parse_bands()
         self.groups: list[RadiationGroup] = [
-            RadiationGroup(lower, i + 1, i) for i, lower in enumerate(self.bands[:-1])
+            RadiationGroup(lower, self.bands[i + 1], i)
+            for i, lower in enumerate(self.bands[:-1])
         ]
 
     def total_prate_coeff(
@@ -54,12 +63,12 @@ class Radiation:
         n_profile = E ** (self.powerlaw_idx - 2)
         k_total = sp.Float(0.0)  # Total rate coefficient over all bands
         ks: list[sp.Basic] = [
-            sp.Float(0.0) for _ in range(len(self.bands))
+            sp.Float(0.0) for _ in range(self.nbands)
         ]  # Individual rate coefficients
         xsec = sp.sympify(rows[0]["xsecs"])
 
         den = sp.MatrixSymbol(
-            "radeden" if self.energy_density else "photden", len(self.bands) - 1, 1
+            "radeden" if self.energy_density else "photden", self.nbands, 1
         )
 
         for i, lower in enumerate(self.bands[:-1]):
@@ -69,7 +78,9 @@ class Radiation:
 
             if self.energy_density:
                 e_avg = sp.Integral(E * n_profile, (E, lower, upper)).evalf() / n_tot
-                ks[i] = self.c * den[sp.Idx(i)] * xsec_avg / e_avg
+                ks[i] = (
+                    self.c * den[sp.Idx(i)] * xsec_avg / e_avg
+                )  # This energy average will probably not be there. Will get back to this. Fix this
                 k_total += ks[i]
 
                 continue
@@ -82,6 +93,22 @@ class Radiation:
     def add_reaction_to_group(self, reaction: Reaction, band_coeffs: list[sp.Basic]):
         for group, coeff in zip(self.groups, band_coeffs):
             group.k[reaction] = coeff
+
+    def ordered_index(self, idx: int, order: int) -> tuple[int, int]:
+        ei = 2 * idx  # Energy index
+        fi = 2 * idx + 1  # FLux index
+
+        if order == 1:
+            ei = 2 * idx + 1
+            fi = 2 * idx
+        elif order == 2:
+            ei = idx
+            fi = self.nbands + idx
+        elif order == 3:
+            ei = self.nbands + idx
+            fi = idx
+
+        return ei, fi
 
     def __parse_bands(self):
         if "inf" in self.bands:

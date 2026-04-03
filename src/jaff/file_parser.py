@@ -24,6 +24,7 @@ REPLACE Directive:
     as regular expressions.
 """
 
+import ast
 import re
 from functools import cached_property
 from pathlib import Path
@@ -745,7 +746,7 @@ class Fileparser:
         if not self.cached_return:
             # Process special variables from expected_vars (starting from index 2)
             # Index 0 is "idx", index 1 is the main item variable
-            # Additional vars like "cse", "DEDT" etc. may require special handling
+            # Additional vars like "cse", "USE_DEDT" etc. may require special handling
             for svar in expected_vars[2:]:
                 # Get kwargs generator for this special variable
                 # Passes the variable name and whether it's present in user's vars list
@@ -761,7 +762,7 @@ class Fileparser:
                 # Call the kwargs generator for this extra modifier
                 # extras[2*i+1] gives the corresponding value for this key
                 additional_kwargs = self.__get_special_var_dict[extra]["kwargs"](
-                    extra, extras[2 * i + 1] == "TRUE"
+                    extra, ast.literal_eval(extras[2 * i + 1])
                 )
                 kwargs = {**kwargs, **additional_kwargs}
 
@@ -1213,13 +1214,18 @@ class Fileparser:
                         "func": lambda **kwargs: self.cg.get_indexed_odes(**kwargs),
                         "vars": ["idx", "ode", "cse"],
                     },
+                    # Returns: IndexedReturn - full radiation ODE equations
+                    "radodes": {
+                        "func": lambda **kwargs: self.cg.get_indexed_radodes(**kwargs),
+                        "vars": ["idx", "radode"],
+                    },
                     # Returns: IndexedReturn - right-hand side expressions with optional CSE
                     "rhses": {
                         "func": lambda **kwargs: self.cg.get_indexed_rhs(**kwargs),
                         "vars": ["idx", "rhs", "cse"],
                     },
                     # Returns: IndexedReturn - Jacobian matrix elements with optional CSE
-                    # DEDT TRUE/FALSE can be passed for this prop in templated syntax
+                    # USE_DEDT TRUE/FALSE can be passed for this prop in templated syntax
                     "jacobian": {
                         "func": lambda **kwargs: self.cg.get_indexed_jacobian(**kwargs),
                         "vars": ["idx", "expr", "cse"],
@@ -1728,8 +1734,10 @@ class Fileparser:
                     extras["cse"], line, repl
                 ),
             },
-            # DEDT (specific internal energy derivative) handler
-            "DEDT": {"kwargs": lambda var, present: {"use_dedt": present}},
+            # USE_DEDT (specific internal energy derivative) handler
+            "USE_DEDT": {"kwargs": lambda var, value: {"use_dedt": value}},
+            "RADIATION": {"kwargs": lambda var, value: {"radiation": value}},
+            "RAD_ORDER": {"kwargs": lambda var, value: {"rad_order": value}},
         }
 
         return svar_dict

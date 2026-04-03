@@ -349,12 +349,12 @@ species_names[$idx$] = "$specie$";
 // $JAFF END
 ```
 
-| Modifier | Values     | Description                                                   | Supported Collections |
-| -------- | ---------- | ------------------------------------------------------------- | --------------------- |
-| `SORT`   | TRUE/FALSE | Sort the array before substitution                            | All                   |
-| `DEDT`   | TRUE/FALSE | Include/exclude specific internal energy equation in Jacobian | `jacobian`            |
+| Modifier   | Values     | Description                                                   | Supported Collections |
+| ---------- | ---------- | ------------------------------------------------------------- | --------------------- |
+| `SORT`     | True/False | Sort the array before substitution                            | All                   |
+| `USE_DEDT` | True/False | Include/exclude specific internal energy equation in Jacobian | `jacobian`            |
 
-> NOTE: It is not recommended to use the SORT modifier for expressions
+> NOTE: It is not recommended to use the `SORT` modifier for expressions
 
 The general trend of variable naming is the singular version of of the plural collection. For example: For the `odes` collection, the corresponding variable is `ode`
 

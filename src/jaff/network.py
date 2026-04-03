@@ -1509,6 +1509,60 @@ class Network:
 
         return sodes
 
+    def get_sradodes(self, order: int = 0) -> list[sympy.Expr]:
+        # Check if radiation is enabled
+        if self.radiation is None:
+            raise RuntimeError(
+                "No radiation bands found. Radiation odes cannot be generated"
+            )
+
+        # Raise if order is not supported
+        if order not in [0, 1, 2, 3]:
+            raise ValueError("Invalid order: Supported orders are 0, 1, 2, 3")
+
+        rad_groups = self.radiation.groups
+        nden = sympy.MatrixSymbol("nden", len(self.species), 1)
+
+        den = sympy.MatrixSymbol(
+            "radeden" if self.radiation.energy_density else "photden",
+            self.radiation.nbands,
+            1,
+        )
+        flux = sympy.MatrixSymbol("flux", self.radiation.nbands, 1)
+        flux_map = {
+            den[sympy.Idx(i)]: flux[sympy.Idx(i)] for i in range(self.radiation.nbands)
+        }
+        grate, gflux = (
+            [sympy.Float(0.0)] * self.radiation.nbands,
+            [sympy.Float(0.0)] * self.radiation.nbands,
+        )
+
+        for group in rad_groups:
+            group_rate: float | sympy.Basic = sympy.Float(0.0)
+            for reaction, rate in group.k.items():
+                rrate = rate
+                for reactant in reaction.reactants:
+                    rrate *= nden[sympy.Idx(self.species_dict[str(reactant)])]
+
+                group_rate -= rrate
+
+            # Flux
+            flux = group_rate.xreplace(flux_map)
+
+            grate[group.index] = group_rate
+            gflux[group.index] = flux
+
+        radodes: list[sympy.Expr] = [
+            sympy.Float(0.0) for _ in range(2 * self.radiation.nbands)
+        ]
+
+        for i, (rate, flux) in enumerate(zip(grate, gflux)):
+            ei, fi = self.radiation.ordered_index(i, order)
+            radodes[ei] = rate
+            radodes[fi] = flux
+
+        return radodes
+
     # *****************
     def write_table(
         self,

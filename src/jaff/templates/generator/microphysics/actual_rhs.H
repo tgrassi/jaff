@@ -25,12 +25,9 @@ rhs_specie(const burn_t &state, amrex::Array1D<amrex::Real, 1, neqs> &ydot,
   amrex::Real crate = 0.0; // placeholder
   amrex::Real av = 0.0;    // placeholder
 
-  // $JAFF REPEAT idx, ode, cse IN odes $[REPLACE nden\[\s*(\d+)\s*\] nden(\1)]$
+  // $JAFF REPEAT idx, rhs, cse IN rhses $[REPLACE radeden\[\s*(\d+)\s*\] radeden(\1) REPLACE rflux\[\s*(\d+)\s*\] rflux(\1) REPLACE nden\[\s*(\d+)\s*\] nden(\1) RADIATION True]$
   const amrex::Real cse$idx$ = $cse$;
-  ydot($idx+1$) = $ode$;
-  // $JAFF END
-  // $JAFF SUB nspec, dedt
-  ydot($nspec+1$) = $dedt$;
+  ydot($idx+1$) = $rhs$;
   // $JAFF END
 }
 
@@ -55,7 +52,7 @@ jac_chem(const burn_t &state, MatrixType &jac,
   amrex::Real crate = 0.0; // placeholder
   amrex::Real av = 0.0;    // placeholder
 
-  // $JAFF REPEAT idx, expr, cse IN jacobian $[REPLACE nden\[\s*(\d+)\s*\] nden(\1) DEDT TRUE]$
+  // $JAFF REPEAT idx, expr, cse IN jacobian $[REPLACE nden\[\s*(\d+)\s*\] nden(\1) USE_DEDT True]$
   const amrex::Real cse$idx$ = $cse$;
   jac($idx+1$, $idx+1$) = $expr$;
   // $JAFF END

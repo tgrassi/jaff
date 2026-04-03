@@ -889,6 +889,8 @@ class Codegen:
         self,
         use_cse: bool = True,
         cse_var: str = "cse",
+        radiation: bool = False,
+        rad_order: int = 0,
     ) -> IndexedReturn:
         """
         Generate indexed right-hand side expressions (ODE + energy equation).
@@ -926,7 +928,15 @@ class Codegen:
             cse_var=cse_var,
         )
         dedt = self.get_dedt()
-        rhs["expressions"].append(IndexedValue([len(rhs["expressions"])], dedt))
+        if radiation:
+            rad_rhs = self.get_indexed_radodes(rad_order)
+
+        rhs_len = len(rhs["expressions"])
+        rhs["expressions"].append(IndexedValue([rhs_len], dedt))
+        rhs_len = len(rhs["expressions"])
+        if radiation:
+            for index, expr in rad_rhs:
+                rhs["expressions"].append(IndexedValue([rhs_len + index[0]], expr))
 
         return rhs
 
@@ -940,6 +950,8 @@ class Codegen:
         def_prefix: str = "",
         assignment_op: str = "",
         line_end: str = "",
+        radiation: bool = False,
+        rad_order: int = 0,
     ) -> str:
         """
         Generate formatted code string for complete RHS (ODE + energy equation).
@@ -963,6 +975,10 @@ class Codegen:
         """
         # Set overrides
         ioff = idx_offset if idx_offset >= 0 else self.ioff
+        prefix = (
+            def_prefix
+            or f"{self.extras.get('type_qualifier', '')}{self.types.get('double', '')}"
+        )
         lb, rb = brac_format or (self.lb, self.rb)
         assign_op = assignment_op or self.assignment_op
         lend = line_end or self.line_end
@@ -974,7 +990,7 @@ class Codegen:
             ode_var=ode_var,
             assignment_op=assign_op,
             brac_format=brac_format,
-            def_prefix=def_prefix,
+            def_prefix=prefix,
             line_end=lend,
         )
         dedt = self.get_dedt()
@@ -983,13 +999,74 @@ class Codegen:
             f"{ode_var}{lb}{ioff + len(self.net.species)}{rb} {assign_op} {dedt}{lend}\n"
         )
 
+        if radiation:
+            radrhs = self.get_radode_str(
+                idx_offset=idx_offset + len(self.net.species) + 1,
+                assignment_op=assignment_op,
+                brac_format=brac_format,
+                line_end=lend,
+                radode_var=ode_var,
+                order=rad_order,
+            )
+            rhs += radrhs
+
         return rhs
+
+    def get_indexed_radodes(self, order: int = 0):
+        il = IndexedList()
+        radodes = self.net.get_sradodes(order)
+
+        for i, rode in enumerate(radodes):
+            il.append(IndexedValue([i], self.code_gen(rode, strict=False)))
+
+        return il
+
+    def get_radode_str(
+        self,
+        idx_offset: int = 0,
+        # use_cse: bool = True, # cse support will be added in the future
+        # cse_var: str = "cse",
+        radode_var: str = "f",
+        brac_format: str = "",
+        # def_prefix: str = "",
+        assignment_op: str = "",
+        line_end: str = "",
+        order: int = 0,
+    ) -> str:
+        # Set overrides
+        ioff = idx_offset if idx_offset >= 0 else self.ioff
+        # prefix = (
+        #     def_prefix
+        #     or f"{self.extras.get('type_qualifier', '')}{self.types.get('double', '')}"
+        # )
+        lb, rb = brac_format or (self.lb, self.rb)
+        assign_op = assignment_op or self.assignment_op
+        lend = line_end or self.line_end
+
+        radode_code: str = ""
+        radode_expressions = self.get_indexed_radodes(order)
+
+        # Support for cse will be added in the future
+        # if use_cse:
+        #     for idx, expression in ode_expressions["extras"]["cse"]:
+        #         _idx = idx[0]
+        #         ode_code += f"{prefix}{cse_var}{_idx} {assign_op} {expression}{lend}\n"
+
+        for idx, expression in radode_expressions:
+            _idx = idx[0]
+            radode_code += (
+                f"{radode_var}{lb}{ioff + _idx}{rb} {assign_op} {expression}{lend}\n"
+            )
+
+        return radode_code
 
     def get_indexed_jacobian(
         self,
         use_dedt: bool = False,
         use_cse: bool = True,
         cse_var: str = "cse",
+        radiation: bool = True,
+        rad_order: int = 0,
     ) -> IndexedReturn:
         """
         Generate indexed Jacobian matrix expressions with CSE optimization.
@@ -1038,30 +1115,69 @@ class Codegen:
             >>> for iv in nested:
             ...     print(f"Row {iv.indices[0]} has {len(iv.value)} non-zero elements")
         """
+        if radiation and rad_order not in [0, 1, 2, 3]:
+            raise ValueError("Invalid order: Supported orders are 0, 1, 2, 3")
 
-        out: IndexedReturn = {
+        ir: IndexedReturn = {
             "extras": {"cse": IndexedList()},
             "expressions": IndexedList(),
         }
-        # Create symbolic variables representing species concentrations for Jacobian
+        # Create symbolic variakbles representing species concentrations for Jacobian
         # We use temporary scalar symbols y_i for robust SymPy manipulation, then
         # remap names to `nden[i]` at codegen time to match templates.
         n_species = len(self.net.species)
-        n_ode_eqns = n_species + int(use_dedt)
+        n_rad_eqns = (
+            2 * self.net.radiation.nbands if radiation and self.net.radiation else 0
+        )
+        n_ode_eqns = n_species + int(use_dedt) + n_rad_eqns
+
         y_syms = [sp.symbols(f"y_{i}") for i in range(n_species)]
+
+        # Adding photon number density and flux symbols if radiation is enabled
+        if radiation and self.net.radiation:
+            # Placeholders for substitution
+            y_syms.extend([sp.symbols("xx") for _ in range(n_rad_eqns)])
+
+            for i in range(self.net.radiation.nbands):
+                ei, fi = self.net.radiation.ordered_index(i, rad_order)
+                y_syms[n_species + ei] = sp.symbols(f"ry_{i}")
+                y_syms[n_species + fi] = sp.symbols(f"fy_{i}")
 
         # Build mapping to replace any Indexed occurrences of nden[...] in rate expressions
         # with the corresponding scalar y_i symbols.
         nden_matrix = sp.MatrixSymbol("nden", n_species, 1)
         nden_to_y = {}
+        radden_to_y = {}
+        radflux_to_y = {}
+
         for i in range(n_species):
             # Support both nden[i] and nden[Idx(i)] forms
             nden_to_y[nden_matrix[i, 0]] = y_syms[i]
             nden_to_y[nden_matrix[sp.Idx(i), 0]] = y_syms[i]
 
+        if radiation and self.net.radiation:
+            radden_matrix = sp.MatrixSymbol(
+                "radeden" if self.net.radiation.energy_density else "photden",
+                self.net.radiation.nbands,
+                1,
+            )
+            radflux_matrix = sp.MatrixSymbol("rflux", self.net.radiation.nbands, 1)
+
+            for i in range(self.net.radiation.nbands):
+                ei, fi = self.net.radiation.ordered_index(i, rad_order)
+                # Support both radden[i] and radden[Idx(i)] forms
+                radden_to_y[radden_matrix[i, 0]] = y_syms[n_species + ei]
+                radden_to_y[radden_matrix[sp.Idx(i), 0]] = y_syms[n_species + ei]
+                # Support both radflux[i] and radflux[Idx(i)] forms
+                radflux_to_y[radflux_matrix[i, 0]] = y_syms[n_species + fi]
+                radflux_to_y[radflux_matrix[sp.Idx(i), 0]] = y_syms[n_species + fi]
+
         # Precompute rate expressions with nden[...] mapped to y_i
         # This substitution allows SymPy to properly differentiate rates w.r.t. species
-        k_exprs = [rea.rate.xreplace(nden_to_y) for rea in self.net.reactions]
+        k_exprs = [
+            rea.rate.xreplace({**nden_to_y, **radden_to_y, **radflux_to_y})
+            for rea in self.net.reactions
+        ]
 
         # Dict to replace any remaining k[i] symbols defensively before differentiating
         subs_k = {
@@ -1069,10 +1185,16 @@ class Codegen:
         }
         ode_symbols = self.net.get_sodes()
 
-        if use_dedt and len(ode_symbols) + 1 == n_ode_eqns:
+        if use_dedt:
             ode_symbols.append(self.__gen_sdedt())
 
-        ode_symbols = [sode.xreplace({**nden_to_y, **subs_k}) for sode in ode_symbols]
+        if radiation:
+            ode_symbols.extend(self.net.get_sradodes())
+
+        ode_symbols = [
+            sode.xreplace({**nden_to_y, **radden_to_y, **radflux_to_y, **subs_k})
+            for sode in ode_symbols
+        ]
 
         # Compute the Jacobian matrix d(f)/d(y) via symbolic differentiation
         # This gives exact analytical derivatives for stiff ODE solvers
@@ -1086,15 +1208,21 @@ class Codegen:
             for i in range(n_ode_eqns):
                 dxdot_dtgas = sp.diff(ode_symbols[i], sp.symbols("tgas"))
                 dde[i, 0] = dxdot_dtgas / dedot_dtgas
+            left = jacobian_matrix[:, :n_species]
+            right = jacobian_matrix[:, n_species:]
 
-            jacobian_matrix = jacobian_matrix.row_join(dde)
+            jacobian_matrix = left.row_join(dde).row_join(right)
+        print("Shape ", jacobian_matrix.shape)
 
         # Precompile regex for fast substitution
         dpattern = re.compile(r"\by_(\d+)\b")
+        if radiation and self.net.radiation is not None:
+            rrdpattern = re.compile(r"\bry_(\d+)\b")
+            rfdpattern = re.compile(r"\bfy_(\d+)\b")
 
-        def replace_y(match: re.Match[str]) -> str:
+        def replace_y(match: re.Match[str], var) -> str:
             idx = int(match.group(1))
-            return f"nden{self.lb}{idx}{self.rb}"
+            return f"{var}{self.lb}{idx}{self.rb}"
 
         # Apply common subexpression elimination if requested
         # CSE significantly reduces code size and computation time for large networks
@@ -1111,8 +1239,20 @@ class Codegen:
                 match = pattern.search(str(var))
                 idx: int = int(match.group(0)) if match is not None else 0
                 expr_str = self.code_gen(expr, allow_unknown_functions=True)
-                expr_str = dpattern.sub(replace_y, expr_str)
-                out["extras"]["cse"].append(IndexedValue([idx], expr_str))
+                expr_str = dpattern.sub(lambda m: replace_y(m, "nden"), expr_str)
+
+                if radiation and self.net.radiation is not None:
+                    rad = self.net.radiation
+                    expr_str = rrdpattern.sub(
+                        lambda m: replace_y(
+                            m,
+                            "radeden" if rad.energy_density else "photden",
+                        ),
+                        expr_str,
+                    )
+                    expr_str = rfdpattern.sub(lambda m: replace_y(m, "rflux"), expr_str)
+
+                ir["extras"]["cse"].append(IndexedValue([idx], expr_str))
 
         # Generate Jacobian code without CSE
         for i, j in product(range(n_ode_eqns), repeat=2):
@@ -1122,10 +1262,22 @@ class Codegen:
                 continue
 
             expr_str = self.code_gen(expr, allow_unknown_functions=True)
-            expr_str = dpattern.sub(replace_y, expr_str)
-            out["expressions"].append(IndexedValue([i, j], expr_str))
+            expr_str = dpattern.sub(lambda m: replace_y(m, "nden"), expr_str)
 
-        return out
+            if radiation and self.net.radiation is not None:
+                rad = self.net.radiation
+                expr_str = rrdpattern.sub(
+                    lambda m: replace_y(
+                        m,
+                        "radeden" if rad.energy_density else "photden",
+                    ),
+                    expr_str,
+                )
+                expr_str = rfdpattern.sub(lambda m: replace_y(m, "rflux"), expr_str)
+
+            ir["expressions"].append(IndexedValue([i, j], expr_str))
+
+        return ir
 
     def get_jacobian_str(
         self,
