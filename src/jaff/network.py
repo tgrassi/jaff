@@ -1478,7 +1478,7 @@ class Network:
         for i, reaction in enumerate(self.reactions):
             flux = reaction.rate
             for reactant in reaction.reactants:
-                flux *= nden_matrix[self.species_dict[str(reactant)], 0]
+                flux *= nden_matrix[self.species_dict[str(reactant)]]
 
             fluxes[i] = flux
 
@@ -1487,7 +1487,7 @@ class Network:
     def get_sodes(self) -> list[sympy.Expr]:
         nspec = len(self.species)
         fluxes = self.get_sfluxes()
-        sodes = [sympy.Integer(0)] * nspec
+        sodes = [sympy.Integer(0) for _ in range(nspec)]
 
         for i, reaction in enumerate(self.reactions):
             for rr in reaction.reactants:
@@ -1528,9 +1528,9 @@ class Network:
             self.radiation.nbands,
             1,
         )
-        flux = sympy.MatrixSymbol("flux", self.radiation.nbands, 1)
+        rflux = sympy.MatrixSymbol("rflux", self.radiation.nbands, 1)
         flux_map = {
-            den[sympy.Idx(i)]: flux[sympy.Idx(i)] for i in range(self.radiation.nbands)
+            den[sympy.Idx(i)]: rflux[sympy.Idx(i)] for i in range(self.radiation.nbands)
         }
         grate, gflux = (
             [sympy.Float(0.0)] * self.radiation.nbands,

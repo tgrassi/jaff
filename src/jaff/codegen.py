@@ -791,7 +791,7 @@ class Codegen:
             >>> for iv in result["expressions"]:
             ...     print(f"dydt[{iv.indices[0]}] = {iv.value}")
         """
-        out: IndexedReturn = {
+        ir: IndexedReturn = {
             "extras": {"cse": IndexedList()},
             "expressions": IndexedList(),
         }
@@ -816,16 +816,16 @@ class Codegen:
                 match = pattern.search(str(var))
                 idx: int = int(match.group(0)) if match is not None else 0
                 expr = self.code_gen(expr, allow_unknown_functions=True)
-                out["extras"]["cse"].append(IndexedValue([idx], expr))
+                ir["extras"]["cse"].append(IndexedValue([idx], expr))
 
             ode_symbols = reduced_exprs
 
         # Generate ODE code without CSE
         for i, expr in enumerate(ode_symbols):
             expr = self.code_gen(expr, allow_unknown_functions=True)
-            out["expressions"].append(IndexedValue([i], expr))
+            ir["expressions"].append(IndexedValue([i], expr))
 
-        return out
+        return ir
 
     def get_ode_str(
         self,
@@ -922,23 +922,43 @@ class Codegen:
             ...     f"Energy equation at index {dedt_expr.indices[0]}: {dedt_expr.value}"
             ... )
         """
+        ir: IndexedReturn = {
+            "extras": {"cse": IndexedList()},
+            "expressions": IndexedList(),
+        }
 
-        rhs = self.get_indexed_odes(
-            use_cse=use_cse,
-            cse_var=cse_var,
+        subs_k = {
+            sp.symbols(f"k[{i}]"): rea.rate for i, rea in enumerate(self.net.reactions)
+        }
+
+        rhs_symbols = self.net.get_sodes()
+        rhs_symbols = [sode.xreplace(subs_k) for sode in rhs_symbols]
+        rhs_symbols.extend(
+            [self.__gen_sdedt(), *(self.net.get_sradodes(rad_order) if radiation else [])]
         )
-        dedt = self.get_dedt()
-        if radiation:
-            rad_rhs = self.get_indexed_radodes(rad_order)
 
-        rhs_len = len(rhs["expressions"])
-        rhs["expressions"].append(IndexedValue([rhs_len], dedt))
-        rhs_len = len(rhs["expressions"])
-        if radiation:
-            for index, expr in rad_rhs:
-                rhs["expressions"].append(IndexedValue([rhs_len + index[0]], expr))
+        if use_cse:
+            cse_var = sp.numbered_symbols(prefix=cse_var)
+            replacements, reduced_exprs = sp.cse(rhs_symbols, symbols=cse_var)
 
-        return rhs
+            # Build separate CSE blocks for RHS and Jacobian
+            replacements = self.__prune_cse(replacements, reduced_exprs)
+
+            # Generate ODE code with only the needed CSE assignments
+            pattern = re.compile(r"(\d+)")
+            for var, expr in replacements:
+                match = pattern.search(str(var))
+                idx: int = int(match.group(0)) if match is not None else 0
+                expr = self.code_gen(expr, allow_unknown_functions=True)
+                ir["extras"]["cse"].append(IndexedValue([idx], expr))
+
+            rhs_symbols = reduced_exprs
+
+        for i, expr in enumerate(rhs_symbols):
+            expr = self.code_gen(expr, allow_unknown_functions=True)
+            ir["expressions"].append(IndexedValue([i], expr))
+
+        return ir
 
     def get_rhs_str(
         self,
@@ -983,76 +1003,85 @@ class Codegen:
         assign_op = assignment_op or self.assignment_op
         lend = line_end or self.line_end
 
-        rhs = self.get_ode_str(
-            idx_offset=idx_offset,
-            use_cse=use_cse,
-            cse_var=cse_var,
-            ode_var=ode_var,
-            assignment_op=assign_op,
-            brac_format=brac_format,
-            def_prefix=prefix,
-            line_end=lend,
-        )
-        dedt = self.get_dedt()
-
-        rhs += (
-            f"{ode_var}{lb}{ioff + len(self.net.species)}{rb} {assign_op} {dedt}{lend}\n"
+        rhs_code = ""
+        rhs_expressions = self.get_indexed_rhs(
+            use_cse=use_cse, cse_var=cse_var, radiation=radiation, rad_order=rad_order
         )
 
-        if radiation:
-            radrhs = self.get_radode_str(
-                idx_offset=idx_offset + len(self.net.species) + 1,
-                assignment_op=assignment_op,
-                brac_format=brac_format,
-                line_end=lend,
-                radode_var=ode_var,
-                order=rad_order,
-            )
-            rhs += radrhs
+        if use_cse:
+            for idx, expression in rhs_expressions["extras"]["cse"]:
+                _idx = idx[0]
+                rhs_code += f"{prefix}{cse_var}{_idx} {assign_op} {expression}{lend}\n"
 
-        return rhs
+        for idx, expression in rhs_expressions["expressions"]:
+            _idx = idx[0]
+            rhs_code += f"{ode_var}{lb}{ioff + _idx}{rb} {assign_op} {expression}{lend}\n"
 
-    def get_indexed_radodes(self, order: int = 0):
-        il = IndexedList()
-        radodes = self.net.get_sradodes(order)
+        return rhs_code
 
-        for i, rode in enumerate(radodes):
-            il.append(IndexedValue([i], self.code_gen(rode, strict=False)))
+    def get_indexed_radodes(
+        self, order: int = 0, use_cse: bool = True, cse_var: str = "rcse"
+    ):
+        ir: IndexedReturn = {
+            "extras": {"cse": IndexedList()},
+            "expressions": IndexedList(),
+        }
+        radode_symbols = self.net.get_sradodes(order)
 
-        return il
+        if use_cse:
+            cse_var = sp.numbered_symbols(prefix=cse_var)
+            replacements, reduced_exprs = sp.cse(radode_symbols, symbols=cse_var)
+
+            # Build separate CSE blocks for RHS and Jacobian
+            replacements = self.__prune_cse(replacements, reduced_exprs)
+
+            # Generate ODE code with only the needed CSE assignments
+            pattern = re.compile(r"(\d+)")
+            for var, expr in replacements:
+                match = pattern.search(str(var))
+                idx: int = int(match.group(0)) if match is not None else 0
+                expr = self.code_gen(expr, allow_unknown_functions=True)
+                ir["extras"]["cse"].append(IndexedValue([idx], expr))
+
+            radode_symbols = reduced_exprs
+
+        for i, expr in enumerate(radode_symbols):
+            expr = self.code_gen(expr, allow_unknown_functions=True)
+            ir["expressions"].append(IndexedValue([i], expr))
+
+        return ir
 
     def get_radode_str(
         self,
         idx_offset: int = 0,
-        # use_cse: bool = True, # cse support will be added in the future
-        # cse_var: str = "cse",
+        use_cse: bool = True,
+        cse_var: str = "rcse",
         radode_var: str = "f",
         brac_format: str = "",
-        # def_prefix: str = "",
+        def_prefix: str = "",
         assignment_op: str = "",
         line_end: str = "",
         order: int = 0,
     ) -> str:
         # Set overrides
         ioff = idx_offset if idx_offset >= 0 else self.ioff
-        # prefix = (
-        #     def_prefix
-        #     or f"{self.extras.get('type_qualifier', '')}{self.types.get('double', '')}"
-        # )
+        prefix = (
+            def_prefix
+            or f"{self.extras.get('type_qualifier', '')}{self.types.get('double', '')}"
+        )
         lb, rb = brac_format or (self.lb, self.rb)
         assign_op = assignment_op or self.assignment_op
         lend = line_end or self.line_end
 
         radode_code: str = ""
-        radode_expressions = self.get_indexed_radodes(order)
+        radode_expressions = self.get_indexed_radodes(order, use_cse, cse_var)
 
-        # Support for cse will be added in the future
-        # if use_cse:
-        #     for idx, expression in ode_expressions["extras"]["cse"]:
-        #         _idx = idx[0]
-        #         ode_code += f"{prefix}{cse_var}{_idx} {assign_op} {expression}{lend}\n"
+        if use_cse:
+            for idx, expression in radode_expressions["extras"]["cse"]:
+                _idx = idx[0]
+                radode_code += f"{prefix}{cse_var}{_idx} {assign_op} {expression}{lend}\n"
 
-        for idx, expression in radode_expressions:
+        for idx, expression in radode_expressions["expressions"]:
             _idx = idx[0]
             radode_code += (
                 f"{radode_var}{lb}{ioff + _idx}{rb} {assign_op} {expression}{lend}\n"
@@ -1065,7 +1094,7 @@ class Codegen:
         use_dedt: bool = False,
         use_cse: bool = True,
         cse_var: str = "cse",
-        radiation: bool = True,
+        radiation: bool = False,
         rad_order: int = 0,
     ) -> IndexedReturn:
         """
