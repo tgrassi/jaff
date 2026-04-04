@@ -153,6 +153,7 @@ class Fileparser:
         self.parsing_enabled: bool = True
         self.parse_function: Callable[[], None] | None = None
         self.line: str = ""
+        self.nline: int = 0
         self.og_line: str = ""
         self.modified: str = ""
         self.indent: str = ""
@@ -203,7 +204,8 @@ class Fileparser:
             Generated code as a string with all JAFF directives expanded
         """
         with open(self.file, "r") as f:
-            for line in f:
+            for nline, line in enumerate(f, start=1):
+                self.nline = nline
                 self.og_line = line
                 self.__parse_line(line)
 
