@@ -30,10 +30,11 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any, Callable, TypedDict
 
-from jaff import Codegen, Network
-from jaff.codegen import IndexedReturn
-from jaff.elements import Elements
-from jaff.jaff_types import IndexedList
+from . import Codegen, Network
+from .codegen import IndexedReturn
+from .elements import Elements
+from .errors.parser import ParserError
+from .jaff_types import IndexedList
 
 
 class IdxSpanResult(TypedDict):
@@ -326,8 +327,8 @@ class Fileparser:
             rest: Command parameters in format "vars IN property [extras]"
 
         Raises:
-            ValueError: If IN keyword is missing or arguments are invalid
-            SyntaxError: If REPLACE syntax is invalid
+            ParserError: If IN keyword is missing or arguments are invalid
+            ParserError: If REPLACE syntax is invalid
 
         Example:
             // $JAFF REPEAT idx, specie IN species [REPLACE old new]
@@ -335,7 +336,7 @@ class Fileparser:
             // $JAFF END
         """
         if "IN" not in rest:
-            raise ValueError(f"IN keyword not found in {self.line}")
+            raise ParserError("IN keyword not found", self.line, self.nline, self.file)
 
         # Extract extras (SORT, CSE, REPLACE directives) from dollar-bracket notation
         rest, extras = self.__get_extras(rest)
@@ -357,9 +358,11 @@ class Fileparser:
 
         # Validate that all arguments are supported for this property
         if any(arg not in vars for arg in args):
-            raise ValueError(
-                f"Unsupported argument in line {self.line}\n"
-                f"Supported arguments for {prop} are: {vars}\n"
+            raise ParserError(
+                f"Unsupported arguments.\nSupported arguments for {prop} are: {vars}\n",
+                self.line,
+                self.nline,
+                self.file,
             )
 
         # Set up iterative parsing: loops over IndexedLists with extras passed for SORT/CSE handling
@@ -386,7 +389,7 @@ class Fileparser:
             // $JAFF END
         """
         if "FOR" not in rest:
-            raise ValueError(f"FOR keyword not found in {self.line}")
+            raise ParserError("FOR keyword not found", self.line, self.nline, self.file)
 
         # Extract extras (REPLACE directives) from dollar-bracket notation
         rest, extras = self.__get_extras(rest)
@@ -417,7 +420,7 @@ class Fileparser:
                  followed by REPLACE directives
 
         Raises:
-            SyntaxError: If REPLACE syntax is invalid
+            ParserError: If REPLACE syntax is invalid
 
         Example:
             // $JAFF HAS specie CO [REPLACE 1 true]
@@ -457,7 +460,7 @@ class Fileparser:
             // $JAFF END
         """
         if rest.count("IN") != 1:
-            raise SyntaxError(f"Invalid syntax detected: {self.line}")
+            raise ParserError("Invalid syntax detected", self.line, self.nline, self.file)
 
         # Extract extras (REPLACE directives) from dollar-bracket notation
         rest, extras = self.__get_extras(rest)
@@ -472,9 +475,12 @@ class Fileparser:
         reduction_props = self.__get_command_props("REDUCE")
         # Raise error if invalid prop is passed
         if any(prop not in reduction_props for prop in split_props):
-            raise ValueError(
-                f"Invalid properties detected in: {self.line}"
-                f"Supported properties are: {reduction_props.keys()}"
+            raise ParserError(
+                "Invalid properties detected"
+                f"Supported properties are: {reduction_props.keys()}",
+                self.line,
+                self.nline,
+                self.file,
             )
 
         # Check if any invalid variable has been passed
@@ -482,7 +488,9 @@ class Fileparser:
             var not in {reduction_props[prop]["var"] for prop in split_props}
             for var in split_vars
         ):
-            raise ValueError(f"Invalid variables detected in: {self.line}")
+            raise ParserError(
+                "Invalid variables detected", self.line, self.nline, self.file
+            )
 
         self.parse_function = lambda: self.__get_reduction_expression(
             split_vars, split_props
@@ -508,13 +516,17 @@ class Fileparser:
             - "new  text" -> "new text" (collapses whitespace)
         """
         if not self.replacements:
-            raise SyntaxError(f"No valid replacements found in {self.line}")
+            raise ParserError(
+                "No valid replacements found", self.line, self.nline, self.file
+            )
         for before, after in self.replacements:
             try:
                 pattern = re.compile(before)
                 text = pattern.sub(after, text)
-            except re.error as e:
-                raise SyntaxError(f"Invalid regex pattern '{before}' in {self.line}: {e}")
+            except re.error:
+                raise ParserError(
+                    f"Invalid regex pattern '{before}'", self.line, self.nline, self.file
+                )
 
         return text
 
@@ -533,7 +545,7 @@ class Fileparser:
                    This list is modified in-place to remove REPLACE tokens.
 
         Raises:
-            SyntaxError: If REPLACE keyword is not followed by both pattern and
+            ParserError: If REPLACE keyword is not followed by both pattern and
                         replacement strings (missing arguments).
 
         Example:
@@ -550,9 +562,12 @@ class Fileparser:
                 # Extract pairs: (extras[i+1], extras[i+2]) for each REPLACE at position i
                 self.replacements = [(extras[i + 1], extras[i + 2]) for i in repl_pos]
             except IndexError:
-                raise SyntaxError(
-                    f"Invalid replacement syntax in: {self.line}\n"
-                    f"REPLACE must be followed by both pattern and replacement"
+                raise ParserError(
+                    "Invalid replacement syntax\n"
+                    "REPLACE must be followed by both pattern and replacement",
+                    self.line,
+                    self.nline,
+                    self.file,
                 )
             self.replace = True
 
@@ -663,7 +678,12 @@ class Fileparser:
                 for var in prop_vars:
                     token = token.replace(f"${var}$", str(var_map[var][i]))
             except IndexError:
-                raise IndexError(f"Properties are not of the same dimension: {props}")
+                raise ParserError(
+                    f"Properties are not of the same dimension: {props}",
+                    self.line,
+                    self.nline,
+                    self.file,
+                )
 
             expressions[i] = token
 
@@ -710,9 +730,11 @@ class Fileparser:
         """
         # Raise error if invalid variable is provided
         if any(var not in expected_vars for var in vars):
-            raise SyntaxError(
-                f"Unsupported parameter found: {self.line}\n"
-                f"Supported parameters are: {expected_vars}"
+            raise ParserError(
+                f"Unsupported parameter found\nSupported parameters are: {expected_vars}",
+                self.line,
+                self.nline,
+                self.file,
             )
 
         # If line doesn't contain jaff syntax, skip parsing line
@@ -1001,7 +1023,9 @@ class Fileparser:
         # Find position of $idx$ token(s) in the current line
         idx_span = self.__find_idx_span(text=self.line)["span"]
         if not idx_span:
-            raise ValueError(f"No valid idx variable detected: {self.line}")
+            raise ParserError(
+                "No valid idx variable detected", self.line, self.nline, self.file
+            )
 
         # Get start and end positions of first $idx$ token
         # which should be the only $idx$ token
@@ -1065,9 +1089,11 @@ class Fileparser:
             # Validate that indices dimensionality matches template expectations
             # e.g., [0, 1] indices requires exactly 2 $idx tokens
             if len(indices) != line.count("$idx"):
-                raise SyntaxError(
-                    "Invalid syntax encountered.\n"
-                    f"{self.line} is expected to have {len(indices)} idx variables"
+                raise ParserError(
+                    f"Invalid syntax encountered.\nExpected {len(indices)} idx variables",
+                    self.line,
+                    self.nline,
+                    self.file,
                 )
 
             # Replace all $idx$ tokens with actual index values
