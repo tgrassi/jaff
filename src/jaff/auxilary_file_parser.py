@@ -45,6 +45,7 @@ class AuxilaryFunctionParser:
         self.current_func: str = ""
 
         self.__parse_file()
+        self.__resolve_func_deps()
 
     def __repr__(self):
         return f"AuxiliaryFunctionParserObject: {self.file}"
@@ -273,6 +274,40 @@ class AuxilaryFunctionParser:
             return new_expr
 
         return {sym: dfs(sym) for sym in dep_map}
+
+    def __resolve_func_deps(self):
+        resolved_defs = {}
+        visiting = set()
+
+        def dfs_resolve_func(name: str):
+            if name in resolved_defs:
+                return resolved_defs[name]
+
+            if name in visiting:
+                raise ParserError(
+                    f"Circular function dependency: {name}", fname=self.file
+                )
+
+            visiting.add(name)
+
+            f_data = self.func_dict[name]
+            expr = f_data["def"]
+
+            for func in expr.atoms(AppliedUndef):
+                func_name = func.func.__name__.lower()
+                if func_name in self.func_dict:
+                    nested_f_def = dfs_resolve_func(func_name)
+                    nested_f_args = self.func_dict[func_name]["args"]
+                    arg_map = dict(zip(nested_f_args, func.args))
+                    resolved_call = nested_f_def.subs(arg_map)
+                    expr = expr.subs(func, resolved_call)
+
+            visiting.remove(name)
+            resolved_defs[name] = expr
+            return expr
+
+        for func_name in self.func_dict:
+            self.func_dict[func_name]["def"] = dfs_resolve_func(func_name)
 
     @staticmethod
     def __strip_trailing_comment(line: str) -> tuple[str, str]:

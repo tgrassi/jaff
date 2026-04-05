@@ -19,7 +19,7 @@ from sympy import (
     symbols,
     sympify,
 )
-from sympy.core.function import AppliedUndef, UndefinedFunction
+from sympy.core.function import UndefinedFunction
 from tqdm import tqdm
 
 from jaff.auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
@@ -258,7 +258,7 @@ class Network:
                     rr, pp, tmin, tmax, rate = parse_prizmo(srow)
                 elif ":" in srow:
                     rr, pp, tmin, tmax, rate = parse_udfa(srow)
-                elif srow.count(",") > 3 and not ",NAN," in srow:
+                elif srow.count(",") > 3 and ",NAN," not in srow:
                     rr, pp, tmin, tmax, rate = parse_krome(srow, krome_format)
                 elif ",NAN," in srow:
                     rr, pp, tmin, tmax, rate = parse_uclchem(srow)
@@ -360,11 +360,6 @@ class Network:
             if ratefunc_name in aux_funcs.keys():
                 rate = aux_funcs[ratefunc_name]["def"]
 
-            # Apply the replacement rules for all other custom
-            # functions; do this in a loop until no replacements are
-            # made so that we can fully substitute for nested functions
-            rate = self.__replace_undefined_funcs(aux_funcs, rate)
-
             # convert reactants and products to Species objects
             for s in rr + pp:
                 if s not in species_names:
@@ -386,10 +381,6 @@ class Network:
             if deltaE_name.lower() in aux_funcs.keys():
                 # deltaE
                 deltaE = aux_funcs[deltaE_name.lower()]["def"]
-
-                # Apply the replacement rules for all custom
-                # functions in dEdt
-                deltaE = self.__replace_undefined_funcs(aux_funcs, deltaE)
 
             band_coeffs: list[sympy.Basic] | None = None
             if is_photoreaction and self.radiation is not None:
@@ -441,10 +432,6 @@ class Network:
         if "heatingCoolingRate" in aux_funcs.keys():
             self.dEdt_other = aux_funcs["heatingCoolingRate"]["def"]
 
-            # Apply the replacement rules for all custom
-            # functions in dEdt
-            self.dEdt_other = self.__replace_undefined_funcs(aux_funcs, self.dEdt_other)
-
             # Standardize expression
             self.dEdt_other = self.standardize_symbols(self.dEdt_other, replace_nH)
 
@@ -489,29 +476,6 @@ class Network:
             print("Found the following interpolation functions: ", interp_funcs)
         if len(undef_funcs) > 0:
             print("WARNING: found undefined functions ", undef_funcs)
-
-    def __replace_undefined_funcs(
-        self, aux_funcs: dict, expr: sympy.Basic
-    ) -> sympy.Basic:
-        while True:
-            funcs = list(expr.atoms(AppliedUndef))  # Grab undefined functions
-            did_replace = False
-
-            for f in funcs:
-                if f.name.lower() in aux_funcs:
-                    # Grab function definition and substitute in arguments
-                    fdef = aux_funcs[f.name.lower()]["def"]
-                    for a1, a2 in zip(aux_funcs[f.name.lower()]["args"], f.args):
-                        fdef = fdef.subs(a1, a2)
-                    # Substitute function into dEdt
-                    expr = expr.subs(f, fdef)
-                    # Flag that we did a replacement
-                    did_replace = True
-            # End if no replacements done
-            if not did_replace:
-                break
-
-        return expr
 
     # ****************
     def read_aux_funcs(self, funcfile: str | Path | None):
