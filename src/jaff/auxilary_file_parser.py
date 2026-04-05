@@ -4,6 +4,7 @@ from tokenize import TokenError
 from typing import Any, Callable, NotRequired, TypedDict
 
 import sympy as sp
+from sympy.core.function import AppliedUndef
 
 from jaff.errors.parser import ParserError
 
@@ -214,6 +215,16 @@ class AuxilaryFunctionParser:
                     **self.globals,
                     **self.func_dict[self.current_func]["locals"],
                 },
+            )
+
+            func_cache = {}
+            funcdef = funcdef.xreplace(
+                {
+                    f: func_cache.setdefault(f.name.lower(), sp.Function(f.name.lower()))(
+                        *f.args
+                    )
+                    for f in funcdef.atoms(AppliedUndef)
+                }
             )
         except (SyntaxError, TokenError, TypeError, sp.SympifyError) as e:
             raise ParserError(
