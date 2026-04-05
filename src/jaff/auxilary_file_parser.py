@@ -335,4 +335,3 @@ if __name__ == "__main__":
 
     end_time = time.perf_counter()
     print(f"Execution time: {end_time - start_time:.6f} seconds")
-    afp.get_dict()

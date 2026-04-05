@@ -19,7 +19,7 @@ from sympy import (
     symbols,
     sympify,
 )
-from sympy.core.function import UndefinedFunction
+from sympy.core.function import AppliedUndef, UndefinedFunction
 from tqdm import tqdm
 
 from jaff.auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
@@ -387,6 +387,10 @@ class Network:
                 # Get photo rates
                 prate, band_coeffs = self.radiation.total_prate_coeff(rr, pp)
                 rate = prate or rate
+
+            for f in rate.atoms(AppliedUndef):
+                if f.name.lower() in aux_funcs:
+                    rate = rate.subs(f, aux_funcs[f.name.lower()]["def"])
 
             # create a Reaction object
             rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, srow)
