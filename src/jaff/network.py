@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -21,7 +22,8 @@ from sympy import (
 from sympy.core.function import UndefinedFunction
 from tqdm import tqdm
 
-from .drivers.sqlite import JaffDb
+from jaff.auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
+
 from .fastlog import fast_log2, inverse_fast_log2
 from .function_parser import parse_funcfile
 from .parsers import (
@@ -545,7 +547,7 @@ class Network:
             print("WARNING: found undefined functions ", undef_funcs)
 
     # ****************
-    def read_aux_funcs(self, funcfile):
+    def read_aux_funcs(self, funcfile: str | Path | None):
         """
         Read the auxiliary function file
 
@@ -571,17 +573,24 @@ class Network:
         Raises:
             IOError, if the file does not exist or cannot be parsed
         """
-
         if funcfile == "none":
-            return dict()  # Empty dict
-        elif funcfile is None:
-            try:
-                return parse_funcfile(self.file_name + "_functions")
-            except IOError:
-                # Silently return empty dict if no function file is present
-                return dict()
-        else:
-            return parse_funcfile(funcfile)
+            return {}
+
+        if funcfile is None:
+            funcfile = Path(f"{self.file_name}_functions")
+            if not funcfile.exists():
+                return {}
+
+        if isinstance(funcfile, str):
+            funcfile = Path(funcfile)
+
+        if not funcfile.exists():
+            raise FileNotFoundError(f"Auxilary functions file not found: {funcfile}")
+
+        with AuxilaryFunctionParser(funcfile) as afp:
+            func_dict: FunctionsDict = afp.get_dict()
+
+        return func_dict
 
     # ****************
     def to_jaff_file(self, filename):

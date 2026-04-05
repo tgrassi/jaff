@@ -1,4 +1,3 @@
-import json
 from functools import cached_property
 from pathlib import Path
 from tokenize import TokenError
