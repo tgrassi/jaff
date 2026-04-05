@@ -357,7 +357,7 @@ class Network:
 
             # Apply the replacement rules for custom "ratefucntions",
             # which are functions that directly override rates
-            ratefunc_name = "ratefunction{:d}".format(len(self.reactions))
+            ratefunc_name = "chemRate{:d}".format(len(self.reactions))
             if ratefunc_name in aux_funcs.keys():
                 rate = aux_funcs[ratefunc_name]["def"]
 
@@ -475,8 +475,8 @@ class Network:
         ]
 
         # Add chemical and non-chemical heating and cooling rates
-        if "heating_cooling_rate" in aux_funcs.keys():
-            self.dEdt_other = aux_funcs["heating_cooling_rate"]["def"]
+        if "heatingCoolingRate" in aux_funcs.keys():
+            self.dEdt_other = aux_funcs["heatingCoolingRate"]["def"]
 
             # Apply the replacement rules for all custom
             # functions in dEdt

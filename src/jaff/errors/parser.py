@@ -23,7 +23,7 @@ class ParserError(Exception):
 
         super().__init__(self.__format_message())
 
-    def __format_message(self):
+    def __format_message(self) -> str:
         error_str: str = ""
 
         if self.funcname is not None:
