@@ -1,2 +1,2 @@
-@deltaE0(nH)
+@function deltaE0(nH)
     return nH
