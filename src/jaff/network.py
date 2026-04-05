@@ -19,13 +19,12 @@ from sympy import (
     symbols,
     sympify,
 )
-from sympy.core.function import UndefinedFunction
+from sympy.core.function import AppliedUndef, UndefinedFunction
 from tqdm import tqdm
 
 from jaff.auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
 
 from .fastlog import fast_log2, inverse_fast_log2
-from .function_parser import parse_funcfile
 from .parsers import (
     f90_convert,
     parse_kida,
@@ -364,24 +363,7 @@ class Network:
             # Apply the replacement rules for all other custom
             # functions; do this in a loop until no replacements are
             # made so that we can fully substitute for nested functions
-            while True:
-                funcs = [
-                    f for f in rate.atoms(Function) if type(f.func) is UndefinedFunction
-                ]  # Grab undefined functions
-                did_replace = False
-                for f in funcs:
-                    if f.name.lower() in aux_funcs.keys():
-                        # Grab function definition and substitute in arguments
-                        fdef = aux_funcs[f.name.lower()]["def"]
-                        for a1, a2 in zip(aux_funcs[f.name.lower()]["args"], f.args):
-                            fdef = fdef.subs(a1, a2)
-                        # Substitute function into rate
-                        rate = rate.subs(f, fdef)
-                        # Flag that we did a replacement
-                        did_replace = True
-                # End if no replacements done
-                if not did_replace:
-                    break
+            rate = self.__replace_undefined_funcs(aux_funcs, rate)
 
             # convert reactants and products to Species objects
             for s in rr + pp:
@@ -407,26 +389,7 @@ class Network:
 
                 # Apply the replacement rules for all custom
                 # functions in dEdt
-                while True:
-                    funcs = [
-                        f
-                        for f in deltaE.atoms(Function)
-                        if type(f.func) is UndefinedFunction
-                    ]  # Grab undefined functions
-                    did_replace = False
-                    for f in funcs:
-                        if f.name.lower() in aux_funcs.keys():
-                            # Grab function definition and substitute in arguments
-                            fdef = aux_funcs[f.name.lower()]["def"]
-                            for a1, a2 in zip(aux_funcs[f.name.lower()]["args"], f.args):
-                                fdef = fdef.subs(a1, a2)
-                            # Substitute function into dEdt
-                            deltaE = deltaE.subs(f, fdef)
-                            # Flag that we did a replacement
-                            did_replace = True
-                    # End if no replacements done
-                    if not did_replace:
-                        break
+                deltaE = self.__replace_undefined_funcs(aux_funcs, deltaE)
 
             band_coeffs: list[sympy.Basic] | None = None
             if is_photoreaction and self.radiation is not None:
@@ -456,10 +419,10 @@ class Network:
             # Append any remaining un-replaced quantities to list
             # of free symbols, removing nden's
             free_symbols_all += [
-                fs for fs in rea.rate.free_symbols if not "nden" in fs.name
+                fs for fs in rea.rate.free_symbols if "nden" not in fs.name
             ]
             free_symbols_all += [
-                fs for fs in rea.dE.free_symbols if not "nden" in fs.name
+                fs for fs in rea.dE.free_symbols if "nden" not in fs.name
             ]
 
         # Generate the chemical dE/dt expression from rates and deltaE's
@@ -471,7 +434,7 @@ class Network:
             self.dEdt_chem += dE_dt
         self.dEdt_chem = self.standardize_symbols(self.dEdt_chem, replace_nH)
         free_symbols_all += [
-            fs for fs in self.dEdt_chem.free_symbols if not "nden" in fs.name
+            fs for fs in self.dEdt_chem.free_symbols if "nden" not in fs.name
         ]
 
         # Add chemical and non-chemical heating and cooling rates
@@ -480,33 +443,14 @@ class Network:
 
             # Apply the replacement rules for all custom
             # functions in dEdt
-            while True:
-                funcs = [
-                    f
-                    for f in self.dEdt_other.atoms(Function)
-                    if type(f.func) is UndefinedFunction
-                ]  # Grab undefined functions
-                did_replace = False
-                for f in funcs:
-                    if f.name.lower() in aux_funcs.keys():
-                        # Grab function definition and substitute in arguments
-                        fdef = aux_funcs[f.name.lower()]["def"]
-                        for a1, a2 in zip(aux_funcs[f.name.lower()]["args"], f.args):
-                            fdef = fdef.subs(a1, a2)
-                        # Substitute function into dEdt
-                        self.dEdt_other = self.dEdt_other.subs(f, fdef)
-                        # Flag that we did a replacement
-                        did_replace = True
-                # End if no replacements done
-                if not did_replace:
-                    break
+            self.dEdt_other = self.__replace_undefined_funcs(aux_funcs, self.dEdt_other)
 
             # Standardize expression
             self.dEdt_other = self.standardize_symbols(self.dEdt_other, replace_nH)
 
             # Add symbols from dEdt_other to free symbol list
             free_symbols_all += [
-                fs for fs in self.dEdt_other.free_symbols if not "nden" in fs.name
+                fs for fs in self.dEdt_other.free_symbols if "nden" not in fs.name
             ]
 
         # Get unique list of variables names found in all expressions
@@ -545,6 +489,29 @@ class Network:
             print("Found the following interpolation functions: ", interp_funcs)
         if len(undef_funcs) > 0:
             print("WARNING: found undefined functions ", undef_funcs)
+
+    def __replace_undefined_funcs(
+        self, aux_funcs: dict, expr: sympy.Basic
+    ) -> sympy.Basic:
+        while True:
+            funcs = list(expr.atoms(AppliedUndef))  # Grab undefined functions
+            did_replace = False
+
+            for f in funcs:
+                if f.name.lower() in aux_funcs:
+                    # Grab function definition and substitute in arguments
+                    fdef = aux_funcs[f.name.lower()]["def"]
+                    for a1, a2 in zip(aux_funcs[f.name.lower()]["args"], f.args):
+                        fdef = fdef.subs(a1, a2)
+                    # Substitute function into dEdt
+                    expr = expr.subs(f, fdef)
+                    # Flag that we did a replacement
+                    did_replace = True
+            # End if no replacements done
+            if not did_replace:
+                break
+
+        return expr
 
     # ****************
     def read_aux_funcs(self, funcfile: str | Path | None):
