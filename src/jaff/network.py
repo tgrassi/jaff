@@ -4,6 +4,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import NotRequired, TypedDict
 
 import h5py
 import numpy as np
@@ -17,7 +18,6 @@ from sympy import (
     parse_expr,
     srepr,
     symbols,
-    sympify,
 )
 from sympy.core.function import AppliedUndef, UndefinedFunction
 from tqdm import tqdm
@@ -37,6 +37,21 @@ from .photochemistry import Photochemistry
 from .radiation import Radiation
 from .reaction import Reaction
 from .species import Species
+
+NetworkProps = TypedDict(
+    "NetworkProps",
+    {
+        "fname": str,
+        "errors": NotRequired[bool],
+        "label": NotRequired[str],
+        "funcfile": NotRequired[str],
+        "replace_nH": NotRequired[bool],
+        "rad_bands": NotRequired[list],
+        "rad_powerlaw_index": NotRequired[int | float],
+        "rad_energy_density": NotRequired[bool],
+        "c": NotRequired[float],
+    },
+)
 
 
 class Network:
@@ -106,7 +121,7 @@ class Network:
                 if x.lower().startswith("f") and x.strip().isalpha()
             ]
             fword = np.random.choice(words)
-        except:
+        except (FileNotFoundError, PermissionError, OSError, ValueError):
             fword = "Fancy"
         print("Welcome to JAFF: Just Another %s Format!" % fword.title())
 
@@ -283,7 +298,7 @@ class Network:
                     photo_args = [arg.strip() for arg in args_str.split(",")]
                     if len(photo_args) < 2:
                         photo_args.append("1e99")
-                    f = Function("photorates")
+                    f: UndefinedFunction = Function("photorates")  # type: ignore
                     rate = f(n_photo, photo_args[0], photo_args[1])
                     n_photo += 1
                 else:
@@ -291,7 +306,7 @@ class Network:
                     photo_args = rate.split(",")
                     if len(photo_args) < 3:
                         photo_args.append(1e99)
-                    f = Function("photorates")
+                    f: UndefinedFunction = Function("photorates")  # type: ignore
                     rate = f(n_photo, photo_args[1], photo_args[2])
                     n_photo += 1
             else:
@@ -393,9 +408,9 @@ class Network:
                 prate, band_coeffs = self.radiation.total_prate_coeff(rr, pp)
                 rate = prate or rate
 
-            for f in rate.atoms(AppliedUndef):
-                if f.name.lower() in aux_funcs:
-                    rate = rate.subs(f, aux_funcs[f.name.lower()]["def"])
+            for func in rate.atoms(AppliedUndef):
+                if func.name.lower() in aux_funcs:
+                    rate = rate.subs(func, aux_funcs[func.name.lower()]["def"])
 
             # create a Reaction object
             rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, srow)
@@ -872,7 +887,7 @@ class Network:
         only_in_other = []
         nmissing1 = 0
         nmissing2 = 0
-        for ref in np.unique(net1 + net2):
+        for ref in np.unique(np.array(net1 + net2)):
             if ref in net1 and ref not in net2:
                 sp = self.get_species_by_serialized(ref)
                 nmissing2 += 1
@@ -1171,7 +1186,7 @@ class Network:
         for sp in self.species:
             if sp.name == name:
                 if dollars:
-                    return "$" + sp.latex + "$"
+                    return f"${sp.latex}$"
                 else:
                     return sp.latex
 
@@ -1421,7 +1436,7 @@ class Network:
     def get_sfluxes(self) -> list[sympy.Expr]:
         nspec = len(self.species)
         nreact = len(self.reactions)
-        fluxes = [sympy.Integer(0)] * nreact
+        fluxes: list[sympy.Expr] = [sympy.Integer(0) for _ in range(nreact)]
         nden_matrix = MatrixSymbol("nden", nspec, 1)
 
         for i, reaction in enumerate(self.reactions):
@@ -1433,10 +1448,10 @@ class Network:
 
         return fluxes
 
-    def get_sodes(self) -> list[sympy.Expr]:
+    def get_sodes(self) -> list[sympy.Basic]:
         nspec = len(self.species)
         fluxes = self.get_sfluxes()
-        sodes = [sympy.Integer(0) for _ in range(nspec)]
+        sodes: list[sympy.Basic] = [sympy.Integer(0) for _ in range(nspec)]
 
         for i, reaction in enumerate(self.reactions):
             for rr in reaction.reactants:
@@ -1730,7 +1745,7 @@ class Network:
             )
 
             # Create data set holding the coefficient table
-            dset = grp.create_dataset("data", data=coef)
+            grp.create_dataset("data", data=coef)
 
             # Close file
             fp.close()

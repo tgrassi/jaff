@@ -41,7 +41,7 @@ import re
 from collections.abc import Callable
 from functools import cache, reduce
 from itertools import product
-from typing import Any, List, Tuple, TypedDict
+from typing import Any, List, Set, Tuple, TypedDict, cast
 
 import sympy as sp
 
@@ -1420,7 +1420,7 @@ class Codegen:
 
         # Depth-first search to find all transitively used CSE symbols
         # This ensures we keep CSE temps that are dependencies of dependencies
-        def dfs(sym: sp.Basic) -> None:
+        def dfs(sym: sp.Symbol) -> None:
             """Recursively mark symbol and its dependencies as used."""
             if sym in used:
                 return
@@ -1430,11 +1430,11 @@ class Codegen:
             if expr is None:
                 return
 
-            for dep in expr.free_symbols & cse_syms:
+            for dep in cast(Set[sp.Symbol], expr.free_symbols & cse_syms):
                 dfs(dep)
 
         for expr in expressions:
-            for sym in expr.free_symbols & cse_syms:
+            for sym in cast(Set[sp.Symbol], expr.free_symbols & cse_syms):
                 dfs(sym)
 
         return [(var, dep_map[var]) for var, _ in replacements if var in used]

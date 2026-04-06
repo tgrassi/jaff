@@ -13,9 +13,9 @@ class Species:
 
         self.name = name
         self.mass = None
-        self.exploded = None
-        self.latex = None
-        self.charge = None
+        self.exploded = []
+        self.latex = ""
+        self.charge: int = 0
         self.index = index
         self.fidx = self.get_fidx()
         self.serialized = None

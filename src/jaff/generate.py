@@ -25,10 +25,10 @@ import warnings
 from inspect import signature
 from pathlib import Path
 
-from . import Codegen as cg
-from . import Network
+from .codegen import Codegen as cg
 from .drivers.toml import Toml
 from .file_parser import Fileparser
+from .network import Network, NetworkProps
 
 
 def main() -> None:
@@ -233,7 +233,7 @@ For more information, visit: https://github.com/tgrassi/jaff
         raise ValueError(f"Unsupported language specified: {default_lang}")
 
     # Get index of jaff.toml config file
-    net_kwargs = {"fname": str(netfile)}
+    net_kwargs: NetworkProps = {"fname": str(netfile)}
     jaff_config_index: int | None = next(
         (i for i, f in enumerate(files) if f.name == "jaff.toml"), None
     )
@@ -254,13 +254,10 @@ For more information, visit: https://github.com/tgrassi/jaff
             )
             c: bool = rad_props.get("rsl", net_params["c"].default)
 
-            net_kwargs = {
-                **net_kwargs,
-                "rad_bands": bands,
-                "rad_powerlaw_index": power,
-                "rad_energy_density": energy_density,
-                "c": c,
-            }
+            net_kwargs["rad_bands"] = bands
+            net_kwargs["rad_powerlaw_index"] = power
+            net_kwargs["rad_energy_density"] = energy_density
+            net_kwargs["c"] = c
 
     # Create a new network instance
     net: Network = Network(**net_kwargs)
