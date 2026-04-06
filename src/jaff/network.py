@@ -357,7 +357,8 @@ class Network:
             # Apply the replacement rules for custom "ratefucntions",
             # which are functions that directly override rates
             ratefunc_name = "chemRate{:d}".format(len(self.reactions))
-            if ratefunc_name in aux_funcs.keys():
+            aux_chem_rate_present = ratefunc_name in aux_funcs
+            if aux_chem_rate_present:
                 rate = aux_funcs[ratefunc_name]["def"]
 
             # convert reactants and products to Species objects
@@ -383,7 +384,11 @@ class Network:
                 deltaE = aux_funcs[deltaE_name.lower()]["def"]
 
             band_coeffs: list[sympy.Basic] | None = None
-            if is_photoreaction and self.radiation is not None:
+            if (
+                is_photoreaction
+                and self.radiation is not None
+                and not aux_chem_rate_present
+            ):
                 # Get photo rates
                 prate, band_coeffs = self.radiation.total_prate_coeff(rr, pp)
                 rate = prate or rate
