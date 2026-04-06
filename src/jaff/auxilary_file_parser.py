@@ -6,7 +6,7 @@ from typing import Any, Callable, NotRequired, TypedDict
 import sympy as sp
 from sympy.core.function import AppliedUndef
 
-from jaff.errors.parser import ParserError
+from .errors.parser import ParserError
 
 FunctionsDict = TypedDict(
     "FunctionsDict",

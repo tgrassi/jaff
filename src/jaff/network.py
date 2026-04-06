@@ -22,8 +22,7 @@ from sympy import (
 from sympy.core.function import AppliedUndef, UndefinedFunction
 from tqdm import tqdm
 
-from jaff.auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
-
+from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
 from .fastlog import fast_log2, inverse_fast_log2
 from .parsers import (
     f90_convert,
@@ -87,6 +86,7 @@ class Network:
             if rad_bands
             else None
         )
+        self.dRad_dt_extra = parse_expr("0")
 
         print("Loading network from %s" % fname)
         print("Network label = %s" % self.label)
@@ -371,10 +371,19 @@ class Network:
 
             # Apply the replacement rules for custom "ratefucntions",
             # which are functions that directly override rates
-            ratefunc_name = "chemRate{:d}".format(len(self.reactions))
-            aux_chem_rate_present = ratefunc_name in aux_funcs
+            chem_rate_func_name = f"chemRate{len(self.reactions)}"
+            aux_chem_rate_present = chem_rate_func_name in aux_funcs
             if aux_chem_rate_present:
-                rate = aux_funcs[ratefunc_name]["def"]
+                rate = aux_funcs[chem_rate_func_name]["def"]
+
+            # Read auxilary photon addition/consumption rate
+            # which will be weighted and added to the moment 0
+            # equation in each band
+            deltaRad = parse_expr("0")
+            delta_rad_func_name = f"deltaRad{len(self.reactions)}".lower()
+
+            if delta_rad_func_name in aux_funcs:
+                deltaRad = aux_funcs[delta_rad_func_name]["def"]
 
             # convert reactants and products to Species objects
             for s in rr + pp:
@@ -392,7 +401,7 @@ class Network:
             # If there is a deltaE function describing change in
             # chemical energy associated with this reaction, add
             # an appropriate term to the dEdt_chem for this network.
-            deltaE_name = "deltaE{:d}".format(len(self.reactions))
+            deltaE_name = f"deltaE{len(self.reactions)}"
             deltaE = parse_expr("0")
             if deltaE_name.lower() in aux_funcs.keys():
                 # deltaE
@@ -413,7 +422,7 @@ class Network:
                     rate = rate.subs(func, aux_funcs[func.name.lower()]["def"])
 
             # create a Reaction object
-            rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, srow)
+            rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, deltaRad, srow)
 
             if band_coeffs is not None and self.radiation is not None:
                 self.radiation.add_reaction_to_group(rea, band_coeffs)
@@ -430,6 +439,7 @@ class Network:
         for rea in self.reactions:
             rea.rate = self.standardize_symbols(rea.rate, replace_nH)
             rea.dE = self.standardize_symbols(rea.dE, replace_nH)
+            rea.dRad = self.standardize_symbols(rea.dRad, replace_nH)
 
             # Append any remaining un-replaced quantities to list
             # of free symbols, removing nden's
@@ -447,9 +457,15 @@ class Network:
             for s in r.reactants:
                 dE_dt *= nden[self.species_dict[s.name]]
             self.dEdt_chem += dE_dt
+            self.dRad_dt_extra += r.dRad
         self.dEdt_chem = self.standardize_symbols(self.dEdt_chem, replace_nH)
+        self.dRad_dt_extra = self.standardize_symbols(self.dRad_dt_extra, replace_nH)
+
         free_symbols_all += [
             fs for fs in self.dEdt_chem.free_symbols if "nden" not in fs.name
+        ]
+        free_symbols_all += [
+            fs for fs in self.dRad_dt_extra.free_symbols if "nden" not in fs.name
         ]
 
         # Add chemical and non-chemical heating and cooling rates

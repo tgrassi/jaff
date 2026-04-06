@@ -6,7 +6,16 @@ import sympy
 
 class Reaction:
     def __init__(
-        self, reactants, products, rate, tmin, tmax, dE, original_string, errors=False
+        self,
+        reactants,
+        products,
+        rate,
+        tmin,
+        tmax,
+        dE,
+        dRad,
+        original_string,
+        errors=False,
     ):
         self.reactants = reactants
         self.products = products
@@ -14,6 +23,7 @@ class Reaction:
         self.tmin = tmin
         self.tmax = tmax
         self.dE = dE
+        self.dRad = dRad
         self.reaction = None
         self.xsecs = (
             None  # dictionary {"energy": [], "xsecs": []}, energy in erg, xsecs in cm^2
