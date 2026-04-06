@@ -488,34 +488,31 @@ class Network:
         print("Lodaded %d photo-chemistry reactions" % n_photo)
 
         # Issue warning message if undefined functions remain
-        undef_funcs = []
-        interp_funcs = []
+        undef_funcs = set()
+        interp_funcs = set()
         for r in self.reactions:
-            for f in r.rate.atoms(Function):
-                if type(f.func) is UndefinedFunction and f.name not in undef_funcs:
-                    if "interp" in f.name:
-                        interp_funcs.append(f.name)
-                    else:
-                        undef_funcs.append(f.name)
-        if self.dEdt_chem is not None:
-            for f in self.dEdt_chem.atoms(Function):
-                if type(f.func) is UndefinedFunction and f.name not in undef_funcs:
-                    if "interp" in f.name:
-                        interp_funcs.append(f.name)
-                    else:
-                        undef_funcs.append(f.name)
-        if self.dEdt_other is not None:
-            for f in self.dEdt_other.atoms(Function):
-                if type(f.func) is UndefinedFunction and f.name not in undef_funcs:
-                    if "interp" in f.name:
-                        interp_funcs.append(f.name)
-                    else:
-                        undef_funcs.append(f.name)
+            self.__detect_undefined_functions(r.rate, undef_funcs, interp_funcs)
+        self.__detect_undefined_functions(self.dEdt_chem, undef_funcs, interp_funcs)
+        self.__detect_undefined_functions(self.dEdt_other, undef_funcs, interp_funcs)
+        self.__detect_undefined_functions(self.dRad_dt_extra, undef_funcs, interp_funcs)
 
-        if len(interp_funcs) > 0:
-            print("Found the following interpolation functions: ", interp_funcs)
-        if len(undef_funcs) > 0:
-            print("WARNING: found undefined functions ", undef_funcs)
+        if interp_funcs:
+            print(
+                "Found the following interpolation functions: ", *interp_funcs, sep=", "
+            )
+        if undef_funcs:
+            print("WARNING: found undefined functions ", *undef_funcs, sep=", ")
+
+    @staticmethod
+    def __detect_undefined_functions(
+        expr: sympy.Expr, undef_funcs: set, interp_funcs: set
+    ) -> None:
+        for f in expr.atoms(Function):
+            if isinstance(f.func, UndefinedFunction):
+                if "interp" in f.func.__name__:
+                    interp_funcs.add(f.func.__name__)
+                    continue
+                undef_funcs.add(f.func.__name__)
 
     # ****************
     def read_aux_funcs(self, funcfile: str | Path | None):
