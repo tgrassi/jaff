@@ -434,7 +434,7 @@ class Network:
         for rea in self.reactions:
             rea.rate = self.standardize_symbols(rea.rate, replace_nH)
             rea.dE = self.standardize_symbols(rea.dE, replace_nH)
-            rea.dRad = self.standardize_symbols(rea.dRad, replace_nH)
+            rea.dRad_dt = self.standardize_symbols(rea.dRad_dt, replace_nH)
 
             # Append any remaining un-replaced quantities to list
             # of free symbols, removing nden's
@@ -452,7 +452,7 @@ class Network:
             for s in r.reactants:
                 dE_dt *= nden[self.species_dict[s.name]]
             self.dEdt_chem += dE_dt
-            self.dRad_dt_extra += r.dRad
+            self.dRad_dt_extra += r.dRad_dt
         self.dEdt_chem = self.standardize_symbols(self.dEdt_chem, replace_nH)
         self.dRad_dt_extra = self.standardize_symbols(self.dRad_dt_extra, replace_nH)
 

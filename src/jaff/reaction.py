@@ -13,7 +13,7 @@ class Reaction:
         tmin,
         tmax,
         dE,
-        dRad,
+        dRad_dt,
         original_string,
         errors=False,
     ):
@@ -23,7 +23,7 @@ class Reaction:
         self.tmin = tmin
         self.tmax = tmax
         self.dE = dE
-        self.dRad = dRad
+        self.dRad_dt = dRad_dt
         self.reaction = None
         self.rad_xsecs = None
         self.xsecs_dict = (
