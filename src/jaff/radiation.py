@@ -4,7 +4,6 @@ import sympy as sp
 
 from .drivers.sqlite import JaffDb
 from .reaction import Reaction
-from .species import Species
 
 RadiationGroupReactionProps = TypedDict(
     "RadiationGroupReactionProps",
@@ -56,7 +55,7 @@ class Radiation:
         ]
 
     def set_reaction_rate_coefficient(self, reaction: Reaction) -> None:
-        xsec = self.get_verner_xsec(reaction.reactants, reaction.products)
+        xsec = self.get_verner_xsec(reaction)
         if xsec is None:
             return
 
@@ -94,20 +93,12 @@ class Radiation:
 
         reaction.rate = k_tot
 
-    def get_verner_xsec(
-        self, reactants: list[Species], products: list[Species]
-    ) -> sp.Basic | None:
+    def get_verner_xsec(self, reaction: Reaction) -> sp.Basic | None:
         with JaffDb() as jdb:
             table = jdb.table("verner_cross_sections")
-            xsec_present = False
-            rows = []
-            for reactant in reactants:
-                rows = table.rows(conditions=f"Ion = '{reactant}'")
-                if rows:
-                    xsec_present = True
-                    break
+            rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")
 
-        if not xsec_present:
+        if not rows:
             return None
 
         return sp.sympify(rows[0]["xsecs"])

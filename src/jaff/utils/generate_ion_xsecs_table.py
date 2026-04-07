@@ -37,7 +37,7 @@ def main(create_table: bool = False):
     df = pd.read_csv(verner_data, sep=r"\s+", index_col=0)
     rows = [
         {
-            "Ion": index,
+            "reaction": f"{ion}__{'_'.join(sorted([f'{ion}+', 'e-']))}",
             "Z": row["Z"],
             "N": row["N"],
             "xsecs": srepr(
@@ -54,9 +54,10 @@ def main(create_table: bool = False):
                 )
             ),
         }
-        for index, row in df.iterrows()
+        for ion, row in df.iterrows()
     ]
-    xsecs_df = pd.DataFrame(rows).set_index("Ion")
+    del df
+    xsecs_df = pd.DataFrame(rows).set_index("reaction")
 
     with Db(path) as db:
         # table = db.table("verner_cross_sections")

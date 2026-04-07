@@ -1497,9 +1497,11 @@ class Network:
         )
 
         for group in rad_groups:
-            group_rate: float | sympy.Basic = sympy.Float(0.0)
+            group_rate: sympy.Basic = sympy.Float(0.0)
+            group_dRad_dt_extra = sympy.Float(0.0)
             for reaction, props in group.props.items():
                 rrate = props["k"]
+                group_dRad_dt_extra += props["xsec_frac"] * reaction.dRad_dt
                 for reactant in reaction.reactants:
                     rrate *= nden[sympy.Idx(self.species_dict[str(reactant)])]
 
@@ -1508,10 +1510,8 @@ class Network:
             # Flux
             flux = group_rate.xreplace(flux_map)
             # dRad_dt_extra assumed to be in units of energy density rate
-            group_rate += (
-                self.dRad_dt_extra
-                * props["xsec_frac"]
-                / (1 if self.radiation.energy_density else group.eavg)
+            group_rate += group_dRad_dt_extra / (
+                1 if self.radiation.energy_density else group.eavg
             )
 
             grate[group.index] = group_rate
