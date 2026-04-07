@@ -1507,6 +1507,12 @@ class Network:
 
             # Flux
             flux = group_rate.xreplace(flux_map)
+            # dRad_dt_extra assumed to be in units of energy density rate
+            group_rate += (
+                self.dRad_dt_extra
+                * props["xsec_frac"]
+                / (1 if self.radiation.energy_density else group.eavg)
+            )
 
             grate[group.index] = group_rate
             gflux[group.index] = flux
