@@ -1,8 +1,19 @@
+from typing import TypedDict
+
 import sympy as sp
 
 from .drivers.sqlite import JaffDb
 from .reaction import Reaction
 from .species import Species
+
+RadiationGroupReactionProps = TypedDict(
+    "RadiationGroupReactionProps",
+    {
+        "k": sp.Basic,
+        "xsec": sp.Basic,
+        "xsec_frac": sp.Basic,
+    },
+)
 
 
 class RadiationGroup:
@@ -12,7 +23,9 @@ class RadiationGroup:
         self.upper: float | int | sp.Basic = upper
         self.band: tuple = (lower, upper)
         self.dE: float | sp.Basic = self.upper - self.lower
-        self.k: dict[Reaction, sp.Basic] = {}  # Rate coeffiecients for each reaction
+        self.props: dict[
+            Reaction, RadiationGroupReactionProps
+        ] = {}  # Rate coeffiecients for each reaction
         self.eavg: sp.Basic | None = None
 
     def __repr__(self):
@@ -42,31 +55,18 @@ class Radiation:
             for i, lower in enumerate(self.bands[:-1])
         ]
 
-    def total_prate_coeff(
-        self,
-        reactants: list[Species],
-        products: list[Species],
-    ) -> tuple[sp.Basic | None, list[sp.Basic] | None]:
-        with JaffDb() as jdb:
-            table = jdb.table("verner_cross_sections")
-            xsec_present = False
-            rows = []
-            for reactant in reactants:
-                rows = table.rows(conditions=f"Ion = '{str(reactant)}'")
-                if rows:
-                    xsec_present = True
-                    break
+    def set_reaction_rate_coefficient(self, reaction: Reaction) -> None:
+        xsec = self.get_verner_xsec(reaction.reactants, reaction.products)
+        if xsec is None:
+            return
 
-            if not xsec_present:
-                return None, None
-
+        # Set reaction total cross section
         E = sp.Symbol("E")
+        xsec_tot = sp.Integral(xsec, (E, self.bands[0], self.bands[-1])).evalf()
+        reaction.rad_xsecs = xsec_tot
+
         n_profile = E ** (self.powerlaw_idx - 2)
-        k_total = sp.Float(0.0)  # Total rate coefficient over all bands
-        ks: list[sp.Basic] = [
-            sp.Float(0.0) for _ in range(self.nbands)
-        ]  # Individual rate coefficients
-        xsec = sp.sympify(rows[0]["xsecs"])
+        k_tot = sp.Float(0.0)  # Total rate coefficient over all bands
 
         den = sp.MatrixSymbol(
             "radeden" if self.energy_density else "photden", self.nbands, 1
@@ -75,20 +75,41 @@ class Radiation:
         for i, lower in enumerate(self.bands[:-1]):
             upper = self.bands[i + 1]
             n_tot = sp.Integral(n_profile, (E, lower, upper)).evalf()
-            xsec_avg = sp.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
-            ks[i] = self.c * den[sp.Idx(i)] * xsec_avg
-            k_total += ks[i]
+            n_avg = sp.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
+            band_xsec = sp.Integral(xsec, (E, lower, upper)).evalf()
+            k = self.c * den[sp.Idx(i)] * n_avg
+            k_tot += k
+
+            self.groups[i].props[reaction] = {
+                "k": k,
+                "xsec": band_xsec,
+                "xsec_frac": band_xsec / xsec_tot,
+            }
 
             if self.groups[i].eavg is None:
                 self.groups[i].eavg = (
                     sp.Integral(E * n_profile, (E, lower, upper)).evalf() / n_tot
                 )
 
-        return k_total, ks
+        reaction.rate = k_tot
 
-    def add_reaction_to_group(self, reaction: Reaction, band_coeffs: list[sp.Basic]):
-        for group, coeff in zip(self.groups, band_coeffs):
-            group.k[reaction] = coeff
+    def get_verner_xsec(
+        self, reactants: list[Species], products: list[Species]
+    ) -> sp.Basic | None:
+        with JaffDb() as jdb:
+            table = jdb.table("verner_cross_sections")
+            xsec_present = False
+            rows = []
+            for reactant in reactants:
+                rows = table.rows(conditions=f"Ion = '{reactant}'")
+                if rows:
+                    xsec_present = True
+                    break
+
+        if not xsec_present:
+            return None
+
+        return sp.sympify(rows[0]["xsecs"])
 
     def ordered_index(self, idx: int, order: int) -> tuple[int, int]:
         ei = 2 * idx  # Energy index

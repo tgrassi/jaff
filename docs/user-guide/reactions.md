@@ -338,7 +338,7 @@ For photochemical reactions with cross-section data:
 
 ```python
 # Find photochemical reactions with cross sections
-photo_rxns = [r for r in net.reactions if r.xsecs is not None]
+photo_rxns = [r for r in net.reactions if r.xsecs_dict is not None]
 
 if photo_rxns:
     # Plot in eV (default)

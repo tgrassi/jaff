@@ -25,7 +25,7 @@ rhs_specie(const burn_t &state, amrex::Array1D<amrex::Real, 1, neqs> &ydot,
   amrex::Real crate = 0.0; // placeholder
   amrex::Real av = 0.0;    // placeholder
 
-  // $JAFF REPEAT idx, rhs, cse IN rhses $[REPLACE radeden\[\s*(\d+)\s*\] radeden(\1) REPLACE rflux\[\s*(\d+)\s*\] rflux(\1) REPLACE nden\[\s*(\d+)\s*\] nden(\1) RADIATION False]$
+  // $JAFF REPEAT idx, rhs, cse IN rhses $[REPLACE radeden\[\s*(\d+)\s*\] radeden(\1) REPLACE rflux\[\s*(\d+)\s*\] rflux(\1) REPLACE nden\[\s*(\d+)\s*\] nden(\1) RADIATION True]$
   const amrex::Real cse$idx$ = $cse$;
   ydot($idx+1$) = $rhs$;
   // $JAFF END

@@ -25,7 +25,8 @@ class Reaction:
         self.dE = dE
         self.dRad = dRad
         self.reaction = None
-        self.xsecs = (
+        self.rad_xsecs = None
+        self.xsecs_dict = (
             None  # dictionary {"energy": [], "xsecs": []}, energy in erg, xsecs in cm^2
         )
         self.original_string = original_string
@@ -247,7 +248,7 @@ class Reaction:
         import matplotlib.pyplot as plt
         import numpy as np
 
-        if self.xsecs is None:
+        if self.xsecs_dict is None:
             print("No cross sections available for this reaction.")
             return
 
@@ -258,22 +259,22 @@ class Reaction:
         hplanck = 6.62607015e-27  # erg s
 
         if energy_unit == "eV":
-            energies = np.array(self.xsecs["energy"]) / 1.60218e-12
+            energies = np.array(self.xsecs_dict["energy"]) / 1.60218e-12
             xlabel = "Energy (eV)"
         elif energy_unit == "erg":
-            energies = np.array(self.xsecs["energy"])
+            energies = np.array(self.xsecs_dict["energy"])
             xlabel = "Energy (erg)"
         elif energy_unit == "nm":
-            energies = clight * hplanck * 1e7 / np.array(self.xsecs["energy"])
+            energies = clight * hplanck * 1e7 / np.array(self.xsecs_dict["energy"])
             xlabel = "Wavelength (nm)"
         elif energy_unit in ["um", "micron"]:
-            energies = clight * hplanck * 1e4 / np.array(self.xsecs["energy"])
+            energies = clight * hplanck * 1e4 / np.array(self.xsecs_dict["energy"])
             xlabel = "Wavelength (µm)"
         else:
             print("ERROR: Unknown energy unit '%s'" % energy_unit)
             sys.exit(1)
 
-        xsecs = np.array(self.xsecs["xsecs"])
+        xsecs = np.array(self.xsecs_dict["xsecs"])
 
         ax.plot(energies, xsecs)
         ax.set_xlabel(xlabel)

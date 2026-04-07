@@ -407,16 +407,6 @@ class Network:
                 # deltaE
                 deltaE = aux_funcs[deltaE_name.lower()]["def"]
 
-            band_coeffs: list[sympy.Basic] | None = None
-            if (
-                is_photoreaction
-                and self.radiation is not None
-                and not aux_chem_rate_present
-            ):
-                # Get photo rates
-                prate, band_coeffs = self.radiation.total_prate_coeff(rr, pp)
-                rate = prate or rate
-
             for func in rate.atoms(AppliedUndef):
                 if func.name.lower() in aux_funcs:
                     rate = rate.subs(func, aux_funcs[func.name.lower()]["def"])
@@ -424,11 +414,15 @@ class Network:
             # create a Reaction object
             rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, deltaRad, srow)
 
-            if band_coeffs is not None and self.radiation is not None:
-                self.radiation.add_reaction_to_group(rea, band_coeffs)
+            if (
+                is_photoreaction
+                and self.radiation is not None
+                and not aux_chem_rate_present
+            ):
+                self.radiation.set_reaction_rate_coefficient(rea)
 
             if rea.guess_type() == "photo":
-                rea.xsecs = self.photochemistry.get_xsec(rea)
+                rea.xsecs_dict = self.photochemistry.get_xsec(rea)
 
             # Save to reaction list
             self.reactions.append(rea)
@@ -661,7 +655,7 @@ class Network:
                     "tmax": r.tmax,
                     "dE": encode_maybe_sympy(r.dE),
                     "original_string": r.original_string,
-                    "xsecs": jsonable(r.xsecs),
+                    "xsecs": jsonable(r.xsecs_dict),
                 }
                 for r in self.reactions
             ],
@@ -825,7 +819,7 @@ class Network:
                 original_string=original_string,
                 errors=False,
             )
-            rea.xsecs = xsecs
+            rea.xsecs_dict = xsecs
             net.reactions.append(rea)
 
         # Recompute derived structures.
@@ -1516,8 +1510,8 @@ class Network:
 
         for group in rad_groups:
             group_rate: float | sympy.Basic = sympy.Float(0.0)
-            for reaction, rate in group.k.items():
-                rrate = rate
+            for reaction, props in group.props.items():
+                rrate = props["k"]
                 for reactant in reaction.reactants:
                     rrate *= nden[sympy.Idx(self.species_dict[str(reactant)])]
 
