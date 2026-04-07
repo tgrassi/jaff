@@ -78,7 +78,6 @@ class Radiation:
             n_avg = sp.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
             band_xsec = sp.Integral(xsec, (E, lower, upper)).evalf()
             k = self.c * den[sp.Idx(i)] * n_avg
-            k_tot += k
 
             self.groups[i].props[reaction] = {
                 "k": k,
@@ -90,6 +89,8 @@ class Radiation:
                 self.groups[i].eavg = (
                     sp.Integral(E * n_profile, (E, lower, upper)).evalf() / n_tot
                 )
+
+            k_tot += k / (self.groups[i].eavg if self.energy_density else 1)
 
         reaction.rate = k_tot
 
