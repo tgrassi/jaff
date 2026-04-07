@@ -23,6 +23,7 @@ from sympy.core.function import AppliedUndef, UndefinedFunction
 from tqdm import tqdm
 
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
+from .core.logger import JaffLogger
 from .fastlog import fast_log2, inverse_fast_log2
 from .parsers import (
     f90_convert,
@@ -67,6 +68,7 @@ class Network:
         rad_energy_density: bool = False,
         c: float = 2.99792458e10,  # Speed of light in cgs unit
     ):
+        self.logger = JaffLogger().get_logger()
         self.motd()
 
         # Get the path to the data file relative to this module
@@ -88,8 +90,8 @@ class Network:
         )
         self.dRad_dt_extra = parse_expr("0")
 
-        print("Loading network from %s" % fname)
-        print("Network label = %s" % self.label)
+        self.logger.info(f"Loading network from {fname}")
+        self.logger.info(f"Network label: {self.label}")
 
         self.photochemistry = Photochemistry()
 
@@ -107,7 +109,7 @@ class Network:
         self.generate_reactions_dict()
         self.generate_reaction_matrices()
 
-        print("All done!")
+        print("\nAll done!\n")
 
     # ****************
     @staticmethod
@@ -123,7 +125,8 @@ class Network:
             fword = np.random.choice(words)
         except (FileNotFoundError, PermissionError, OSError, ValueError):
             fword = "Fancy"
-        print("Welcome to JAFF: Just Another %s Format!" % fword.title())
+
+        print(f"\nWelcome to JAFF: Just Another {fword.title()} Format!\n")
 
     # ****************
     @staticmethod
@@ -212,7 +215,7 @@ class Network:
         n_photo = 0
 
         # loop through the lines and parse them
-        for srow in tqdm(lines):
+        for srow in tqdm(lines, desc=f"Parsing {self.label}", unit=" lines"):
             # -------------------- PRIZMO --------------------
             # check for PRIZMO variables
             if srow.startswith("VARIABLES{"):
@@ -227,15 +230,15 @@ class Network:
             # store variables as a single string, it will be processed later
             # format will be var1=value1;var2=value2;...
             if in_variables:
-                print("PRIZMO variable detected: %s" % srow)
+                self.logger.info(f"PRIZMO variable detected: {srow}")
                 srow = srow.replace(" ", "").strip().lower()
                 srow = f90_convert(srow)
                 var, val = srow.split("=")
                 try:
                     variables_sympy.append((var, parse_expr(val, evaluate=False)))
                 except Exception as e:
-                    print(
-                        "WARNING: could not parse variable (%s), using string instead" % e
+                    self.logger.warn(
+                        f"Could not parse variable ({e}), using string instead"
                     )
                     variables_sympy.append((var, val.strip()))
                 continue
@@ -243,21 +246,21 @@ class Network:
             # -------------------- KROME --------------------
             # check for krome format
             if srow.startswith("@format:"):
-                print("KROME format detected: %s" % srow)
+                self.logger.info(f"KROME format detected: {srow}")
                 krome_format = srow.strip()
                 continue
 
             # check for KROME variables
             if srow.startswith("@var:"):
-                print("KROME variable detected: %s" % srow)
+                self.logger.info(f"KROME variable detected: {srow}")
                 srow = srow.replace("@var:", "").lower().strip()
                 srow = f90_convert(srow)
                 var, val = srow.split("=")
                 try:
                     variables_sympy.append((var, parse_expr(val, evaluate=False)))
                 except Exception as e:
-                    print(
-                        "WARNING: could not parse variable (%s), using string instead" % e
+                    self.logger.warning(
+                        f"Could not parse variable ({e}), using string instead"
                     )
                     variables_sympy.append((var, val.strip()))
                 continue
@@ -280,7 +283,7 @@ class Network:
                 else:
                     rr, pp, tmin, tmax, rate = parse_kida(srow)
             except (ValueError, IndexError) as e:
-                print(f"WARNING: Skipping invalid line: {srow[:50]}... ({e})")
+                self.logger.warning(f"Skipping invalid line: {srow[:50]}... ({e})")
                 continue
 
             # use lowercase for rate
@@ -323,19 +326,17 @@ class Network:
             # note: reverse order to allow for nested variable replacement
             for vv in variables_sympy[::-1]:
                 var, val = vv
-                if type(val) is str:
-                    print(
-                        "WARNING: variable %s not replaced because it is a string, not a sympy expression"
-                        % var
+                if isinstance(val, str):
+                    self.logger.warning(
+                        f"Variable {var} not replaced because it is a string, not a sympy expression"
                     )
                 else:
-                    if type(rate) is not str:
-                        rate = rate.subs(symbols(var), val)
+                    rate = rate.subs(symbols(var), val)
 
             if tmin is not None and tmin > 0:
-                rate = rate.subs(symbols("tgas"), "max(tgas, %f)" % tmin)
+                rate = rate.subs(symbols("tgas"), f"max(tgas, {tmin})")
             if tmax is not None and tmax > 0:
-                rate = rate.subs(symbols("tgas"), "min(tgas, %f)" % tmax)
+                rate = rate.subs(symbols("tgas"), f"min(tgas, {tmax})")
 
             # Apply KROME replacement rules; note that these may be nested, so we
             # do substitutions repeatedly until none remain
@@ -477,9 +478,9 @@ class Network:
         # Get unique list of variables names found in all expressions
         free_symbols_all = sorted([x.name for x in list(set(free_symbols_all))])
 
-        print("Variables found:", free_symbols_all)
-        print("Loaded %d reactions" % len(self.reactions))
-        print("Lodaded %d photo-chemistry reactions" % n_photo)
+        self.logger.info(f"Variables found: {free_symbols_all}")
+        self.logger.info(f"Loaded {len(self.reactions)} reactions")
+        self.logger.info(f"Loaded {n_photo} photo-chemistry reactions")
 
         # Issue warning message if undefined functions remain
         undef_funcs = set()
@@ -491,11 +492,11 @@ class Network:
         self.__detect_undefined_functions(self.dRad_dt_extra, undef_funcs, interp_funcs)
 
         if interp_funcs:
-            print(
-                "Found the following interpolation functions: ", *interp_funcs, sep=", "
+            self.logger.info(
+                f"Found the following interpolation functions: {', '.join(interp_funcs)}"
             )
         if undef_funcs:
-            print("WARNING: found undefined functions ", *undef_funcs, sep=", ")
+            self.logger.warning(f"Found undefined functions {', '.join(undef_funcs)}")
 
     @staticmethod
     def __detect_undefined_functions(
@@ -845,7 +846,7 @@ class Network:
 
     # ****************
     def compare_reactions(self, other, verbosity=1):
-        print('Comparing networks "%s" and "%s"...' % (self.label, other.label))
+        print(f'Comparing networks "{self.label}" and "{other.label}"...')
 
         net1 = [x.serialized for x in self.reactions]
         net2 = [x.serialized for x in other.reactions]
@@ -859,8 +860,7 @@ class Network:
                 nmissing2 += 1
                 if verbosity > 0:
                     print(
-                        'Found in "%s" but not in "%s": %s'
-                        % (self.label, other.label, rea.get_verbatim())
+                        f'Found in "{self.label}" but not in "{other.label}": {rea.get_verbatim()}'
                     )
 
             elif ref in net2 and ref not in net1:
@@ -868,23 +868,20 @@ class Network:
                 nmissing1 += 1
                 if verbosity > 0:
                     print(
-                        'Found in "%s" but not in "%s": %s'
-                        % (other.label, self.label, rea.get_verbatim())
+                        f'Found in "{other.label}" but not in "{self.label}": {rea.get_verbatim()}'
                     )
             else:
                 if verbosity > 1:
-                    print("Found in both networks: %s" % ref)
+                    print(f"Found in both networks: {ref}")
                 nsame += 1
 
-        print("Found %d reactions in common" % nsame)
-        print('%d reactions missing in "%s"' % (nmissing1, self.label))
-        print('%d reactions missing in "%s"' % (nmissing2, other.label))
+        print(f"Found {nsame} reactions in common")
+        print(f'{nmissing1} reactions missing in "{self.label}"')
+        print(f'{nmissing2} reactions missing in "{other.label}"')
 
     # ****************
     def compare_species(self, other, verbosity=1):
-        print(
-            'Comparing species in networks "%s" and "%s"...' % (self.label, other.label)
-        )
+        print(f'Comparing species in networks "{self.label}" and "{other.label}"...')
 
         net1 = [x.serialized for x in self.species]
         net2 = [x.serialized for x in other.species]
@@ -900,8 +897,7 @@ class Network:
                 nmissing2 += 1
                 if verbosity > 1:
                     print(
-                        'Found in "%s" but not in "%s": %s'
-                        % (self.label, other.label, sp.name)
+                        f'Found in "{self.label}" but not in "{other.label}": {sp.name}'
                     )
                 only_in_self.append(sp)
 
@@ -910,29 +906,23 @@ class Network:
                 nmissing1 += 1
                 if verbosity > 1:
                     print(
-                        'Found in "%s" but not in "%s": %s'
-                        % (other.label, self.label, sp.name)
+                        f'Found in "{other.label}" but not in "{self.label}": {sp.name}'
                     )
                 only_in_other.append(sp)
             else:
                 sp = self.get_species_by_serialized(ref)
                 if verbosity > 1:
-                    print("Found in both networks: %s" % ref)
+                    print(f"Found in both networks: {ref}")
                 same_species.append(sp)
 
         print(
-            "Found %d species in common:" % len(same_species),
-            sorted([x.name for x in same_species]),
+            f"Found {len(same_species)} species in common: {sorted([x.name for x in same_species])}"
         )
         print(
-            'Found %d species in "%s" but not in "%s":'
-            % (len(only_in_self), self.label, other.label),
-            sorted([x.name for x in only_in_self]),
+            f'Found {len(only_in_self)} species in "{self.label}" but not in "{other.label}": {sorted([x.name for x in only_in_self])}'
         )
         print(
-            'Found %d species in "%s" but not in "%s":'
-            % (len(only_in_other), other.label, self.label),
-            sorted([x.name for x in only_in_other]),
+            f'Found {len(only_in_other)} species in "{other.label}" but not in "{self.label}": {sorted([x.name for x in only_in_other])}'
         )
 
     # ****************
@@ -950,16 +940,16 @@ class Network:
             if s.name == "dummy":
                 continue
             if s.name not in pps:
-                print("Sink: ", s.name)
+                self.logger.info(f"Sink: {s.name}")
                 has_sink = True
             if s.name not in rrs:
-                print("Source: ", s.name)
+                self.logger.info(f"Source: {s.name}")
                 has_source = True
 
         if has_sink:
-            print("WARNING: sink detected")
+            self.logger.warning("Sink detected")
         if has_source:
-            print("WARNING: source detected")
+            self.logger.warning("Source detected")
 
         if (has_sink or has_source) and errors:
             sys.exit()
@@ -985,12 +975,12 @@ class Network:
 
                 if not electron_recombination_found:
                     has_errors = True
-                    print("WARNING: electron recombination not found for %s" % sp.name)
+                    self.logger.warning(f"Electron recombination not found for {sp.name}")
                 # if not grain_recombination_found:
                 #     print("WARNING: grain recombination not found for %s" % sp.name)
 
         if has_errors and errors:
-            print("WARNING: recombination errors found")
+            self.logger.error("Recombination errors found")
             sys.exit(1)
 
     # ****************
@@ -999,11 +989,11 @@ class Network:
         for i, sp1 in enumerate(self.species):
             for sp2 in self.species[i + 1 :]:
                 if sp1.exploded == sp2.exploded:
-                    print("WARNING: isomer detected: %s %s" % (sp1.name, sp2.name))
+                    self.logger.warning(f"Isomer detected: {sp1.name} {sp2.name}")
                     has_errors = True
 
         if has_errors and errors:
-            print("WARNING: isomer errors found")
+            self.logger.error("ERROR: isomer errors found")
             sys.exit(1)
 
     # ****************
@@ -1018,11 +1008,13 @@ class Network:
                         continue
                     if rea1.guess_type() != rea2.guess_type():
                         continue
-                    print("WARNING: duplicate reaction found: %s" % rea1.get_verbatim())
+                    self.logger.warning(
+                        f"Duplicate reaction found: {rea1.get_verbatim()}"
+                    )
                     has_duplicates = True
 
         if has_duplicates and errors:
-            print("ERROR: duplicate reactions found")
+            self.logger.error("Duplicate reactions found")
             sys.exit(1)
 
     # ****************
@@ -1197,7 +1189,7 @@ class Network:
                 else:
                     return sp.latex
 
-        print("ERROR: species %s latex not found" % name)
+        self.logger.error(f"Species {name} latex not found")
         sys.exit(1)
 
     # *****************
@@ -1205,7 +1197,7 @@ class Network:
         for sp in self.species:
             if sp.serialized == serialized:
                 return sp
-        print("ERROR: species with serialized %s not found" % serialized)
+        self.logger.error(f"Species with serialized {serialized} not found")
         sys.exit(1)
 
     # *****************
@@ -1213,7 +1205,7 @@ class Network:
         for sp in self.reactions:
             if sp.serialized == serialized:
                 return sp
-        print("ERROR: reaction with serialized %s not found" % serialized)
+        self.logger.error(f"Reaction with serialized {serialized} not found")
         sys.exit(1)
 
     # *****************
@@ -1222,7 +1214,7 @@ class Network:
             if rea.get_verbatim() == verbatim:
                 if rtype is None or rea.guess_type() == rtype:
                     return rea
-        print("ERROR: reaction with verbatim '%s' not found" % verbatim)
+        self.logger.error(f"Reaction with verbatim '{verbatim}' not found")
         sys.exit(1)
 
     # *****************
@@ -1424,13 +1416,9 @@ class Network:
                 # Print output if verbose
                 if verbose:
                     idx_max = np.unravel_index(np.nanargmax(rel_err), rel_err.shape)
-                    print(
-                        "nTemp = {:d}, max_err = {:f} in reaction {:s} at T = {:e}".format(
-                            nTemp,
-                            max_err,
-                            self.reactions[idx_max[0]].get_verbatim(),
-                            temp[idx_max[1]],
-                        )
+                    self.logger.info(
+                        f"nTemp = {nTemp}, max_err = {max_err} in reaction "
+                        f"{self.reactions[idx_max[0]].get_verbatim()} at T = {temp[idx_max[1]]}"
                     )
 
                 # Check for convergence

@@ -7,9 +7,10 @@ for organizing CSE (common subexpression elimination) results and array
 assignments.
 """
 
-import warnings
 from functools import cached_property
 from typing import Any, Iterable
+
+from .core.logger import JaffLogger
 
 
 class IndexedValue(tuple):
@@ -117,6 +118,7 @@ class IndexedList(list):
             >>> IndexedList([[1, 2], [3, 4]], flatten=True)  # Flattens with 2D indices
             >>> IndexedList([[1, 2], [3, 4]], nested=True)  # Preserves nested structure
         """
+        self.logger = JaffLogger().get_logger()
         if flatten and nested:
             raise ValueError("Cannot have both nested=True and flatten=True")
 
@@ -516,9 +518,8 @@ class IndexedList(list):
         # Convert from normal
         if list_type == "normal":
             if not any(self.__is_iterable(item.value) for item in self):
-                warnings.warn(
-                    "Cannot convert to nested format: no iterable values. Returning copy.",
-                    UserWarning,
+                self.logger.warning(
+                    "Cannot convert to nested format: no iterable values. Returning copy."
                 )
                 return IndexedList(list(self))
             return self.__normal_to_nested()
@@ -555,9 +556,8 @@ class IndexedList(list):
         # Convert from normal
         if list_type == "normal":
             if not any(self.__is_iterable(item.value) for item in self):
-                warnings.warn(
-                    "Cannot convert to flattened format: no iterable values. Returning copy.",
-                    UserWarning,
+                self.logger.warning(
+                    "Cannot convert to flattened format: no iterable values. Returning copy."
                 )
                 return IndexedList(list(self))
             return self.__normal_to_flattened()

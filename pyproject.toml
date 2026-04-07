@@ -19,6 +19,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Chemistry",
 ]
 dependencies = [
+  "colorlog>=6.10.1",
   "h5py>=3.9.0",
   "matplotlib>=3.9.4",
   "numpy>=2.0.0",

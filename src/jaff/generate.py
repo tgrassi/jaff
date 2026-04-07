@@ -21,11 +21,11 @@ Examples:
 """
 
 import argparse
-import warnings
 from inspect import signature
 from pathlib import Path
 
 from .codegen import Codegen as cg
+from .core.logger import JaffLogger
 from .drivers.toml import Toml
 from .file_parser import Fileparser
 from .network import Network, NetworkProps
@@ -119,6 +119,7 @@ For more information, visit: https://github.com/tgrassi/jaff
         ],
         help="Default programming language for unsupported files (choices: %(choices)s)",
     )
+    logger = JaffLogger().get_logger()
     args: argparse.Namespace = parser.parse_args()
 
     # Extract command-line arguments
@@ -160,10 +161,8 @@ For more information, visit: https://github.com/tgrassi/jaff
 
     # Handle output directory
     if output_dir is None:
-        warnings.warn(
-            "\n\nNo output directory has been supplied.\n"
-            f"Files will be generated at {Path.cwd()}"
-        )
+        logger.warning("No output directory has been supplied.")
+        logger.warning(f"Files will be generated at {Path.cwd()}")
 
     outdir: Path = (
         Path(output_dir).resolve() if output_dir is not None else jaff_dir / "generated"
@@ -275,9 +274,10 @@ For more information, visit: https://github.com/tgrassi/jaff
         with open(outfile, "w") as f:
             f.write(lines)
 
-        print(f"{file.name} created at {outdir}")
+        logger.info(f"{file.name} created at {outdir}")
 
-    print(f"\nSuccessfully generated files\nGenerated files can be found at {outdir}")
+    logger.info("Successfully generated files")
+    logger.info(f"Generated files can be found at {outdir}")
 
 
 if __name__ == "__main__":
