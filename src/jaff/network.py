@@ -24,6 +24,7 @@ from tqdm import tqdm
 
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
 from .core.logger import JaffLogger
+from .errors.parser import ParserError
 from .fastlog import fast_log2, inverse_fast_log2
 from .parsers import (
     f90_convert,
@@ -382,8 +383,8 @@ class Network:
             # equation in each band
             deltaRad = parse_expr("0")
             delta_rad_func_name = f"deltaRad{len(self.reactions)}".lower()
-
-            if delta_rad_func_name in aux_funcs:
+            aux_rad_extra_rate = delta_rad_func_name in aux_funcs
+            if aux_rad_extra_rate:
                 deltaRad = aux_funcs[delta_rad_func_name]["def"]
 
             # convert reactants and products to Species objects
@@ -415,12 +416,18 @@ class Network:
             # create a Reaction object
             rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, deltaRad, srow)
 
-            if (
-                is_photoreaction
-                and self.radiation is not None
-                and not aux_chem_rate_present
-            ):
-                self.radiation.set_reaction_rate_coefficient(rea)
+            if is_photoreaction and self.radiation is not None:
+                if not aux_chem_rate_present:
+                    self.radiation.set_reaction_rate_coefficient(rea)
+                elif aux_chem_rate_present and aux_rad_extra_rate:
+                    self.radiation.set_custom_rate(rea)
+                else:
+                    raise ParserError(
+                        "If radiation is enabled and a custom rate is supplied\n"
+                        "for a photo reaction, the auxilary deltaRad function is\n"
+                        "necessary to weigh the first moment radiation equations\n"
+                        f"Please add a custom deltaRad function for reaction {len(self.reactions)}"
+                    )
 
             if rea.guess_type() == "photo":
                 rea.xsecs_dict = self.photochemistry.get_xsec(rea)

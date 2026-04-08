@@ -9,7 +9,7 @@ RadiationGroupReactionProps = TypedDict(
     "RadiationGroupReactionProps",
     {
         "k": sp.Basic,
-        "xsec": sp.Basic,
+        "xsec": sp.Basic | None,
         "xsec_frac": sp.Basic,
     },
 )
@@ -92,6 +92,25 @@ class Radiation:
             k_tot += k / (self.groups[i].eavg if self.energy_density else 1)
 
         reaction.rate = k_tot
+
+    def set_custom_rate(self, reaction: Reaction) -> None:
+        # Expects E to be the energy symbol for custom delta_rad aux functions
+        E = sp.Symbol("E")
+        delta_rad_total = sp.Integral(
+            reaction.dRad_dt, (E, self.bands[0], self.bands[-1])
+        ).evalf()
+
+        for i, lower in enumerate(self.bands[:-1]):
+            upper = self.bands[i + 1]
+            delta_rad_band = sp.Integral(reaction.dRad_dt, (E, lower, upper)).evalf()
+            xsec_frac = delta_rad_band / delta_rad_total
+            k = reaction.rate * xsec_frac
+
+            self.groups[i].props[reaction] = {
+                "k": k,
+                "xsec": None,
+                "xsec_frac": xsec_frac,
+            }
 
     def get_verner_xsec(self, reaction: Reaction) -> sp.Basic | None:
         with JaffDb() as jdb:
