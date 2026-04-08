@@ -1,9 +1,10 @@
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import sympy as sp
 
 from .drivers.sqlite import JaffDb
 from .reaction import Reaction
+from .utils.integrators import smart_integrate
 
 RadiationGroupReactionProps = TypedDict(
     "RadiationGroupReactionProps",
@@ -43,13 +44,13 @@ class Radiation:
         energy_density: bool,
         c: float,
     ):
-        self.bands: list[int | float | str | sp.Basic] = bands
-        self.nbands: int = len(self.bands) - 1
+        self.bands: list[int | float | sp.Basic] = []
         self.powerlaw_idx: int | float = powerlaw_idx
         self.energy_density: bool = energy_density
         self.c: float = c
 
-        self.__parse_bands()
+        self.__parse_bands(bands)
+        self.nbands: int = len(self.bands) - 1
         self.groups: list[RadiationGroup] = [
             RadiationGroup(lower, self.bands[i + 1], i)
             for i, lower in enumerate(self.bands[:-1])
@@ -62,7 +63,7 @@ class Radiation:
 
         # Set reaction total cross section
         E = sp.Symbol("E")
-        xsec_tot = sp.Integral(xsec, (E, self.bands[0], self.bands[-1])).evalf()
+        xsec_tot = smart_integrate(xsec, E, (self.bands[0], self.bands[-1]))
         reaction.rad_xsecs = xsec_tot
 
         n_profile = E ** (self.powerlaw_idx - 2)
@@ -74,11 +75,11 @@ class Radiation:
 
         for i, lower in enumerate(self.bands[:-1]):
             upper = self.bands[i + 1]
-            n_tot = sp.Integral(n_profile, (E, lower, upper)).evalf()
-            n_avg = sp.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
-            band_xsec = sp.Integral(xsec, (E, lower, upper)).evalf()
-            delta_rad_band = sp.Integral(reaction.dRad_dt, (E, lower, upper)).evalf()
-            k = self.c * den[sp.Idx(i)] * n_avg
+            n_tot = smart_integrate(n_profile, E, (lower, upper))
+            xsec_avg = smart_integrate(xsec * n_profile, E, (lower, upper)) / n_tot
+            band_xsec = smart_integrate(xsec, E, (lower, upper))
+            delta_rad_band = smart_integrate(reaction.dRad_dt, E, (lower, upper))
+            k = self.c * den[sp.Idx(i)] * xsec_avg
 
             self.groups[i].props[reaction] = {
                 "k": k,
@@ -89,7 +90,7 @@ class Radiation:
 
             if self.groups[i].eavg is None:
                 self.groups[i].eavg = (
-                    sp.Integral(E * n_profile, (E, lower, upper)).evalf() / n_tot
+                    smart_integrate(E * n_profile, E, (lower, upper)) / n_tot
                 )
 
             k_tot += k / (self.groups[i].eavg if self.energy_density else 1)
@@ -100,13 +101,13 @@ class Radiation:
         # Expects E to be the energy symbol for custom delta_rad aux functions
         # delta_rad must also be in units of ev
         E = sp.Symbol("E")
-        delta_rad_total = sp.Integral(
-            reaction.dRad_dt, (E, self.bands[0], self.bands[-1])
-        ).evalf()
+        delta_rad_total = smart_integrate(
+            reaction.dRad_dt, E, (self.bands[0], self.bands[-1])
+        )
 
         for i, lower in enumerate(self.bands[:-1]):
             upper = self.bands[i + 1]
-            delta_rad_band = sp.Integral(reaction.dRad_dt, (E, lower, upper)).evalf()
+            delta_rad_band = smart_integrate(reaction.dRad_dt, E, (lower, upper))
             xsec_frac = delta_rad_band / delta_rad_total
             k = reaction.rate * xsec_frac
 
@@ -143,10 +144,12 @@ class Radiation:
 
         return ei, fi
 
-    def __parse_bands(self):
-        if "inf" in self.bands:
-            inf_index = self.bands.index("inf")
-            self.bands[inf_index] = sp.oo
+    def __parse_bands(self, bands: list[float | int | str | sp.Basic]):
+        if "inf" in bands:
+            inf_index = bands.index("inf")
+            bands[inf_index] = sp.oo
+
+        self.bands = cast(list[int | float | sp.Basic], bands)
 
         if self.energy_density:
             pl_index: float = float(self.powerlaw_idx) - 1.0

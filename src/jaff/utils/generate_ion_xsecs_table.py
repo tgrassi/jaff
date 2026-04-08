@@ -27,8 +27,9 @@ def verner_xsecs(
     E = Symbol("E")
     x = E / E0 - y0
     y = (x * x + y1 * y1) ** 0.5
+    mb = 1e-18  # Units of cm^2
 
-    return Piecewise((sigma0 * F(x, y), (E >= Emin) & (E <= Emax)), (0, True))
+    return Piecewise((sigma0 * mb * F(x, y), (E >= Emin) & (E <= Emax)), (0, True))
 
 
 def main(create_table: bool = False):
