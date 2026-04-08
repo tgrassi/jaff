@@ -1508,7 +1508,7 @@ class Network:
             group_dRad_dt_extra = sympy.Float(0.0)
             for reaction, props in group.props.items():
                 rrate = props["k"]
-                group_dRad_dt_extra += props["xsec_frac"] * reaction.dRad_dt
+                group_dRad_dt_extra += props["delta_rad"]
                 for reactant in reaction.reactants:
                     rrate *= nden[sympy.Idx(self.species_dict[str(reactant)])]
 

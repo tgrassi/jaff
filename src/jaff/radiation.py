@@ -11,6 +11,7 @@ RadiationGroupReactionProps = TypedDict(
         "k": sp.Basic,
         "xsec": sp.Basic | None,
         "xsec_frac": sp.Basic,
+        "delta_rad": sp.Basic,
     },
 )
 
@@ -76,12 +77,14 @@ class Radiation:
             n_tot = sp.Integral(n_profile, (E, lower, upper)).evalf()
             n_avg = sp.Integral(xsec * n_profile, (E, lower, upper)).evalf() / n_tot
             band_xsec = sp.Integral(xsec, (E, lower, upper)).evalf()
+            delta_rad_band = sp.Integral(reaction.dRad_dt, (E, lower, upper)).evalf()
             k = self.c * den[sp.Idx(i)] * n_avg
 
             self.groups[i].props[reaction] = {
                 "k": k,
                 "xsec": band_xsec,
                 "xsec_frac": band_xsec / xsec_tot,
+                "delta_rad": delta_rad_band,
             }
 
             if self.groups[i].eavg is None:
@@ -95,6 +98,7 @@ class Radiation:
 
     def set_custom_rate(self, reaction: Reaction) -> None:
         # Expects E to be the energy symbol for custom delta_rad aux functions
+        # delta_rad must also be in units of ev
         E = sp.Symbol("E")
         delta_rad_total = sp.Integral(
             reaction.dRad_dt, (E, self.bands[0], self.bands[-1])
@@ -110,6 +114,7 @@ class Radiation:
                 "k": k,
                 "xsec": None,
                 "xsec_frac": xsec_frac,
+                "delta_rad": reaction.dRad_dt,
             }
 
     def get_verner_xsec(self, reaction: Reaction) -> sp.Basic | None:
