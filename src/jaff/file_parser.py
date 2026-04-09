@@ -1205,6 +1205,12 @@ class Fileparser:
                     "nelem": {"func": lambda: self.elems.nelems},
                     # Returns: int - number of reactions
                     "nreact": {"func": lambda: len(self.net.reactions)},
+                    # Returns: int - number of reactions
+                    "nbands": {
+                        "func": lambda: (
+                            self.net.radiation.nbands if self.net.radiation else 0
+                        )
+                    },
                     # Returns: str - network label
                     "label": {"func": lambda: self.net.label},
                     # Returns: str - template file name
@@ -1766,6 +1772,8 @@ class Fileparser:
             "USE_DEDT": {"kwargs": lambda var, value: {"use_dedt": value}},
             "RADIATION": {"kwargs": lambda var, value: {"radiation": value}},
             "RAD_ORDER": {"kwargs": lambda var, value: {"rad_order": value}},
+            "SPECIFIC_EINT": {"kwargs": lambda var, value: {"specific_eint": value}},
+            "NORM": {"kwargs": lambda var, value: {"norm": value}},
         }
 
         return svar_dict

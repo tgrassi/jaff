@@ -706,7 +706,7 @@ class Codegen:
 
         return sode
 
-    def __gen_sdedt(self) -> sp.Expr:
+    def __gen_sdedt(self, specific_eint: bool = False, norm: int = 0) -> sp.Expr:
         """
         Generate symbolic expression for specific internal energy time derivative.
 
@@ -719,23 +719,44 @@ class Codegen:
 
         Formula:
             dedt = (dEdt_chem + dEdt_other) / density_total
+
+        Notes: This will be revisited and refined
+        if specific_eint is True returns specific internal energy rate,
+        else returns internal energy rate
+        norm: Normalization parameter if specifict_eint is True
+        norm = 0, nden is specie number density
+        norm = 1, nden is specie density
         """
         nspec = len(self.net.species)
         nden_matrix = sp.MatrixSymbol("nden", nspec, 1)
 
         # Precompute specific internal energy equation if requested
-        den_tot = reduce(
-            lambda x, y: x + y,
-            [
-                specie.mass * nden_matrix[i, 0]
-                for i, specie in enumerate(self.net.species)
-            ],
-            0,
-        )
+        den_tot = 1
+        if specific_eint:
+            if norm not in [0, 1]:
+                raise ValueError(
+                    f"Invalid value of normalization: {norm}\n"
+                    "Supported values of norm are 0 and 1"
+                )
+            if norm == 0:
+                den_tot = reduce(
+                    lambda x, y: x + y,
+                    [
+                        specie.mass * nden_matrix[i, 0]
+                        for i, specie in enumerate(self.net.species)
+                    ],
+                    0,
+                )
+            elif norm == 1:
+                den_tot = reduce(
+                    lambda x, y: x + y,
+                    [nden_matrix[i, 0] for i, _ in enumerate(self.net.species)],
+                    0,
+                )
 
         return (self.net.dEdt_chem + self.net.dEdt_other) / den_tot
 
-    def get_dedt(self) -> str:
+    def get_dedt(self, specific_eint: bool = False, norm: int = 0) -> str:
         """
         Generate code for specific internal energy time derivative.
 
@@ -746,7 +767,7 @@ class Codegen:
             String containing the generated code for dedt calculation
         """
 
-        expr = self.code_gen(self.__gen_sdedt(), strict=False)
+        expr = self.code_gen(self.__gen_sdedt(specific_eint, norm), strict=False)
 
         return expr
 
@@ -889,6 +910,8 @@ class Codegen:
         self,
         use_cse: bool = True,
         cse_var: str = "cse",
+        specific_eint: bool = False,
+        norm: int = 0,
         radiation: bool = False,
         rad_order: int = 0,
     ) -> IndexedReturn:
@@ -934,7 +957,10 @@ class Codegen:
         rhs_symbols = self.net.get_sodes()
         rhs_symbols = [sode.xreplace(subs_k) for sode in rhs_symbols]
         rhs_symbols.extend(
-            [self.__gen_sdedt(), *(self.net.get_sradodes(rad_order) if radiation else [])]
+            [
+                self.__gen_sdedt(specific_eint, norm),
+                *(self.net.get_sradodes(rad_order) if radiation else []),
+            ]
         )
 
         if use_cse:
@@ -970,6 +996,8 @@ class Codegen:
         def_prefix: str = "",
         assignment_op: str = "",
         line_end: str = "",
+        specific_eint: bool = False,
+        norm: int = 0,
         radiation: bool = False,
         rad_order: int = 0,
     ) -> str:
@@ -1005,7 +1033,12 @@ class Codegen:
 
         rhs_code = ""
         rhs_expressions = self.get_indexed_rhs(
-            use_cse=use_cse, cse_var=cse_var, radiation=radiation, rad_order=rad_order
+            use_cse=use_cse,
+            cse_var=cse_var,
+            specific_eint=specific_eint,
+            norm=norm,
+            radiation=radiation,
+            rad_order=rad_order,
         )
 
         if use_cse:
@@ -1094,6 +1127,8 @@ class Codegen:
         use_dedt: bool = False,
         use_cse: bool = True,
         cse_var: str = "cse",
+        specific_eint: bool = False,
+        norm: int = 0,
         radiation: bool = False,
         rad_order: int = 0,
     ) -> IndexedReturn:
@@ -1215,7 +1250,7 @@ class Codegen:
         ode_symbols = self.net.get_sodes()
 
         if use_dedt:
-            ode_symbols.append(self.__gen_sdedt())
+            ode_symbols.append(self.__gen_sdedt(specific_eint=specific_eint, norm=norm))
 
         if radiation:
             ode_symbols.extend(self.net.get_sradodes())

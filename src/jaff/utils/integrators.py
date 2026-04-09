@@ -95,7 +95,7 @@ def smart_integrate(
     sub_points = sorted(list(set(sub_points)))
 
     if np.isinf(a) or np.isinf(b):
-        val, _ = quad(f_num, a, b, limit=200)
+        val, _ = quad(f_num, a, b, limit=10000)
 
         return val
 
