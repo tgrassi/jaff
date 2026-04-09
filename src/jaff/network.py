@@ -485,7 +485,7 @@ class Network:
         # Get unique list of variables names found in all expressions
         free_symbols_all = sorted([x.name for x in list(set(free_symbols_all))])
 
-        self.logger.info(f"Variables found: {free_symbols_all}")
+        self.logger.info(f"Variables found: {', '.join(free_symbols_all)}")
         self.logger.info(f"Loaded {len(self.reactions)} reactions")
         self.logger.info(f"Loaded {n_photo} photo-chemistry reactions")
 
@@ -547,9 +547,22 @@ class Network:
             return {}
 
         if funcfile is None:
-            funcfile = Path(f"{self.file_name}_functions")
-            if not funcfile.exists():
+            funcfiles_list = [
+                Path(f"{self.file_name}.jfunc"),
+                Path(self.file_name).with_suffix(".jfunc"),
+            ]
+
+            funcfile_exists: bool = False
+            for f in funcfiles_list:
+                if f.exists():
+                    funcfile = f
+                    funcfile_exists = True
+                    break
+
+            if not funcfile_exists:
                 return {}
+
+        assert funcfile is not None
 
         if isinstance(funcfile, str):
             funcfile = Path(funcfile)
@@ -1518,7 +1531,7 @@ class Network:
             flux = group_rate.xreplace(flux_map)
             # dRad_dt_extra assumed to be in units of energy density rate
             group_rate += group_dRad_dt_extra / (
-                1 if self.radiation.energy_density else group.eavg
+                1 if self.radiation.energy_density else (group.eavg or 1)
             )
 
             grate[group.index] = group_rate
