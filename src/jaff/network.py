@@ -414,8 +414,12 @@ class Network:
                 deltaE = aux_funcs[deltaE_name.lower()]["def"]
 
             for func in rate.atoms(AppliedUndef):
-                if func.name.lower() in aux_funcs:
-                    rate = rate.subs(func, aux_funcs[func.name.lower()]["def"])
+                func_name = func.name.lower()
+                if func_name in aux_funcs:
+                    func_def = aux_funcs[func_name]["def"]
+                    func_args = aux_funcs[func_name]["args"]
+                    arg_map = dict(zip(func_args, func.args))
+                    rate = rate.subs(func, func_def.subs(arg_map))
 
             # create a Reaction object
             rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, deltaRad, srow)
