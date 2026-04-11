@@ -242,7 +242,7 @@ class Network:
                 try:
                     variables_sympy.append((var, parse_expr(val, evaluate=False)))
                 except Exception as e:
-                    self.logger.warn(
+                    self.logger.warning(
                         f"Could not parse variable ({e}), using string instead"
                     )
                     variables_sympy.append((var, val.strip()))

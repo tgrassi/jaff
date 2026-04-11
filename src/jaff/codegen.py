@@ -1253,7 +1253,7 @@ class Codegen:
             ode_symbols.append(self.__gen_sdedt(specific_eint=specific_eint, norm=norm))
 
         if radiation:
-            ode_symbols.extend(self.net.get_sradodes())
+            ode_symbols.extend(self.net.get_sradodes(order=rad_order))
 
         ode_symbols = [
             sode.xreplace({**nden_to_y, **radden_to_y, **radflux_to_y, **subs_k})

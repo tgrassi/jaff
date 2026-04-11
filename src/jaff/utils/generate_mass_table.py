@@ -19,11 +19,12 @@ def main():
     ]
     del df
     masses_df = pd.DataFrame(rows).set_index("element")
+    table_name = "atomic_masses"
 
     with JaffDb() as jdb:
-        table = jdb.table_from_dataframe("atomic_masses", masses_df)
+        table = jdb.table_from_dataframe(table_name, masses_df)
         logger = JaffLogger().get_logger()
-        logger.info(f"'atomic_masses' table created in {jdb.db_path}\n")
+        logger.info(f"'{table_name}' table created in {jdb.db_path}\n")
 
         print(pd.DataFrame(table.all_rows()))
 

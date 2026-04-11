@@ -26,10 +26,10 @@ def integrate(
         )
 
     lower, upper = bounds
-    samples = spacings[spacing](lower, upper)
+    samples = spacings[spacing](lower, upper, 1_000_000)
     func = lambdify(sym, expr, "numpy")
 
-    return integrators[integrator](func, samples)
+    return integrators[integrator](func(samples), samples)
 
 
 def get_bounds(expr: Basic, sym: Basic):
@@ -38,7 +38,7 @@ def get_bounds(expr: Basic, sym: Basic):
 
     if hasattr(folded, "as_expr_set_pairs"):
         for val, domain in folded.as_expr_set_pairs():
-            if not val:  # Checks for val == 0
+            if val == 0:
                 continue
 
             b = domain.boundary
@@ -105,4 +105,4 @@ def smart_integrate(
 
 
 def safe_integrate():
-    raise NotImplementedError("Not yet implemnted")
+    raise NotImplementedError("Not yet implemented")

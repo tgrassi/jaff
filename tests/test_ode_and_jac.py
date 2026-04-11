@@ -169,7 +169,6 @@ def test_ode_and_jac_dedt(test_codegen_dedt: Codegen):
     assert len(rhs_comp) == len(expected_rhs), (
         f"Number of ode equations must be equal to {len(expected_rhs)}"
     )
-    print(*jac_comp, sep="\n")
     assert len(jac_comp) == len(expected_jac), (
         f"Number of jacobian components must be equal to {len(expected_jac)}"
     )

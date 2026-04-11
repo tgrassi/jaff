@@ -104,18 +104,23 @@ class Radiation:
         delta_rad_total = smart_integrate(
             reaction.dRad_dt, E, (self.bands[0], self.bands[-1])
         )
+        delta_rad_total_is_zero = delta_rad_total.equals(0)
 
         for i, lower in enumerate(self.bands[:-1]):
             upper = self.bands[i + 1]
             delta_rad_band = smart_integrate(reaction.dRad_dt, E, (lower, upper))
-            xsec_frac = delta_rad_band / delta_rad_total
+            xsec_frac = (
+                sp.Float(0.0)
+                if delta_rad_total_is_zero
+                else delta_rad_band / delta_rad_total
+            )
             k = reaction.rate * xsec_frac
 
             self.groups[i].props[reaction] = {
                 "k": k,
                 "xsec": None,
                 "xsec_frac": xsec_frac,
-                "delta_rad": reaction.dRad_dt,
+                "delta_rad": delta_rad_band,
             }
 
     def get_verner_xsec(self, reaction: Reaction) -> sp.Basic | None:

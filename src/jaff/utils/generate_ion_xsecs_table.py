@@ -59,11 +59,12 @@ def main():
     ]
     del df
     xsecs_df = pd.DataFrame(rows).set_index("reaction")
+    table_name: str = "verner_cross_sections"
 
     with JaffDb() as jdb:
-        table = jdb.table_from_dataframe("verner_cross_sections", xsecs_df)
+        table = jdb.table_from_dataframe(table_name, xsecs_df)
         logger = JaffLogger().get_logger()
-        logger.info(f"'atomic_masses' table created in {jdb.db_path}\n")
+        logger.info(f"'{table_name}' table created in {jdb.db_path}\n")
 
         print(pd.DataFrame(table.all_rows()))
 

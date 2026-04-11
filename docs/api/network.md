@@ -111,7 +111,7 @@ net = Network("networks/react_COthin", funcfile="aux_funcs.txt")
 | `reactions_dict` | `dict[str, int]`                               | Dictionary mapping reaction verbatim to indices |
 | `label`          | `str`                                          | Network identifier/label                        |
 | `file_name`      | `str`                                          | Path to the original network file               |
-| `mass_dict`      | `dict[str, [dict["name": float], "mass": str]` | Atomic mass dictionary                          |
+| `mass_dict`      | `dict[str, [dict["name": str], "mass": float]` | Atomic mass dictionary                          |
 | `rlist`          | `np.ndarray`                                   | Reactant matrix (nreact × nspec)                |
 | `plist`          | `np.ndarray`                                   | Product matrix (nreact × nspec)                 |
 

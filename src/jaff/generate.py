@@ -146,7 +146,7 @@ For more information, visit: https://github.com/tgrassi/jaff
 
     # Resolve and validate network file path
     netfile = Path(network_file)
-    netfile: Path = network_file.resolve() if netfile.is_symlink() else netfile
+    netfile: Path = netfile.resolve() if netfile.is_symlink() else netfile
     networks = {f.name for f in network_dir.iterdir() if f.is_file()}
     is_predefined_network = str(netfile) in networks
 
@@ -154,7 +154,7 @@ For more information, visit: https://github.com/tgrassi/jaff
         raise FileNotFoundError(f"Unable to find network file: {netfile}")
 
     if is_predefined_network:
-        netfile = network_dir / netfile
+        netfile = network_dir / netfile.name
 
     if not netfile.is_file():
         raise FileNotFoundError(f"{netfile} is not a valid file")
@@ -251,7 +251,7 @@ For more information, visit: https://github.com/tgrassi/jaff
             energy_density: bool = rad_props.get(
                 "energy_density", net_params["rad_energy_density"].default
             )
-            c: bool = rad_props.get("rsl", net_params["c"].default)
+            c: float = rad_props.get("rsl", net_params["c"].default)
 
             net_kwargs["rad_bands"] = bands
             net_kwargs["rad_powerlaw_index"] = power
