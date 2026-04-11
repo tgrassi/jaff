@@ -3,7 +3,8 @@ from pathlib import Path
 import pandas as pd
 from sympy import Expr, Piecewise, Symbol, srepr
 
-from jaff.drivers.sqlite import Db
+from jaff.core.logger import JaffLogger
+from jaff.drivers.sqlite import JaffDb
 
 
 def verner_xsecs(
@@ -32,8 +33,7 @@ def verner_xsecs(
     return Piecewise((sigma0 * mb * F(x, y), (E >= Emin) & (E <= Emax)), (0, True))
 
 
-def main(create_table: bool = False):
-    path = Path(__file__).parent.parent / "db" / "jaff.db"
+def main():
     verner_data = Path(__file__).parent.parent / "data" / "xsecs" / "verner_1996.csv"
     df = pd.read_csv(verner_data, sep=r"\s+", index_col=0)
     rows = [
@@ -60,21 +60,13 @@ def main(create_table: bool = False):
     del df
     xsecs_df = pd.DataFrame(rows).set_index("reaction")
 
-    with Db(path) as db:
-        # table = db.table("verner_cross_sections")
-        # table.delete()
-        # print(db.get_tables())
-        table = (
-            db.table_from_dataframe("verner_cross_sections", xsecs_df)
-            if create_table
-            else db.table("verner_cross_sections")
-        )
+    with JaffDb() as jdb:
+        table = jdb.table_from_dataframe("verner_cross_sections", xsecs_df)
+        logger = JaffLogger().get_logger()
+        logger.info(f"'atomic_masses' table created in {jdb.db_path}\n")
+
         print(pd.DataFrame(table.all_rows()))
-        # print(
-        #     db.connection.execute("PRAGMA index_list(verner_cross_sections);").fetchall()
-        # )
 
 
 if __name__ == "__main__":
-    # main(create_table=True)
     main()
