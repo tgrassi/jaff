@@ -67,17 +67,30 @@ class Db:
         assert self.cursor is not None
         assert self.connection is not None
 
-        # index name needs to be set in the dataframe
+        self.cursor.execute(f"DROP TABLE IF EXISTS {name}")
+
         index_col = df.index.name or "index"
-        columns = ", ".join(f"{col} TEXT" for col in df.columns)
+
+        col_defs = []
+        for col_name, dtype in df.dtypes.items():
+            if pd.api.types.is_integer_dtype(dtype):
+                sql_type = "INTEGER"
+            elif pd.api.types.is_float_dtype(dtype):
+                sql_type = "REAL"
+            else:
+                sql_type = "TEXT"
+            col_defs.append(f"{col_name} {sql_type}")
+
+        columns_str = ", ".join(col_defs)
 
         self.connection.execute(f"""
-            CREATE TABLE IF NOT EXISTS {name} (
+            CREATE TABLE {name} (
                 {index_col} TEXT PRIMARY KEY,
-                {columns}
+                {columns_str}
             )
         """)
-        df.to_sql(name=name, con=self.connection, if_exists="replace", index=True)
+
+        df.to_sql(name=name, con=self.connection, if_exists="append", index=True)
 
         return Table(name, self.connection, self.cursor)
 
@@ -169,12 +182,10 @@ class Table:
         return self.cur.fetchall()
 
     def insert_row(self, values: list[str | float | int]) -> None:
-        vals = [
-            f"'{value}'" if isinstance(value, str) else f"{value}" for value in values
-        ]
-        comm = f"INSERT INTO {self.name} VALUES ({','.join(vals)})"
-
-        self.cur.execute(comm)
+        placeholders = ",".join(["?"] * len(values))
+        comm = f"INSERT INTO {self.name} VALUES ({placeholders})"
+        self.cur.execute(comm, values)
+        self.conn.commit()
 
     def insert_rows(self, rows: list[list[str | float | int]]) -> None:
         for row in rows:

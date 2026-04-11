@@ -24,6 +24,7 @@ from tqdm import tqdm
 
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
 from .core.logger import JaffLogger
+from .drivers.sqlite import JaffDb
 from .errors.parser import ParserError
 from .fastlog import fast_log2, inverse_fast_log2
 from .parsers import (
@@ -54,6 +55,14 @@ NetworkProps = TypedDict(
     },
 )
 
+ElementProps = TypedDict(
+    "ElementProps",
+    {
+        "name": str,
+        "mass": float,
+    },
+)
+
 
 class Network:
     # ****************
@@ -73,8 +82,7 @@ class Network:
         self.motd()
 
         # Get the path to the data file relative to this module
-        data_path = os.path.join(os.path.dirname(__file__), "data", "atom_mass.dat")
-        self.mass_dict = self.load_mass_dict(data_path)
+        self.mass_dict: dict[str, ElementProps] = {}
         self.species = []
         self.species_dict = {}
         self.reactions_dict = {}
@@ -94,6 +102,7 @@ class Network:
         self.logger.info(f"Loading network from {fname}")
         self.logger.info(f"Network label: {self.label}")
 
+        self.load_mass_dict()
         self.photochemistry = Photochemistry()
 
         self.load_network(
@@ -130,18 +139,13 @@ class Network:
         print(f"\nWelcome to JAFF: Just Another {fword.title()} Format!\n")
 
     # ****************
-    @staticmethod
-    def load_mass_dict(fname):
-        mass_dict = {}
-        for row in open(fname):
-            srow = row.strip()
-            if srow == "":
-                continue
-            if srow[0] == "#":
-                continue
-            rr = srow.split()
-            mass_dict[rr[0]] = float(rr[1])
-        return mass_dict
+    def load_mass_dict(self) -> None:
+        with JaffDb() as jdb:
+            rows = jdb.table("atomic_masses").all_rows()
+
+        self.mass_dict = {}
+        for row in rows:
+            self.mass_dict[row["element"]] = {"mass": row["mass"], "name": row["name"]}
 
     # ****************
     def load_network(
@@ -734,8 +738,7 @@ class Network:
         net.photochemistry = Photochemistry()
 
         # Load default mass dict (same source as __init__).
-        data_path = os.path.join(os.path.dirname(__file__), "data", "atom_mass.dat")
-        net.mass_dict = cls.load_mass_dict(data_path)
+        net.mass_dict = net.load_mass_dict()
 
         species_payload = payload.get("species") or []
         if not isinstance(species_payload, list):

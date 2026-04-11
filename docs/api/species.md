@@ -15,7 +15,7 @@ The `Species` class represents a unique chemical entity (atom, molecule, ion, or
 from jaff import Species
 
 # Define atomic masses
-mass_dict = {"H": 1.00784, "O": 15.999}
+mass_dict = {"H": {"mass": 1.00784, "name": "Hydrogen"}, "O": {"mass": 15.999, "name": "Oxygen"}}
 
 # Create a water molecule species
 water = Species(name="H2O", mass_dict=mass_dict, index=5)
