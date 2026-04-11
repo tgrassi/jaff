@@ -3,7 +3,6 @@
 
 import os
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -13,7 +12,6 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from jaff.network import Network
-from jaff.species import Species
 
 
 class TestNetworkInitialization:
@@ -94,29 +92,16 @@ class TestNetworkInitialization:
 
         assert network.label == "network_file"
 
-    def test_mass_dict_loading(self):
-        """Test mass dictionary loading from atom_mass.dat."""
-        # Create a temporary mass file
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".dat", delete=False) as f:
-            f.write("# Test mass file\n")
-            f.write("H  1.00794\n")
-            f.write("He 4.002602\n")
-            f.write("C  12.0107\n")
-            f.write("\n")  # Empty line
-            f.write("# Another comment\n")
-            f.write("O  15.9994\n")
-            temp_file = f.name
+    def test_mass_dict_loading(self, fixtures_dir):
+        """Test mass dictionary loading"""
+        fpath = os.path.join(fixtures_dir, "empty_network.dat")
+        net = Network(fpath)
+        net.load_mass_dict()
 
-        try:
-            mass_dict = Network.load_mass_dict(temp_file)
-
-            assert len(mass_dict) == 4
-            assert mass_dict["H"] == 1.00794
-            assert mass_dict["He"] == 4.002602
-            assert mass_dict["C"] == 12.0107
-            assert mass_dict["O"] == 15.9994
-        finally:
-            os.unlink(temp_file)
+        assert net.mass_dict["H"]["mass"] == pytest.approx(1.673773e-24)
+        assert net.mass_dict["He"]["mass"] == pytest.approx(6.646473e-24)
+        assert net.mass_dict["C"]["mass"] == pytest.approx(1.994473e-23)
+        assert net.mass_dict["O"]["mass"] == pytest.approx(2.656763e-23)
 
     def test_errors_parameter_true(self):
         """Test initialization with errors=True parameter."""

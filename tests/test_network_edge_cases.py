@@ -155,30 +155,6 @@ class TestNetworkEdgeCases:
         finally:
             os.unlink(temp_file)
 
-    def test_invalid_mass_file_format(self):
-        """Test handling of invalid mass file format."""
-        # Create invalid mass file
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".dat", delete=False) as f:
-            f.write("# Invalid mass file\n")
-            f.write("H invalid_mass\n")  # Invalid mass value
-            f.write("He\n")  # Missing mass value
-            f.write("C 12.0107\n")  # Valid entry
-            temp_mass_file = f.name
-
-        try:
-            # Should handle invalid entries gracefully
-            with pytest.raises(ValueError):
-                Network.load_mass_dict(temp_mass_file)
-        finally:
-            os.unlink(temp_mass_file)
-
-    def test_missing_mass_file(self):
-        """Test handling when mass file doesn't exist."""
-        nonexistent_file = "/path/to/nonexistent/mass.dat"
-
-        with pytest.raises(FileNotFoundError):
-            Network.load_mass_dict(nonexistent_file)
-
     def test_large_number_of_reactions(self):
         """Test performance with moderately large reaction networks."""
         # Create a network with many reactions using valid chemical species

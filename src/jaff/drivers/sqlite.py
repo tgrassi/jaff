@@ -19,6 +19,9 @@ class Db:
         if isinstance(db_path, str):
             db_path = Path(db_path)
 
+        if not db_path.exists():
+            raise FileNotFoundError(f"No database exists at {db_path}")
+
         self.db_path = db_path
 
     def connect(self) -> None:
