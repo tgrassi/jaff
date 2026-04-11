@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from jaff.core.logger import JaffLogger
+
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -70,22 +72,25 @@ class TestNetworkValidation:
             temp_file = f.name
 
         try:
-            with patch("builtins.print") as mock_print:
+            with patch.object(JaffLogger, "get_logger") as mock_get_logger:
+                mock_logger = MagicMock()
+                mock_get_logger.return_value = mock_logger
+
                 network = Network(temp_file)
 
             # Check that sink warning was printed
             sink_warnings = [
                 call
-                for call in mock_print.call_args_list
+                for call in mock_logger.info.call_args_list
                 if "Sink:" in str(call) and "He" in str(call)
             ]
             assert len(sink_warnings) > 0
 
-            # Check that general sink warning was printed
+            # General sink warning (WARNING)
             general_warnings = [
                 call
-                for call in mock_print.call_args_list
-                if "WARNING: sink detected" in str(call)
+                for call in mock_logger.warning.call_args_list
+                if "Sink detected" in str(call)
             ]
             assert len(general_warnings) > 0
         finally:
@@ -103,13 +108,16 @@ class TestNetworkValidation:
             temp_file = f.name
 
         try:
-            with patch("builtins.print") as mock_print:
+            with patch.object(JaffLogger, "get_logger") as mock_get_logger:
+                mock_logger = MagicMock()
+                mock_get_logger.return_value = mock_logger
+
                 network = Network(temp_file)
 
             # Check that source warning was printed
             source_warnings = [
                 call
-                for call in mock_print.call_args_list
+                for call in mock_logger.info.call_args_list
                 if "Source:" in str(call) and "He" in str(call)
             ]
             assert len(source_warnings) > 0
@@ -117,8 +125,8 @@ class TestNetworkValidation:
             # Check that general source warning was printed
             general_warnings = [
                 call
-                for call in mock_print.call_args_list
-                if "WARNING: source detected" in str(call)
+                for call in mock_logger.warning.call_args_list
+                if "Source detected" in str(call)
             ]
             assert len(general_warnings) > 0
         finally:
@@ -174,14 +182,17 @@ class TestNetworkValidation:
             temp_file = f.name
 
         try:
-            with patch("builtins.print") as mock_print:
+            with patch.object(JaffLogger, "get_logger") as mock_get_logger:
+                mock_logger = MagicMock()
+                mock_get_logger.return_value = mock_logger
+
                 network = Network(temp_file)
 
             # Check that recombination warning was printed for C+
             recomb_warnings = [
                 call
-                for call in mock_print.call_args_list
-                if "electron recombination not found for C+" in str(call)
+                for call in mock_logger.warning.call_args_list
+                if "Electron recombination not found for C+" in str(call)
             ]
             assert len(recomb_warnings) > 0
         finally:
@@ -308,14 +319,17 @@ class TestNetworkValidation:
             temp_file = f.name
 
         try:
-            with patch("builtins.print") as mock_print:
+            with patch.object(JaffLogger, "get_logger") as mock_get_logger:
+                mock_logger = MagicMock()
+                mock_get_logger.return_value = mock_logger
+
                 network = Network(temp_file)
 
             # Check that duplicate warning was printed
             duplicate_warnings = [
                 call
-                for call in mock_print.call_args_list
-                if "duplicate reaction found" in str(call)
+                for call in mock_logger.warning.call_args_list
+                if "Duplicate reaction found" in str(call)
             ]
             assert len(duplicate_warnings) > 0
         finally:
