@@ -222,7 +222,11 @@ class Fileparser:
         Args:
             line: Line of text to parse
         """
-        comment: str = self.cg.comment
+        valid_comments: set[str] = {
+            self.cg.get_language_tokens()[lang]["comment"]
+            for lang in self.cg.get_language_tokens().keys()
+        } | {"--", "%"}
+
         # Extract indentation from the original line
         self.indent = line[: len(line) - len(line.lstrip(" "))]
         line = line.strip()
@@ -230,13 +234,17 @@ class Fileparser:
 
         # Check if this is a JAFF directive line
         tokens = line.split()
-        if not (len(tokens) >= 2 and tokens[0] == comment and tokens[1] == "$JAFF"):
+        if not (
+            len(tokens) >= 2 and tokens[0] in valid_comments and tokens[1] == "$JAFF"
+        ):
             # Not a JAFF line - either execute active parse function or copy line as-is
             if self.parsing_enabled and self.parse_function is not None:
                 self.parse_function()
                 return
             self.modified += self.og_line
             return
+
+        comment = tokens[0] if tokens else self.cg.comment
 
         # Preserve the original line and process the command if JAFF is found
         self.modified += self.og_line
@@ -1275,7 +1283,7 @@ class Fileparser:
                     },
                     # Returns: list[str] - species names
                     "species": {
-                        "func": lambda: [specie.name() for specie in self.net.species],
+                        "func": lambda: [specie.name for specie in self.net.species],
                         "vars": ["idx", "specie"],
                     },
                     # Returns: list[str] - species names with +/-
