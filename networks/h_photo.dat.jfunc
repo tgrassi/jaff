@@ -1,0 +1,9 @@
+@function deltaE0()
+    x = 6.4e-12
+    return x
+
+@function deltaE1(tgas)
+    kb = 1.380649e-16
+    x = -kb * tgas * (0.684 - 0.0416 * log(tgas / 1.0e4))
+
+    return x

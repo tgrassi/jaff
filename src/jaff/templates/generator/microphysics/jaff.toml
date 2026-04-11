@@ -1,5 +1,5 @@
 [radiation]
-bands = [13.6, 5e4]
+bands = [13.6, "inf"]
 power_law_index = 0
 energy_density = false
 rsl=2.99792458e10

@@ -13,64 +13,50 @@
 using namespace ArrayUtil;
 using namespace network_rp;
 
-AMREX_GPU_HOST_DEVICE AMREX_INLINE amrex::Real photorates() { return 0.0; }
-
 AMREX_GPU_HOST_DEVICE AMREX_INLINE void
-rhs_specie(const burn_t &state, amrex::Array1D<amrex::Real, 1, neqs> &ydot,
-           const amrex::Array1D<amrex::Real, 0, NumSpec - 1> &nden) {
+actual_rhs(const burn_t &state, amrex::Array1D<amrex::Real, 1, neqs> &ydot) {
 
   using namespace Rates;
 
   amrex::Real tgas = state.T;
-  amrex::Real crate = 0.0; // placeholder
-  amrex::Real av = 0.0;    // placeholder
 
-  // $JAFF REPEAT idx, rhs, cse IN rhses $[REPLACE radeden\[\s*(\d+)\s*\] radeden(\1) REPLACE rflux\[\s*(\d+)\s*\] rflux(\1) REPLACE nden\[\s*(\d+)\s*\] nden(\1) RADIATION True]$
+  // $JAFF REPEAT idx, rhs, cse IN rhses $[REPLACE radeden\[\s*(\d+)\s*\] state.rn[\1] REPLACE photden\[\s*(\d+)\s*\] state.rn[\1] REPLACE rflux\[\s*(\d+)\s*\] state.rn[2*\1+1] REPLACE nden\[\s*(\d+)\s*\] state.xn[\1] RADIATION True]$
   const amrex::Real cse$idx$ = $cse$;
   ydot($idx+1$) = $rhs$;
   // $JAFF END
-}
-
-AMREX_GPU_HOST_DEVICE AMREX_INLINE void
-actual_rhs(burn_t &state, amrex::Array1D<amrex::Real, 1, neqs> &ydot) {
-
-  amrex::Array1D<amrex::Real, 0, NumSpec - 1> nden;
-  for (int i = 0; i < NumSpec; ++i) {
-    nden(i) = state.xn[i];
-  }
-
-  // YDOTS
-  rhs_specie(state, ydot, nden);
+  // $JAFF SUB nspec
+  ydot($nspec+1$) /= state.rho;
+  // $JAFF END
 }
 
 template <class MatrixType>
 AMREX_GPU_HOST_DEVICE AMREX_INLINE void
-jac_chem(const burn_t &state, MatrixType &jac,
-         const amrex::Array1D<amrex::Real, 0, NumSpec - 1> &nden) {
+jac_chem(const burn_t &state, MatrixType &jac) {
 
-  amrex::Real tgas = state.T;
-  amrex::Real crate = 0.0; // placeholder
-  amrex::Real av = 0.0;    // placeholder
-
-  // $JAFF REPEAT idx, expr, cse IN jacobian $[REPLACE nden\[\s*(\d+)\s*\] nden(\1) USE_DEDT True]$
-  const amrex::Real cse$idx$ = $cse$;
-  jac($idx+1$, $idx+1$) = $expr$;
-  // $JAFF END
 }
 
 template <class MatrixType>
 AMREX_GPU_HOST_DEVICE AMREX_INLINE void actual_jac(const burn_t &state,
                                                    MatrixType &jac) {
 
-  amrex::Array1D<amrex::Real, 0, NumSpec - 1> nden;
-  for (int i = 0; i < NumSpec; ++i) {
-    nden(i) = state.xn[i];
+  amrex::Real tgas = state.T;
+
+  // $JAFF REPEAT idx, expr, cse IN jacobian $[REPLACE radeden\[\s*(\d+)\s*\] state.rn[\1] REPLACE photden\[\s*(\d+)\s*\] state.rn[\1] REPLACE rflux\[\s*(\d+)\s*\] state.rn[2*\1+1] REPLACE nden\[\s*(\d+)\s*\] state.xn[\1] RADIATION True USE_DEDT True]$
+  const amrex::Real cse$idx$ = $cse$;
+  jac($idx+1$, $idx+1$) = $expr$;
+  // $JAFF END
+  // $JAFF SUB nspec, nbands
+  int total_eqns = $nspec$ + $nbands*2$ + 1;
+  for (int i = 1; i <= total_eqns; i++) {
+    jac(i, $nspec+1$) /= state.rho;
   }
 
-  jac.zero();
-  // Species Jacobian elements with respect to other species
+  for (int i = 1; i <= total_eqns; i++) {
+    if (i == 4) { continue; }
+    jac($nspec+1$, i) /= state.rho;
+  }
+  // $JAFF END
 
-  jac_chem(state, jac, nden);
 }
 
 AMREX_INLINE
