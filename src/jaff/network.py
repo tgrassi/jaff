@@ -738,7 +738,7 @@ class Network:
         net.photochemistry = Photochemistry()
 
         # Load default mass dict (same source as __init__).
-        net.mass_dict = net.load_mass_dict()
+        net.load_mass_dict()
 
         species_payload = payload.get("species") or []
         if not isinstance(species_payload, list):

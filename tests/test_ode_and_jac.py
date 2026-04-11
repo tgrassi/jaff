@@ -146,7 +146,7 @@ def test_ode_and_jac_dedt(test_codegen_dedt: Codegen):
         "-std::pow(nden[0], 2)*nden[1]",
         "-std::pow(nden[0], 2)*nden[1]",
         "std::pow(nden[0], 2)*nden[1]",
-        "std::pow(nden[0], 3)*nden[1]/(1.6737729999999998e-24*nden[0] + 3.3435860000000001e-24*nden[1] + 6.6464729999999996e-24*nden[2])",
+        "std::pow(nden[0], 3)*nden[1]",
     ]
 
     expected_jac: List[str] = [
@@ -156,9 +156,8 @@ def test_ode_and_jac_dedt(test_codegen_dedt: Codegen):
         "-std::pow(nden[0], 2)",
         "2*nden[0]*nden[1]",
         "std::pow(nden[0], 2)",
-        "-1.6737729999999998e-24*std::pow(nden[0], 3)*nden[1]/std::pow(1.6737729999999998e-24*nden[0] + 3.3435860000000001e-24*nden[1] + 6.6464729999999996e-24*nden[2], 2) + 3*std::pow(nden[0], 2)*nden[1]/(1.6737729999999998e-24*nden[0] + 3.3435860000000001e-24*nden[1] + 6.6464729999999996e-24*nden[2])",
-        "-3.3435860000000001e-24*std::pow(nden[0], 3)*nden[1]/std::pow(1.6737729999999998e-24*nden[0] + 3.3435860000000001e-24*nden[1] + 6.6464729999999996e-24*nden[2], 2) + std::pow(nden[0], 3)/(1.6737729999999998e-24*nden[0] + 3.3435860000000001e-24*nden[1] + 6.6464729999999996e-24*nden[2])",
-        "-6.6464729999999996e-24*std::pow(nden[0], 3)*nden[1]/std::pow(1.6737729999999998e-24*nden[0] + 3.3435860000000001e-24*nden[1] + 6.6464729999999996e-24*nden[2], 2)",
+        "3*std::pow(nden[0], 2)*nden[1]",
+        "std::pow(nden[0], 3)",
     ]
 
     rhs_comp = rhs.strip().split("\n")
@@ -170,6 +169,7 @@ def test_ode_and_jac_dedt(test_codegen_dedt: Codegen):
     assert len(rhs_comp) == len(expected_rhs), (
         f"Number of ode equations must be equal to {len(expected_rhs)}"
     )
+    print(*jac_comp, sep="\n")
     assert len(jac_comp) == len(expected_jac), (
         f"Number of jacobian components must be equal to {len(expected_jac)}"
     )

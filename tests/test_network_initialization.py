@@ -144,7 +144,7 @@ class TestNetworkInitialization:
                                         network = Network(sample_kida_file, errors=True)
 
         # Verify all methods were called
-        mock_load.assert_called_once_with(sample_kida_file, None, True, [], 0, False)
+        mock_load.assert_called_once_with(sample_kida_file, None, True)
         mock_sink.assert_called_once_with(True)
         mock_recomb.assert_called_once_with(True)
         mock_isomers.assert_called_once_with(True)
