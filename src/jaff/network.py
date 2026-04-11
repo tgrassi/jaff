@@ -839,7 +839,8 @@ class Network:
                 rate=rate,
                 tmin=tmin,
                 tmax=tmax,
-                dE=dE if dE is not None else parse_expr("0"),
+                dRad_dt=parse_expr("0.0"),  # Support for drad_dt will be added soon
+                dE=dE or parse_expr("0"),
                 original_string=original_string,
                 errors=False,
             )
