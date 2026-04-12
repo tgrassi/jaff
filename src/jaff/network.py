@@ -4,6 +4,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from textwrap import dedent
 from typing import NotRequired, TypedDict
 
 import h5py
@@ -135,8 +136,13 @@ class Network:
             fword = np.random.choice(words)
         except (FileNotFoundError, PermissionError, OSError, ValueError):
             fword = "Fancy"
-
-        print(f"\nWelcome to JAFF: Just Another {fword.title()} Format!\n")
+        welcome_text = dedent("""
+        Welcome to\n
+        ░░█ ▄▀█ █▀▀ █▀▀
+        █▄█ █▀█ █▀░ █▀░
+        """)
+        print(welcome_text)
+        print(f"Just Another {fword.title()} Format!\n")
 
     # ****************
     def load_mass_dict(self) -> None:
