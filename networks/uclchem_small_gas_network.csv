@@ -1,10 +1,9 @@
-! 
+!
 ! This is a small development reaction network from UCLCHEM; it includes a minimal amount of species on the ices + UMIST 22 reactions.
 ! This reaction network has NOT been verified for anything scientific, so it comes with NO warranty on the correctness of the reaction network.
 ! Produced using UCLCHEM v3.5.1 on 30-07-2025 by Gijs Vermariën
 ! Notation of species (molecules) in UCLCHEM: @ is bulk of the ice (not so reactive), # is the surface of the ice (reactive) and no prefix is gas phase.
-! 
-Reactant 1,Reactant 2,Reactant 3,Product 1,Product 2,Product 3,Product 4,Alpha,Beta,Gamma,T_min,T_max,reduced_mass,extrapolate
+! Reactant 1,Reactant 2,Reactant 3,Product 1,Product 2,Product 3,Product 4,Alpha,Beta,Gamma,T_min,T_max,reduced_mass,extrapolate
 @C,BULKSWAP,NAN,#C,NAN,NAN,NAN,1.0,0.0,0.0,0.0,10000.0,0.0,False
 @CH,BULKSWAP,NAN,#CH,NAN,NAN,NAN,1.0,0.0,0.0,0.0,10000.0,0.0,False
 @CH2,BULKSWAP,NAN,#CH2,NAN,NAN,NAN,1.0,0.0,0.0,0.0,10000.0,0.0,False
