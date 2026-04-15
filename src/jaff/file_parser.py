@@ -1289,7 +1289,7 @@ class Fileparser:
                     # Returns: list[str] - species names with +/-
                     "species_with_normalized_sign": {
                         "func": lambda: [
-                            specie.name.lower().replace("+", "j").replace("-", "")
+                            specie.name.lower().replace("+", "p").replace("-", "n")
                             for specie in self.net.species
                         ],
                         "vars": ["idx", "specie_with_normalized_sign"],

@@ -6,6 +6,7 @@ from typing import Any, Callable, NotRequired, TypedDict
 import sympy as sp
 from sympy.core.function import AppliedUndef
 
+from .common import resolve_symbolic_dependencies
 from .errors.parser import ParserError
 
 FunctionsDict = TypedDict(
@@ -133,7 +134,9 @@ class AuxilaryFunctionParser:
         self.__set_scope("function")
         if not self.globals_parsed:
             self.globals_parsed = True
-            self.globals = self.__simplify_dep_map(self.globals)
+            self.globals = resolve_symbolic_dependencies(
+                dep_map=self.globals, fname=self.file
+            )
 
         parts = segment.split("(", maxsplit=1)
         if len(parts) != 2:
@@ -205,8 +208,10 @@ class AuxilaryFunctionParser:
     def __handle_function_return(self) -> None:
         line = self.line
         line, _ = self.__strip_trailing_comment(line)
-        self.func_dict[self.current_func]["locals"] = self.__simplify_dep_map(
-            self.func_dict[self.current_func]["locals"], external_refs=self.globals
+        self.func_dict[self.current_func]["locals"] = resolve_symbolic_dependencies(
+            self.func_dict[self.current_func]["locals"],
+            external_refs=self.globals,
+            fname=self.file,
         )
 
         try:
@@ -239,41 +244,6 @@ class AuxilaryFunctionParser:
         self.func_dict[self.current_func].pop("locals")
         self.current_func = ""
         self.__set_scope("global")
-
-    def __simplify_dep_map(
-        self,
-        dep_map: dict[str, sp.Basic],
-        external_refs: dict[str, sp.Basic] | None = None,
-    ):
-        resolved = {}
-        visiting = set()
-        external = external_refs or {}
-
-        def dfs(sym: str):
-            if sym in resolved:
-                return resolved[sym]
-
-            if sym in external and sym not in dep_map:
-                return external[sym]
-
-            if sym in visiting:
-                raise ParserError(f"Cyclic dependency found for {sym}", fname=self.file)
-
-            visiting.add(sym)
-            expr = dep_map[sym]
-            new_expr = expr
-
-            for s in expr.free_symbols:
-                s_name = str(s)
-                if s_name in dep_map or s_name in external:
-                    new_expr = new_expr.subs(s, dfs(s_name))
-
-            visiting.remove(sym)
-            resolved[sym] = new_expr
-
-            return new_expr
-
-        return {sym: dfs(sym) for sym in dep_map}
 
     def __resolve_func_deps(self):
         resolved_defs = {}

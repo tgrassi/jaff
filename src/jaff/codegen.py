@@ -403,11 +403,13 @@ class Codegen:
                     for var, expr in replacements:
                         match = pattern.search(str(var))
                         idx: int = int(match.group(0)) if match is not None else 0
-                        expr = self.code_gen(expr, strict=False)
+                        expr = self.code_gen(
+                            expr, strict=False, allow_unknown_functions=True
+                        )
                         out["extras"]["cse"].append(IndexedValue([idx], expr))
 
                 for key, expr in zip(cse_dict.keys(), reduced_exprs):
-                    expr = self.code_gen(expr, strict=False)
+                    expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
                     cse_dict[key] = expr
 
         # Collect all rate expressions (CSE-optimized or original)
@@ -767,7 +769,11 @@ class Codegen:
             String containing the generated code for dedt calculation
         """
 
-        expr = self.code_gen(self.__gen_sdedt(specific_eint, norm), strict=False)
+        expr = self.code_gen(
+            self.__gen_sdedt(specific_eint, norm),
+            strict=False,
+            allow_unknown_functions=True,
+        )
 
         return expr
 
@@ -836,14 +842,14 @@ class Codegen:
             for var, expr in replacements:
                 match = pattern.search(str(var))
                 idx: int = int(match.group(0)) if match is not None else 0
-                expr = self.code_gen(expr, strict=False)
+                expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
                 ir["extras"]["cse"].append(IndexedValue([idx], expr))
 
             ode_symbols = reduced_exprs
 
         # Generate ODE code without CSE
         for i, expr in enumerate(ode_symbols):
-            expr = self.code_gen(expr, strict=False)
+            expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             ir["expressions"].append(IndexedValue([i], expr))
 
         return ir
@@ -975,13 +981,13 @@ class Codegen:
             for var, expr in replacements:
                 match = pattern.search(str(var))
                 idx: int = int(match.group(0)) if match is not None else 0
-                expr = self.code_gen(expr, strict=False)
+                expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
                 ir["extras"]["cse"].append(IndexedValue([idx], expr))
 
             rhs_symbols = reduced_exprs
 
         for i, expr in enumerate(rhs_symbols):
-            expr = self.code_gen(expr, strict=False)
+            expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             ir["expressions"].append(IndexedValue([i], expr))
 
         return ir
@@ -1073,13 +1079,13 @@ class Codegen:
             for var, expr in replacements:
                 match = pattern.search(str(var))
                 idx: int = int(match.group(0)) if match is not None else 0
-                expr = self.code_gen(expr, strict=False)
+                expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
                 ir["extras"]["cse"].append(IndexedValue([idx], expr))
 
             radode_symbols = reduced_exprs
 
         for i, expr in enumerate(radode_symbols):
-            expr = self.code_gen(expr, strict=False)
+            expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             ir["expressions"].append(IndexedValue([i], expr))
 
         return ir
@@ -1301,7 +1307,7 @@ class Codegen:
             for var, expr in replacements:
                 match = pattern.search(str(var))
                 idx: int = int(match.group(0)) if match is not None else 0
-                expr_str = self.code_gen(expr, strict=False)
+                expr_str = self.code_gen(expr, strict=False, allow_unknown_functions=True)
                 expr_str = dpattern.sub(lambda m: replace_y(m, "nden"), expr_str)
 
                 if radiation and self.net.radiation is not None:
@@ -1324,7 +1330,7 @@ class Codegen:
             if expr == 0:
                 continue
 
-            expr_str = self.code_gen(expr, strict=False)
+            expr_str = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             expr_str = dpattern.sub(lambda m: replace_y(m, "nden"), expr_str)
 
             if radiation and self.net.radiation is not None:

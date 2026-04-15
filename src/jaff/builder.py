@@ -23,7 +23,7 @@ class Builder:
         # import module based on the template name
         try:
             module = __import__(f"jaff.plugins.{template}.plugin", fromlist=["main"])
-        except ImportError as e:
+        except ImportError:
             print(f"Error: Template '{template}' not found. Available templates are:")
             for template in os.listdir(
                 os.path.join(os.path.dirname(__file__), "templates", "preprocessor")

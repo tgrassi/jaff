@@ -1,5 +1,6 @@
 import gzip
 import json
+import logging
 import os
 import re
 import sys
@@ -11,10 +12,16 @@ import h5py
 import numpy as np
 import sympy
 from sympy import (
+    Basic,
+    Expr,
+    Float,
     Function,
     Idx,
     MatrixSymbol,
+    Max,
+    Min,
     Piecewise,
+    Symbol,
     lambdify,
     parse_expr,
     srepr,
@@ -24,18 +31,13 @@ from sympy.core.function import AppliedUndef, UndefinedFunction
 from tqdm import tqdm
 
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
+from .common import resolve_symbolic_dependencies
+from .common.helper import resolve_dependencies
 from .core.logger import JaffLogger
 from .drivers.sqlite import JaffDb
 from .errors.parser import ParserError
 from .fastlog import fast_log2, inverse_fast_log2
-from .parsers import (
-    f90_convert,
-    parse_kida,
-    parse_krome,
-    parse_prizmo,
-    parse_uclchem,
-    parse_udfa,
-)
+from .network_parser import NetworkParser
 from .photochemistry import Photochemistry
 from .radiation import Radiation
 from .reaction import Reaction
@@ -79,7 +81,7 @@ class Network:
         rad_energy_density: bool = False,
         c: float = 2.99792458e10,  # Speed of light in cgs unit
     ):
-        self.logger = JaffLogger().get_logger()
+        self.logger: logging.Logger = JaffLogger().get_logger()
         self.motd()
 
         # Get the path to the data file relative to this module
@@ -89,8 +91,8 @@ class Network:
         self.reactions_dict = {}
         self.reactions: list[Reaction] = []
         self.rlist = self.plist = None
-        self.dEdt_chem = parse_expr("0")
-        self.dEdt_other = parse_expr("0")
+        self.dEdt_chem = Float(0.0)
+        self.dEdt_other = Float(0.0)
         self.file_name = fname
         self.label = label if label else os.path.basename(fname).split(".")[0]
         self.radiation: Radiation | None = (
@@ -98,7 +100,7 @@ class Network:
             if rad_bands
             else None
         )
-        self.dRad_dt_extra = parse_expr("0")
+        self.dRad_dt_extra = Float(0.0)
 
         self.logger.info(f"Loading network from {fname}")
         self.logger.info(f"Network label: {self.label}")
@@ -106,11 +108,8 @@ class Network:
         self.load_mass_dict()
         self.photochemistry = Photochemistry()
 
-        self.load_network(
-            fname,
-            funcfile,
-            replace_nH,
-        )
+        self.load_network(fname, funcfile, replace_nH)
+        self.__calculate_nework_extras(replace_nH)
 
         self.check_sink_sources(errors)
         self.check_recombinations(errors)
@@ -144,7 +143,6 @@ class Network:
         print(welcome_text)
         print(f"Just Another {fword.title()} Format!\n")
 
-    # ****************
     def load_mass_dict(self) -> None:
         with JaffDb() as jdb:
             rows = jdb.table("atomic_masses").all_rows()
@@ -153,322 +151,150 @@ class Network:
         for row in rows:
             self.mass_dict[row["element"]] = {"mass": row["mass"], "name": row["name"]}
 
-    # ****************
     def load_network(
         self,
         fname,
         funcfile,
         replace_nH,
     ):
-        default_species = []  # ["dummy", "CR", "CRP", "Photon"]
-        self.species = [
-            Species(s, self.mass_dict, i) for i, s in enumerate(default_species)
-        ]
-        self.species_dict = {s.name: s.index for s in self.species}
-        species_names = [x for x in default_species]
+        specie_names = set()
+        # All variables found in the rate expressions (not in the custom variables)
+        free_symbols = set()
+        undef_funcs = set()
+        interp_funcs = set()
 
-        # custom variables
-        variables_sympy = []
+        # number of photo-reactions
+        n_photo = 0
+        tgas = symbols("tgas")
 
-        # some of the shortcuts used in KROME
-        krome_shortcuts = """
-        t32=tgas/3e2
-        te=tgas*8.617343e-5
-        invt32 = 1e0 / t32
-        invte = 1e0 / te
-        invtgas = 1e0 / tgas
-        sqrtgas = sqrt(tgas)
-        user_tdust = tdust
-        user_av = av
-        """
-
-        # parse krome shortcuts
-        for row in krome_shortcuts.split("\n"):
-            srow = row.strip()
-            if srow == "" or srow.startswith("#"):
-                continue
-            var, val = srow.split("=")
-            variables_sympy.append([var, parse_expr(val, evaluate=False)])
-
-        # KROME fortan syntax that we need to remove and replace with
-        # symbols that can be substituted into arbitrary codes
-        KROME_replacements = [
-            [parse_expr("get_hnuclei(n)"), parse_expr("nh")],
-            [parse_expr("n(idx_h2)"), parse_expr("nh2")],
-            [parse_expr("n(idx_h)"), parse_expr("nh0")],
-            [parse_expr("n_global(idx_h2)"), parse_expr("nh2")],
-        ]
+        with NetworkParser(fname, self.logger) as netp:
+            reactions_list, global_vars = netp.get_parsed()
 
         # Read the auxiliary function file to get the list of functions
         # to substitute
         aux_funcs = self.read_aux_funcs(funcfile)
 
-        # all variables found in the rate expressions (not in the custom variables)
-        free_symbols_all = []
+        global_vars = {
+            var: resolve_dependencies(expr, {}, aux_funcs)
+            for var, expr in global_vars.items()
+        }
+        subs_dict: dict[Basic, Basic] = {
+            symbols(var.lower()): expr for var, expr in global_vars.items()
+        }
 
-        # flag to check if we are in PRIZMO variables section
-        in_variables = False
+        for i, reaction in enumerate(
+            tqdm(reactions_list, desc=f"Creating {self.label} network", unit=" reactions")
+        ):
+            reactants: list[str] = reaction["r"]
+            products: list[str] = reaction["p"]
+            tmin: float | None = reaction["tmin"]
+            tmax: float | None = reaction["tmax"]
+            rate: str = reaction["rate"]
+            aux_chem_rate = f"chemrate{i}"
+            aux_delta_rad = f"deltarad{i}"
+            aux_delta_e = f"deltae{i}"
 
-        # default krome format
-        krome_format = "@format:idx,R,R,R,P,P,P,P,tmin,tmax,rate"
+            # Handle reactants and products
+            for s in reactants + products:
+                if s not in specie_names:
+                    specie_names.add(s)
+                    self.species.append(Species(s, self.mass_dict, len(specie_names) - 1))
+                    self.species_dict[s] = self.species[-1].index
 
-        # read the file into a list of lines
-        lines = open(fname).readlines()
+            rr = [self.species[self.species_dict[r]] for r in reactants]
+            pp = [self.species[self.species_dict[p]] for p in products]
 
-        # remove empty lines and comments
-        lines = [x.strip() for x in lines if x.strip() != ""]
-        lines = [
-            x for x in lines if (not x.startswith("#")) or (",NAN," in x)
-        ]  # general comments
-        lines = [x for x in lines if not x.startswith("!")]  # kida comments
+            local_subs_dict = {**subs_dict}
 
-        # number of photo-reactions
-        n_photo = 0
+            # Handle rate
+            local_subs_dict[tgas] = (
+                Max(Min(tgas, tmax), tmin)
+                if tmin and tmax
+                else Max(tgas, tmin)
+                if tmin
+                else Min(tgas, tmax)
+                if tmax
+                else tgas
+            )
+            for sym, expr in local_subs_dict.items():
+                if sym != tgas and expr.has(tgas):
+                    local_subs_dict[sym] = expr.xreplace({tgas: local_subs_dict[tgas]})
 
-        # loop through the lines and parse them
-        for srow in tqdm(lines, desc=f"Parsing {self.label}", unit=" lines"):
-            # -------------------- PRIZMO --------------------
-            # check for PRIZMO variables
-            if srow.startswith("VARIABLES{"):
-                in_variables = True
-                continue
+            rate_expr, is_photoreaction, n_photo = self.__parse_rate(
+                aux_chem_rate, rate, aux_funcs, global_vars, n_photo
+            )
+            rate_expr = resolve_dependencies(rate_expr, local_subs_dict, aux_funcs)
 
-            # end of PRIZMO variables
-            if srow.startswith("}") and in_variables:
-                in_variables = False
-                continue
-
-            # store variables as a single string, it will be processed later
-            # format will be var1=value1;var2=value2;...
-            if in_variables:
-                self.logger.info(f"PRIZMO variable detected: {srow}")
-                srow = srow.replace(" ", "").strip().lower()
-                srow = f90_convert(srow)
-                var, val = srow.split("=")
-                try:
-                    variables_sympy.append((var, parse_expr(val, evaluate=False)))
-                except Exception as e:
-                    self.logger.warning(
-                        f"Could not parse variable ({e}), using string instead"
-                    )
-                    variables_sympy.append((var, val.strip()))
-                continue
-
-            # -------------------- KROME --------------------
-            # check for krome format
-            if srow.startswith("@format:"):
-                self.logger.info(f"KROME format detected: {srow}")
-                krome_format = srow.strip()
-                continue
-
-            # check for KROME variables
-            if srow.startswith("@var:"):
-                self.logger.info(f"KROME variable detected: {srow}")
-                srow = srow.replace("@var:", "").lower().strip()
-                srow = f90_convert(srow)
-                var, val = srow.split("=")
-                try:
-                    variables_sympy.append((var, parse_expr(val, evaluate=False)))
-                except Exception as e:
-                    self.logger.warning(
-                        f"Could not parse variable ({e}), using string instead"
-                    )
-                    variables_sympy.append((var, val.strip()))
-                continue
-
-            # skip KROME special lines
-            if srow.startswith("@"):
-                continue
-
-            # -------------------- REACTIONS --------------------
-            # determine the type of reaction line and parse it
-            try:
-                if "->" in srow:
-                    rr, pp, tmin, tmax, rate = parse_prizmo(srow)
-                elif ":" in srow:
-                    rr, pp, tmin, tmax, rate = parse_udfa(srow)
-                elif srow.count(",") > 3 and ",NAN," not in srow:
-                    rr, pp, tmin, tmax, rate = parse_krome(srow, krome_format)
-                elif ",NAN," in srow:
-                    rr, pp, tmin, tmax, rate = parse_uclchem(srow)
-                else:
-                    rr, pp, tmin, tmax, rate = parse_kida(srow)
-            except (ValueError, IndexError) as e:
-                self.logger.warning(f"Skipping invalid line: {srow[:50]}... ({e})")
-                continue
-
-            # use lowercase for rate
-            rate = rate.lower().strip()
-            is_photoreaction = False
-
-            # parse rate with sympy
-            # photo-chemistry
-            if "photo" in rate.lower():
-                is_photoreaction = True
-                # Extract arguments from photo(arg1, arg2) format
-                match = re.match(r"(?i)photo\((.*)\)", rate)
-                if match:
-                    args_str = match.group(1)
-                    photo_args = [arg.strip() for arg in args_str.split(",")]
-                    if len(photo_args) < 2:
-                        photo_args.append("1e99")
-                    f: UndefinedFunction = Function("photorates")  # type: ignore
-                    rate = f(n_photo, photo_args[0], photo_args[1])
-                    n_photo += 1
-                else:
-                    # Fallback to old parsing if regex fails
-                    photo_args = rate.split(",")
-                    if len(photo_args) < 3:
-                        photo_args.append(1e99)
-                    f: UndefinedFunction = Function("photorates")  # type: ignore
-                    rate = f(n_photo, photo_args[1], photo_args[2])
-                    n_photo += 1
-            else:
-                # parse non-photo-chemistry rates
-                rate = parse_expr(rate, evaluate=False)
-                # If rate is just a single variable name that got parsed as a function,
-                # convert it to a symbol
-                if hasattr(rate, "__name__") and rate.__name__ in [
-                    v[0] for v in variables_sympy
-                ]:
-                    rate = symbols(rate.__name__)
-
-            # use sympy to replace custom variables into the rate expression
-            # note: reverse order to allow for nested variable replacement
-            for vv in variables_sympy[::-1]:
-                var, val = vv
-                if isinstance(val, str):
-                    self.logger.warning(
-                        f"Variable {var} not replaced because it is a string, not a sympy expression"
-                    )
-                else:
-                    rate = rate.subs(symbols(var), val)
-
-            if tmin is not None and tmin > 0:
-                rate = rate.subs(symbols("tgas"), f"max(tgas, {tmin})")
-            if tmax is not None and tmax > 0:
-                rate = rate.subs(symbols("tgas"), f"min(tgas, {tmax})")
-
-            # Apply KROME replacement rules; note that these may be nested, so we
-            # do substitutions repeatedly until none remain
-            while True:
-                did_replacement = False
-                for repl in KROME_replacements:
-                    sub = rate.subs(repl[0], repl[1])
-                    if sub != rate:
-                        rate = sub
-                        did_replacement = True
-                if not did_replacement:
-                    break
-
-            # Replacements for fortran functions that do not have sympy
-            # equivalents: merge and log10. The former converts to piecewise,
-            # the latter to log divided by log(10).
-            funcs = [
-                f for f in rate.atoms(Function) if type(f.func) is UndefinedFunction
-            ]  # Grab undefined functions
-            expr_to_repl = []
-            expr_repl = []
-            for f in funcs:
-                if f.name == "merge":  # This is a merge function
-                    expr_to_repl.append(f)  # Add to replacement list
-                    expr_repl.append(
-                        Piecewise((f.args[0], f.args[2]), (f.args[1], True))
-                    )  # Equivalent Piecewise expression
-                elif f.name == "log10":  # This is a log10 function
-                    expr_to_repl.append(f)  # Add to replacement list
-                    expr_repl.append((sympy.log(f.args[0]) / sympy.log(10)))
-            for to_repl, repl in zip(expr_to_repl, expr_repl):
-                rate = rate.subs(to_repl, repl)  # Make replacement
-
-            # Apply the replacement rules for custom "ratefucntions",
-            # which are functions that directly override rates
-            chem_rate_func_name = f"chemRate{len(self.reactions)}"
-            aux_chem_rate_present = chem_rate_func_name in aux_funcs
-            if aux_chem_rate_present:
-                rate = aux_funcs[chem_rate_func_name]["def"]
+            # Resolve other functions
 
             # Read auxilary photon addition/consumption rate
             # which will be weighted and added to the moment 0
             # equation in each band
-            deltaRad = parse_expr("0")
-            delta_rad_func_name = f"deltaRad{len(self.reactions)}".lower()
-            aux_rad_extra_rate = delta_rad_func_name in aux_funcs
-            if aux_rad_extra_rate:
-                deltaRad = aux_funcs[delta_rad_func_name]["def"]
-
-            # convert reactants and products to Species objects
-            for s in rr + pp:
-                if s not in species_names:
-                    species_names.append(s)
-                    self.species.append(
-                        Species(s, self.mass_dict, len(species_names) - 1)
-                    )
-                    self.species_dict[s] = self.species[-1].index
-
-            # reactants and products are now Species objects
-            rr = [self.species[species_names.index(x)] for x in rr]
-            pp = [self.species[species_names.index(x)] for x in pp]
+            deltaRad: Basic = Float(0.0)
+            if aux_delta_rad in aux_funcs:
+                deltaRad = aux_funcs[aux_delta_rad]["def"]
 
             # If there is a deltaE function describing change in
             # chemical energy associated with this reaction, add
             # an appropriate term to the dEdt_chem for this network.
-            deltaE_name = f"deltaE{len(self.reactions)}"
-            deltaE = parse_expr("0")
-            if deltaE_name.lower() in aux_funcs.keys():
-                # deltaE
-                deltaE = aux_funcs[deltaE_name.lower()]["def"]
+            deltaE: Basic = Float(0.0)
+            if aux_delta_e in aux_funcs:
+                deltaE = aux_funcs[aux_delta_e]["def"]
 
-            for func in rate.atoms(AppliedUndef):
-                func_name = func.name.lower()
-                if func_name in aux_funcs:
-                    func_def = aux_funcs[func_name]["def"]
-                    func_args = aux_funcs[func_name]["args"]
-                    arg_map = dict(zip(func_args, func.args))
-                    rate = rate.subs(func, func_def.subs(arg_map))
+            for expr in [rate_expr, deltaE, deltaRad]:
+                free_symbols |= self.free_symbols(expr)
+                self.__detect_undefined_functions(expr, undef_funcs, interp_funcs)
 
-            # create a Reaction object
-            rea = Reaction(rr, pp, rate, tmin, tmax, deltaE, deltaRad, srow)
+            # Handle reaction
+            rea = Reaction(
+                rr, pp, rate_expr, tmin, tmax, deltaE, deltaRad, reaction["string"]
+            )
+            # Save to reaction list
+            self.reactions.append(rea)
 
             if is_photoreaction and self.radiation is not None:
-                if not aux_chem_rate_present:
+                if aux_chem_rate not in aux_funcs:
                     self.radiation.set_reaction_rate_coefficient(rea)
-                elif aux_chem_rate_present and aux_rad_extra_rate:
+                elif aux_chem_rate in aux_funcs and aux_delta_rad:
                     self.radiation.set_custom_rate(rea)
                 else:
                     raise ParserError(
                         "If radiation is enabled and a custom rate is supplied\n"
                         "for a photo reaction, the auxilary deltaRad function is\n"
                         "necessary to weigh the first moment radiation equations\n"
-                        f"Please add a custom deltaRad function for reaction {len(self.reactions)}"
+                        f"Please add a custom deltaRad function for reaction {i}"
                     )
 
             if rea.guess_type() == "photo":
                 rea.xsecs_dict = self.photochemistry.get_xsec(rea)
 
-            # Save to reaction list
-            self.reactions.append(rea)
+        # Add chemical and non-chemical heating and cooling rates
+        if "heatingcoolingrate" in aux_funcs:
+            self.dEdt_other = aux_funcs["heatingcoolingrate"]["def"]
+            self.dEdt_other = self.standardize_symbols(self.dEdt_other, replace_nH)
+            free_symbols |= self.free_symbols(self.dEdt_other)
+            self.__detect_undefined_functions(self.dEdt_other, undef_funcs, interp_funcs)
 
-        # Now that we have loaded all rates, apply replacement rules
-        # to replace standard symbols appearing in rates with terms
-        # involving known species
-        for rea in self.reactions:
-            rea.rate = self.standardize_symbols(rea.rate, replace_nH)
-            rea.dE = self.standardize_symbols(rea.dE, replace_nH)
-            rea.dRad_dt = self.standardize_symbols(rea.dRad_dt, replace_nH)
+        self.logger.info(
+            f"Variables found: {', '.join(sorted(str(s) for s in free_symbols))}"
+        )
+        self.logger.info(f"Loaded {len(self.reactions)} reactions")
+        self.logger.info(f"Loaded {n_photo} photo-chemistry reactions")
 
-            # Append any remaining un-replaced quantities to list
-            # of free symbols, removing nden's
-            free_symbols_all += [
-                fs for fs in rea.rate.free_symbols if "nden" not in fs.name
-            ]
-            free_symbols_all += [
-                fs for fs in rea.dE.free_symbols if "nden" not in fs.name
-            ]
+        # Issue warning message if undefined functions remain
+        if interp_funcs:
+            self.logger.info(
+                f"Found the following interpolation functions: {', '.join(interp_funcs)}"
+            )
+        if undef_funcs:
+            self.logger.warning(f"Found undefined functions {', '.join(undef_funcs)}")
 
-        # Generate the chemical dE/dt expression from rates and deltaE's
+    def __calculate_nework_extras(self, replace_nH):
+        # Apply replacement rules to replace standard symbols
+        # appearing in rates with terms involving known species
         nden = MatrixSymbol("nden", len(self.species), 1)
         for r in self.reactions:
+            r.rate = self.standardize_symbols(r.rate, replace_nH)
             dE_dt = r.dE * r.rate
             for s in r.reactants:
                 dE_dt *= nden[self.species_dict[s.name]]
@@ -477,61 +303,59 @@ class Network:
         self.dEdt_chem = self.standardize_symbols(self.dEdt_chem, replace_nH)
         self.dRad_dt_extra = self.standardize_symbols(self.dRad_dt_extra, replace_nH)
 
-        free_symbols_all += [
-            fs for fs in self.dEdt_chem.free_symbols if "nden" not in fs.name
-        ]
-        free_symbols_all += [
-            fs for fs in self.dRad_dt_extra.free_symbols if "nden" not in fs.name
-        ]
+    @staticmethod
+    def __parse_rate(
+        aux_chem_rate: str,
+        rate: str,
+        aux_funcs: dict[str, FunctionsDict],
+        global_vars: dict[str, Basic],
+        n_photo: int,
+    ) -> tuple[Basic, bool, int]:
+        is_photoreaction = False
+        if aux_chem_rate in aux_funcs:
+            rate_expr = aux_funcs[aux_chem_rate]["def"]
+        elif rate in global_vars:
+            rate_expr = symbols(rate)
+        elif "photo" in rate.lower():
+            is_photoreaction = True
+            f: UndefinedFunction = Function("photorates")  # type: ignore
+            n_photo += 1
 
-        # Add chemical and non-chemical heating and cooling rates
-        if "heatingCoolingRate" in aux_funcs.keys():
-            self.dEdt_other = aux_funcs["heatingCoolingRate"]["def"]
+            match = re.match(r"(?i:photo)\((.*?)\)", rate)
+            if match:
+                args_str = match.group(1)
+                photo_args: list[str | float] = [
+                    arg.strip() for arg in args_str.split(",") if arg.strip()
+                ]
+                while len(photo_args) < 2:
+                    photo_args.append(1.0e99)
 
-            # Standardize expression
-            self.dEdt_other = self.standardize_symbols(self.dEdt_other, replace_nH)
+                rate_expr = f(n_photo, photo_args[0], photo_args[1])
+            else:
+                photo_args: list[str | float] = [
+                    arg.strip() for arg in rate.split(",") if arg.strip()
+                ]
+                while len(photo_args) < 3:
+                    photo_args.append(1.0e99)
 
-            # Add symbols from dEdt_other to free symbol list
-            free_symbols_all += [
-                fs for fs in self.dEdt_other.free_symbols if "nden" not in fs.name
-            ]
+                rate_expr = f(n_photo, photo_args[1], photo_args[2])
+        else:
+            rate_expr = parse_expr(rate, evaluate=False)
 
-        # Get unique list of variables names found in all expressions
-        free_symbols_all = sorted([x.name for x in list(set(free_symbols_all))])
-
-        self.logger.info(f"Variables found: {', '.join(free_symbols_all)}")
-        self.logger.info(f"Loaded {len(self.reactions)} reactions")
-        self.logger.info(f"Loaded {n_photo} photo-chemistry reactions")
-
-        # Issue warning message if undefined functions remain
-        undef_funcs = set()
-        interp_funcs = set()
-        for r in self.reactions:
-            self.__detect_undefined_functions(r.rate, undef_funcs, interp_funcs)
-        self.__detect_undefined_functions(self.dEdt_chem, undef_funcs, interp_funcs)
-        self.__detect_undefined_functions(self.dEdt_other, undef_funcs, interp_funcs)
-        self.__detect_undefined_functions(self.dRad_dt_extra, undef_funcs, interp_funcs)
-
-        if interp_funcs:
-            self.logger.info(
-                f"Found the following interpolation functions: {', '.join(interp_funcs)}"
-            )
-        if undef_funcs:
-            self.logger.warning(f"Found undefined functions {', '.join(undef_funcs)}")
+        return rate_expr, is_photoreaction, n_photo
 
     @staticmethod
     def __detect_undefined_functions(
         expr: sympy.Expr, undef_funcs: set, interp_funcs: set
     ) -> None:
-        for f in expr.atoms(Function):
-            if isinstance(f.func, UndefinedFunction):
-                if "interp" in f.func.__name__:
-                    interp_funcs.add(f.func.__name__)
-                    continue
-                undef_funcs.add(f.func.__name__)
+        for f in expr.atoms(AppliedUndef):
+            if "interp" in f.func.__name__:
+                interp_funcs |= {f.func.__name__}
+                continue
+            undef_funcs |= {f.func.__name__}
 
     # ****************
-    def read_aux_funcs(self, funcfile: str | Path | None):
+    def read_aux_funcs(self, funcfile: str | Path | None) -> dict:
         """
         Read the auxiliary function file
 
@@ -878,6 +702,10 @@ class Network:
 
         return net
 
+    @staticmethod
+    def free_symbols(expr: Basic) -> set[Basic]:
+        return {fs for fs in expr.free_symbols if "nden" not in str(fs)}
+
     # ****************
     def compare_reactions(self, other, verbosity=1):
         print(f'Comparing networks "{self.label}" and "{other.label}"...')
@@ -1083,8 +911,7 @@ class Network:
     def get_reaction_verbatim(self, idx):
         return self.reactions[idx].get_verbatim()
 
-    # ****************
-    def standardize_symbols(self, expr, replace_nH):
+    def standardize_symbols(self, expr: Basic, replace_nH: bool):
         """
         This routine applies a set of standard substitution rules to
         standardize symbols.
@@ -1102,101 +929,83 @@ class Network:
         Returns:
             The expression with the substitution rules applied
         """
+        if expr == Float(0.0):
+            return expr
 
-        # Construct the standard "nden" symbol we will use
         nden = MatrixSymbol("nden", len(self.species), 1)
+        reps = {}
 
-        # Loop over free symbols
+        def get_element_sum(element):
+            terms = []
+            for i, spec in enumerate(self.species):
+                count = spec.exploded.count(element)
+                if count > 0:
+                    terms.append(count * nden[Idx(i)])
+
+            return sum(terms) if terms else None
+
+        simple_map = {
+            "nh0": "H",
+            "nh2": "H2",
+            "ne": "e-",
+            "nhp": "H+",
+        }
+
+        # Suffix mapping for the "n_" logic
+        # Symbols of the form "n_"
+        # Xp --> X+
+        # X0 --> X
+        # Xm --> X-
+        # e --> e-
+        # H --> sum over all H species
+        # He --> sum over all He species
+        n_suffixes = {"p": "+", "m": "-", "0": ""}
+
         for fs in expr.free_symbols:
+            name = str(fs)
+            low_name = name.lower()
             repl = None
 
-            # Check for defined symbols
-            if fs.name.lower() == "nh" and replace_nH:
-                # Number density of H nuclei in all forms
-                for spec in self.species:
-                    count = spec.exploded.count("H")
-                    if count > 0:
-                        if repl is None:
-                            repl = count * nden[Idx(self.species_dict[spec.name])]
-                        else:
-                            repl += count * nden[Idx(self.species_dict[spec.name])]
-            elif fs.name.lower() == "nh0":
-                # Number density if neutral hydrogen atoms
-                repl = nden[self.species_dict["H"]]
-            elif fs.name.lower() == "nh2":
-                # Number density of H2 nuclei
-                repl = nden[self.species_dict["H2"]]
-            elif fs.name.lower() == "ne":
-                repl = nden[self.species_dict["e-"]]
-            elif fs.name.lower() == "nhp":
-                repl = nden[self.species_dict["H+"]]
-            elif fs.name.lower() == "ntot":
-                # Total number density of all free particles
-                for i in range(len(self.species)):
-                    if i == 0:
-                        repl = nden[Idx(i)]
-                    else:
-                        repl += nden[Idx(i)]
-            elif fs.name.startswith("n_"):
-                # Symbols of the form "n_"
-                # Xp --> X+
-                # X0 --> X
-                # Xm --> X-
-                # e --> e-
-                # H --> sum over all H species
-                # He --> sum over all He species
-                spec_name = fs.name[2:]
-                if spec_name.endswith("p"):
-                    spec_name = spec_name[:-1] + "+"
-                elif spec_name.endswith("m"):
-                    spec_name = spec_name[:-1] + "-"
-                elif spec_name.endswith("0"):
-                    spec_name = spec_name[:-1]
-                elif spec_name == "e":
-                    spec_name = "e-"
-                elif spec_name == "H":
-                    spec_name = "all_H"
-                elif spec_name == "He":
-                    spec_name = "all_He"
+            # Handle special "ntot" (sum of all particles)
+            if low_name == "ntot":
+                repl = sum(nden[Idx(i)] for i in range(len(self.species)))
 
-                # Try replacing with nden symbol
-                if spec_name in self.species_dict:
-                    repl = nden[Idx(self.species_dict[spec_name])]
+            # Handle "nh" specifically
+            elif low_name == "nh":
+                repl = get_element_sum("H") if replace_nH else symbols("nh")
 
-                # Handle special cases
-                if spec_name == "all_H":
+            # Handle simple aliases (nh0, ne, etc)
+            elif low_name in simple_map:
+                spec_name = simple_map[low_name]
+                repl = nden[Idx(self.species_dict[spec_name])]
+
+            # Handle "n_" prefixed symbols
+            elif low_name.startswith("n_"):
+                core = name[2:]
+
+                # Sub-case: Element sums
+                if core in ["H", "He"]:
                     if replace_nH:
-                        for spec in self.species:
-                            count = spec.exploded.count("H")
-                            if count > 0:
-                                if repl is None:
-                                    repl = count * nden[Idx(self.species_dict[spec.name])]
-                                else:
-                                    repl += (
-                                        count * nden[Idx(self.species_dict[spec.name])]
-                                    )
+                        repl = get_element_sum(core)
                     else:
-                        repl = parse_expr("nh")
-                if spec_name == "all_He":
-                    if replace_nH:
-                        for spec in self.species:
-                            count = spec.exploded.count("He")
-                            if count > 0:
-                                if repl is None:
-                                    repl = count * nden[Idx(self.species_dict[spec.name])]
-                                else:
-                                    repl += (
-                                        count * nden[Idx(self.species_dict[spec.name])]
-                                    )
-                    else:
-                        repl = parse_expr("nhe")
+                        repl = symbols(f"n{core.lower()}")
 
-            # Apply replacement expression
+                # Specific species with suffixes
+                else:
+                    # Convert suffixes: Xp -> X+, Xm -> X-, X0 -> X, e -> e-
+                    if core == "e":
+                        core = "e-"
+                    elif core[-1] in n_suffixes:
+                        core = core[:-1] + n_suffixes[core[-1]]
+
+                    if core in self.species_dict:
+                        repl = nden[Idx(self.species_dict[core])]
+
+            # Add valid replacemnts ro the dictionary
             if repl is not None:
-                expr = expr.subs(fs, repl)
+                reps[fs] = repl
 
-        # Return
-        return expr
+        return expr.xreplace(reps)
 
     # *****************
     def get_number_of_species(self):

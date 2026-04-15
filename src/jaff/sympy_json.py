@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 import sympy
 
@@ -44,7 +44,9 @@ def dumps(
         "format": "jaff.sympy_json",
         "schema_version": SCHEMA_VERSION,
         "sympy_version": sympy.__version__,
-        "expr": to_jsonable(expr, compact=compact, include_assumptions=include_assumptions),
+        "expr": to_jsonable(
+            expr, compact=compact, include_assumptions=include_assumptions
+        ),
     }
     return json.dumps(payload, indent=indent, sort_keys=sort_keys)
 
@@ -59,7 +61,9 @@ def loads(s: str) -> sympy.Basic:
     return from_jsonable(payload.get("expr"))
 
 
-def to_jsonable(expr: sympy.Basic, *, compact: bool = True, include_assumptions: bool = True) -> Any:
+def to_jsonable(
+    expr: sympy.Basic, *, compact: bool = True, include_assumptions: bool = True
+) -> Any:
     if not isinstance(expr, sympy.Basic):
         raise TypeError(f"Expected sympy.Basic, got {type(expr)!r}")
     if compact:
@@ -123,8 +127,12 @@ class _Encoder:
             return {
                 "type": "MatrixSymbol",
                 "name": expr.name,
-                "rows": self.encode(sympy.Integer(rows)) if isinstance(rows, int) else self.encode(rows),
-                "cols": self.encode(sympy.Integer(cols)) if isinstance(cols, int) else self.encode(cols),
+                "rows": self.encode(sympy.Integer(rows))
+                if isinstance(rows, int)
+                else self.encode(rows),
+                "cols": self.encode(sympy.Integer(cols))
+                if isinstance(cols, int)
+                else self.encode(cols),
             }
 
         if _MatrixElement is not None and isinstance(expr, _MatrixElement):
@@ -222,12 +230,21 @@ class _EncoderCompact:
             return [
                 "MS",
                 expr.name,
-                self.encode(sympy.Integer(rows)) if isinstance(rows, int) else self.encode(rows),
-                self.encode(sympy.Integer(cols)) if isinstance(cols, int) else self.encode(cols),
+                self.encode(sympy.Integer(rows))
+                if isinstance(rows, int)
+                else self.encode(rows),
+                self.encode(sympy.Integer(cols))
+                if isinstance(cols, int)
+                else self.encode(cols),
             ]
 
         if _MatrixElement is not None and isinstance(expr, _MatrixElement):
-            return ["ME", self.encode(expr.parent), self.encode(expr.i), self.encode(expr.j)]
+            return [
+                "ME",
+                self.encode(expr.parent),
+                self.encode(expr.i),
+                self.encode(expr.j),
+            ]
 
         if _ExprCondPair is not None and isinstance(expr, _ExprCondPair):
             return ["ECP", self.encode(expr.expr), self.encode(expr.cond)]
@@ -379,7 +396,9 @@ class _Decoder:
             for p in pairs_obj:
                 pair = self.decode(p)
                 if _ExprCondPair is None or not isinstance(pair, _ExprCondPair):
-                    raise SympyJsonError("Piecewise.pairs must contain ExprCondPair nodes")
+                    raise SympyJsonError(
+                        "Piecewise.pairs must contain ExprCondPair nodes"
+                    )
                 pairs.append((pair.expr, pair.cond))
             return sympy.Piecewise(*pairs, evaluate=False)
 
@@ -460,7 +479,11 @@ class _DecoderCompact:
             return sympy.Integer(obj[1])
 
         if t == "Q":
-            if len(obj) != 3 or not isinstance(obj[1], int) or not isinstance(obj[2], int):
+            if (
+                len(obj) != 3
+                or not isinstance(obj[1], int)
+                or not isinstance(obj[2], int)
+            ):
                 raise SympyJsonError("Rational values missing/invalid")
             return sympy.Rational(obj[1], obj[2])
 
@@ -531,7 +554,9 @@ class _DecoderCompact:
             for p in obj[1]:
                 pair = self.decode(p)
                 if _ExprCondPair is None or not isinstance(pair, _ExprCondPair):
-                    raise SympyJsonError("Piecewise pairs must contain ExprCondPair nodes")
+                    raise SympyJsonError(
+                        "Piecewise pairs must contain ExprCondPair nodes"
+                    )
                 pairs.append((pair.expr, pair.cond))
             return sympy.Piecewise(*pairs, evaluate=False)
 

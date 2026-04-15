@@ -31,11 +31,11 @@ class Elements:
             network: Chemical reaction network containing species to analyze.
         """
         self.net: Network = network
-        self.elements: list[str] = self.__set_elements()
-        self.elements.sort()
-        self.nelems: int = len(self.elements)
+        self.elements: list[str] = []
+        self.nelms = 0
+        self.__set_elements()
 
-    def __set_elements(self) -> list[str]:
+    def __set_elements(self):
         """
         Extract unique chemical elements from all species in the network.
 
@@ -49,7 +49,10 @@ class Elements:
             elements |= set(specie.exploded)  # type: ignore[arg-type]
 
         # Filter to only alphabetic characters (element symbols) and convert to list
-        return list({element for element in elements if element.isalpha()})
+        self.elements = sorted(
+            list({element for element in elements if element.isalpha()})
+        )
+        self.nelems = len(self.elements)
 
     def get_element_truth_matrix(self) -> list[list[int]]:
         """

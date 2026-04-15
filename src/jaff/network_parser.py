@@ -3,9 +3,10 @@ import re
 from pathlib import Path
 from typing import Callable, TypedDict
 
-from sympy import parse_expr
+from sympy import Basic, parse_expr
+from tqdm import tqdm
 
-from .common import f90_convert
+from .common import f90_convert, resolve_symbolic_dependencies
 from .core.logger import JaffLogger
 from .errors.parser import ParserError
 
@@ -55,9 +56,21 @@ networkFormatProps = TypedDict(
     },
 )
 
+parsedListProps = TypedDict(
+    "parsedListProps",
+    {
+        "r": list[str],
+        "p": list[str],
+        "tmin": float | None,
+        "tmax": float | None,
+        "rate": str | Basic,
+        "string": str,
+    },
+)
+
 
 class NetworkParser:
-    def __init__(self, file: str | Path, logger: logging.Logger | None):
+    def __init__(self, file: str | Path, logger: logging.Logger | None = None):
         if isinstance(file, str):
             file = Path(file)
         if not isinstance(file, (str, Path)):
@@ -67,32 +80,17 @@ class NetworkParser:
         if not file.exists():
             raise FileNotFoundError(f"Network file not found in file system: {file}")
 
-        self.file: Path = file
-        self.logger: logging.Logger = logger or JaffLogger().get_logger()
-        self.line: str = ""
-        self.nline: int = 0
-        self.globals: dict[str, str] = {}  # Stores global custom variables
-        self.matched_group: None | re.Match = None
-        self.local_pattern: None | re.Pattern = None
-        self.matched_handler: None | Callable[..., None] = None
+        self.__file: Path = file
+        self.__logger: logging.Logger = logger or JaffLogger().get_logger()
+        self.__line: str = ""
+        self.__nline: int = 0
+        self.__globals: dict[str, Basic] = {}  # Stores global custom variables
+        self.__matched_group: None | re.Match = None
+        self.__local_pattern: None | re.Pattern = None
+        self.__matched_handler: None | Callable[..., None] = None
+        self.__set_known_replacments()
 
-        # Some krome shortcuts
-        krome_shortcuts = {
-            "t32": "tgas/3e2",
-            "te": "tgas*8.617343e-5",
-            "invt32": "1e0 / t32",
-            "invte": "1e0 / te",
-            "invtgas": "1e0 / tgas",
-            "sqrtgas": "sqrt(tgas)",
-            "user_tdust": "tdust",
-            "user_av": "av",
-        }
-        self.globals: dict[str, str] = {
-            var: parse_expr(expr, evaluate=False) for var, expr in krome_shortcuts.items()
-        }
-        del krome_shortcuts
-
-        self.format_props: networkFormatProps = {
+        self.__format_props: networkFormatProps = {
             "prizmo": {"parse_vars": False},
             "krome": {
                 "format_nline": 0,
@@ -104,45 +102,62 @@ class NetworkParser:
                 "rate": True,
             },
         }
-        self.valid_patterns = self._global_patterns_dict()
-        self.parsed_list: list[
-            tuple[list[str], list[str], float | None, float | None, str]
-        ] = []
+        self.__valid_patterns = self.__global_patterns_dict()
+        self.__parsed_list: list[parsedListProps] = []
 
-    def parse_file(self) -> None:
-        with open(self.file, "r") as f:
-            for i, line in enumerate(f):
-                self.nline = i
-                self.line = line
-                self._parse_line()
+        self.__parse_file()
+        self.__normalize_rates()
+        self.__globals = resolve_symbolic_dependencies(self.__globals, fname=self.__file)
 
-    def _parse_line(self) -> None:
-        if not self.line.strip():
+    def __enter__(self) -> "NetworkParser":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.__valid_patterns.clear()
+
+        return
+
+    def get_parsed(self) -> tuple[list[parsedListProps], dict[str, Basic]]:
+        return self.__parsed_list, resolve_symbolic_dependencies(
+            dep_map=self.__globals, fname=self.__file
+        )
+
+    def __parse_file(self) -> None:
+        with open(self.__file, "r") as f:
+            for i, line in enumerate(
+                tqdm(f, desc=f"Parsing {self.__file.name}", unit=" lines")
+            ):
+                self.__nline = i + 1
+                self.__line = line
+                self.__parse_line()
+
+    def __parse_line(self) -> None:
+        if not self.__line.strip():
             return
-        for _, pattern_dict in self.valid_patterns.items():
-            if match := pattern_dict["global_re"].match(self.line):
-                self.matched_group = match
-                self.local_pattern = pattern_dict["local_re"]
-                self.matched_handler = pattern_dict["handler"]
+        for _, pattern_dict in self.__valid_patterns.items():
+            if match := pattern_dict["global_re"].match(self.__line):
+                self.__matched_group = match
+                self.__local_pattern = pattern_dict["local_re"]
+                self.__matched_handler = pattern_dict["handler"]
                 break
 
-        if self.matched_handler is not None:
-            self.matched_handler()
-            self.matched_group = None
-            self.local_pattern = None
-            self.matched_handler = None
+        if self.__matched_handler is not None:
+            self.__matched_handler()
+            self.__matched_group = None
+            self.__local_pattern = None
+            self.__matched_handler = None
 
-    def _raise_error(self, message: str, **kwargs) -> None:
-        raise ParserError(message, self.line, self.nline, self.file, **kwargs)
+    def __raise_error(self, message: str, **kwargs) -> None:
+        raise ParserError(message, self.__line, self.__nline, self.__file, **kwargs)
 
-    def _handle_krome_format(self) -> None:
-        assert self.local_pattern is not None
-        match = self.local_pattern.match(self.line)
+    def __handle_krome_format(self) -> None:
+        assert self.__local_pattern is not None
+        match = self.__local_pattern.match(self.__line)
         if not match:
-            self._handle_krome_format_errors()
+            self.__handle_krome_format_errors()
 
-        self.format_props["krome"] = {
-            "format_nline": self.nline,
+        self.__format_props["krome"] = {
+            "format_nline": self.__nline,
             "idx": bool(match.group("idx")),
             "nreact": match.group("reactants").lower().count("r"),
             "nprod": match.group("products").lower().count("p"),
@@ -151,20 +166,20 @@ class NetworkParser:
             "rate": bool(match.group("rate")),
         }
 
-        self.valid_patterns = self._global_patterns_dict()
+        self.__valid_patterns = self.__global_patterns_dict()
 
-    def _handle_krome_format_errors(self):
-        assert self.matched_group is not None
-        format = self.matched_group.group("format")
+    def __handle_krome_format_errors(self):
+        assert self.__matched_group is not None
+        format = self.__matched_group.group("format")
         if format is None:
-            self._raise_error("Empty @format KROME declerative")
+            self.__raise_error("Empty @format KROME declerative")
 
         format = format.strip()
         if not format:
-            self._raise_error("Empty @format KROME declerative")
+            self.__raise_error("Empty @format KROME declerative")
 
         if "," not in format:
-            self._raise_error(
+            self.__raise_error(
                 "Invalid @format KROME declerative\n"
                 "@format decelerative must be separated by ','"
             )
@@ -173,34 +188,42 @@ class NetworkParser:
         tokens = [token.strip() for token in format.split(",")]
         for token in tokens:
             if token not in expected_tokens:
-                self._raise_error(
+                self.__raise_error(
                     f"Invalid token in krome format: {token}\n"
                     f"Supported tokens are {','.join(expected_tokens)}"
                 )
 
-        self._raise_error("Invalid @format KROME declerative")
+        self.__raise_error("Invalid @format KROME declerative")
 
-    def _handle_krome_var(self) -> None:
-        assert self.local_pattern is not None
-        match = self.local_pattern.match(self.line)
+    def __handle_krome_var(self) -> None:
+        assert self.__local_pattern is not None
+        match = self.__local_pattern.match(self.__line)
         if not match:
-            self._raise_error("Invalid KROME variable assignment detected")
+            self.__raise_error("Invalid KROME variable assignment detected")
 
-        self.globals[match.group("var")] = f90_convert(match.group("expr"))
+        try:
+            self.__globals[match.group("var").lower()] = parse_expr(
+                f90_convert(match.group("expr").lower())
+            )
+        except (SyntaxError, NameError, TypeError):
+            self.__logger.warning(
+                f"Skipping variable: {match.group('var')}\n"
+                f"at line: {self.__nline} since the expression is invalid sympy syntax"
+            )
 
-    def _handle_krome_var_errors(self):
-        assert self.matched_group is not None
-        segment = self.matched_group.group("segment")
+    def __handle_krome_var_errors(self):
+        assert self.__matched_group is not None
+        segment = self.__matched_group.group("segment")
 
         if segment is None:
-            self._raise_error("Empty segment after KROME @var declerative")
+            self.__raise_error("Empty segment after KROME @var declerative")
 
         segment = segment.strip()
         if not segment:
-            self._raise_error("Empty segment after KROME @var declerative")
+            self.__raise_error("Empty segment after KROME @var declerative")
 
         if "=" not in segment:
-            self._raise_error(
+            self.__raise_error(
                 "Invalid KROME @var declerative\n"
                 "@var declerative must follow format: @var: varname=expression"
             )
@@ -210,51 +233,60 @@ class NetworkParser:
         expr = expr.strip()
 
         if not var_name:
-            self._raise_error(
+            self.__raise_error(
                 "Invalid KROME @var declerative\nVariable name cannot be empty"
             )
 
         if not expr:
-            self._raise_error(
+            self.__raise_error(
                 "Invalid KROME @var declerative\nExpression cannot be empty"
             )
 
-        self._raise_error("Invalid KROME @var declerative")
+        self.__raise_error("Invalid KROME @var declerative")
 
-    def _handle_prizmo_vars(self) -> None:
-        assert self.local_pattern is not None
-        match = self.local_pattern.match(self.line)
+    def __handle_prizmo_vars(self) -> None:
+        assert self.__local_pattern is not None
+        match = self.__local_pattern.match(self.__line)
         if not match:
-            self._handle_prizmo_vars_errors()
+            self.__handle_prizmo_vars_errors()
 
         assert match is not None
 
         if match.group("begin"):
-            self.format_props["prizmo"]["parse_vars"] = True
+            self.__format_props["prizmo"]["parse_vars"] = True
             return
 
         if match.group("end"):
-            self.format_props["prizmo"]["parse_vars"] = False
+            self.__format_props["prizmo"]["parse_vars"] = False
             return
 
         if (
             match.group("var")
             and match.group("expr")
-            and self.format_props["prizmo"]["parse_vars"]
+            and self.__format_props["prizmo"]["parse_vars"]
         ):
-            self.globals[match.group("var")] = f90_convert(match.group("expr"))
+            try:
+                self.__globals[match.group("var").lower()] = parse_expr(
+                    f90_convert(match.group("expr").lower())
+                )
 
-    def _handle_prizmo_vars_errors(self) -> None:
-        assert self.matched_group is not None
-        segment = self.matched_group.group("segment")
-        assignment = self.matched_group.group("assignment")
+            except (SyntaxError, NameError, TypeError):
+                self.__logger.warning(
+                    f"Skipping variable: {match.group('var')}\n"
+                    f"at line: {self.__nline} since the expression is invalid sympy syntax"
+                )
+
+    def __handle_prizmo_vars_errors(self) -> None:
+        assert self.__matched_group is not None
+        segment = self.__matched_group.group("segment")
+        assignment = self.__matched_group.group("assignment")
 
         if segment is None and assignment is None:
-            self._raise_error("Invalid PRIZMO variable section")
+            self.__raise_error("Invalid PRIZMO variable section")
 
         if assignment is not None:
-            if not self.format_props["prizmo"]["parse_vars"]:
-                self._raise_error(
+            if not self.__format_props["prizmo"]["parse_vars"]:
+                self.__raise_error(
                     "PRIZMO variable assignment found outside VARIABLES block"
                 )
 
@@ -263,20 +295,20 @@ class NetworkParser:
             expr = expr.strip()
 
             if not var_name.isidentifier():
-                self._raise_error(f"Invalid variable name '{var_name}'")
+                self.__raise_error(f"Invalid variable name '{var_name}'")
 
             if not expr:
-                self._raise_error("Expression cannot be empty")
+                self.__raise_error("Expression cannot be empty")
 
         segment = segment.strip()
         if segment:
-            self._raise_error("Extra characters found after PRIZMO block declarative")
+            self.__raise_error("Extra characters found after PRIZMO block declarative")
 
-    def _handler_prizmo(self):
-        assert self.local_pattern is not None
-        match = self.local_pattern.match(self.line)
+    def __handle_prizmo(self):
+        assert self.__local_pattern is not None
+        match = self.__local_pattern.match(self.__line)
         if not match:
-            self._handle_prizmo_errors()
+            self.__handle_prizmo_errors()
 
         reactants: str = match.group("reactants")
         products: str = match.group("products")
@@ -312,16 +344,25 @@ class NetworkParser:
 
         rate = rate.replace("user_crflux", "crate").replace("user_av", "av")
 
-        self.parsed_list.append((rr, pp, t_min, t_max, rate))
+        self.__parsed_list.append(
+            {
+                "r": rr,
+                "p": pp,
+                "tmin": t_min,
+                "tmax": t_max,
+                "rate": rate,
+                "string": self.__line.strip(),
+            }
+        )
 
-    def _handle_prizmo_errors(self):
-        self._raise_error("Invalid PRIZMO reaction detected")
+    def __handle_prizmo_errors(self):
+        self.__raise_error("Invalid PRIZMO reaction detected")
 
-    def _handler_krome(self):
-        assert self.local_pattern is not None
-        match = self.local_pattern.match(self.line)
+    def __handler_krome(self):
+        assert self.__local_pattern is not None
+        match = self.__local_pattern.match(self.__line)
         if not match:
-            self._handle_krome_error()
+            self.__handle_krome_error()
 
         reactants: str = match.group("reactants")
         products: str = match.group("products")
@@ -332,27 +373,34 @@ class NetworkParser:
         rr: list[str] = [r.strip() for r in reactants.split(",")[:-1]]
         pp: list[str] = [p.strip() for p in products.split(",")[:-1]]
 
-        if len(rr) != self.format_props["krome"]["nreact"]:
-            self._raise_error(
+        if len(rr) != self.__format_props["krome"]["nreact"]:
+            self.__raise_error(
                 "Invalid KROME line detected\n"
-                f"Expected {self.format_props['krome']['nreact']} reactants\n"
-                f"from line {self.format_props['krome']['format_nline']}.\n"
+                f"Expected {self.__format_props['krome']['nreact']} reactants\n"
+                f"from line {self.__format_props['krome']['format_nline']}.\n"
                 f"Instead got {len(rr)} reactants"
             )
 
-        if len(pp) != self.format_props["krome"]["nprod"]:
-            self._raise_error(
+        if len(pp) != self.__format_props["krome"]["nprod"]:
+            self.__raise_error(
                 "Invalid KROME line detected\n"
-                f"Expected {self.format_props['krome']['nprod']} products \n"
-                f"from line {self.format_props['krome']['format_nline']}.\n"
+                f"Expected {self.__format_props['krome']['nprod']} products \n"
+                f"from line {self.__format_props['krome']['format_nline']}.\n"
                 f"Instead got {len(pp)} products"
             )
 
         t_min: None | float = None
         t_max: None | float = None
-        sp_reps = {"E": "e-", "e": "e-", "g": "", "HE": "He"}
+
+        sp_reps = {"E": "e-", "e": "e-", "g": ""}
         rr = [sp_reps.get(r, r) for r in rr]
         pp = [sp_reps.get(p, p) for p in pp]
+
+        sp_sreps = {"HE": "He"}
+
+        for k, v in sp_sreps.items():
+            rr = [x.replace(k, v) for x in rr]
+            pp = [x.replace(k, v) for x in pp]
 
         rr = [r for r in rr if r != ""]
         pp = [p for p in pp if p != ""]
@@ -389,13 +437,22 @@ class NetworkParser:
         if "auto" in rate:
             rate = rate.replace("auto", "PHOTO, 1e99")
 
-        self.parsed_list.append((rr, pp, t_min, t_max, rate))
+        self.__parsed_list.append(
+            {
+                "r": rr,
+                "p": pp,
+                "tmin": t_min,
+                "tmax": t_max,
+                "rate": rate,
+                "string": self.__line.strip(),
+            }
+        )
 
-    def _handle_krome_error(self):
-        assert self.matched_group is not None
+    def __handle_krome_error(self):
+        assert self.__matched_group is not None
 
-        segment = self.matched_group.group("segment").lower()
-        props = self.format_props["krome"]
+        segment = self.__matched_group.group("segment").lower()
+        props = self.__format_props["krome"]
         num_fields = (
             int(props["idx"])
             + props["nreact"]
@@ -407,7 +464,7 @@ class NetworkParser:
         num_fields_detected: int = segment.count(",") + 1
 
         if num_fields != num_fields_detected:
-            self._raise_error(
+            self.__raise_error(
                 "Number of fields in KROME reaction doesn't match\n"
                 f"Number of fields detected: {num_fields_detected}\n"
                 f"Number of fields expected: {num_fields}\n"
@@ -419,7 +476,7 @@ class NetworkParser:
             )
 
         if segment.count("r") != props["nreact"]:
-            self._raise_error(
+            self.__raise_error(
                 "Expected number of reactants did not match krome format\n"
                 f"Number of reactants expected: {props['nreact']}\n"
                 f"Number of reactants detected: {segment.count('r')}\n"
@@ -431,7 +488,7 @@ class NetworkParser:
             )
 
         if segment.count("p") != props["nprod"]:
-            self._raise_error(
+            self.__raise_error(
                 "Expected number of products did not match krome format\n"
                 f"Number of products expected: {props['nprod']}\n"
                 f"Number of products detected: {props['nprod']}\n"
@@ -442,13 +499,13 @@ class NetworkParser:
                 )
             )
 
-        self._raise_error("Invalid KROME reaction detected")
+        self.__raise_error("Invalid KROME reaction detected")
 
-    def _handle_udfa(self):
-        assert self.local_pattern is not None
-        match = self.local_pattern.match(self.line)
+    def __handle_udfa(self):
+        assert self.__local_pattern is not None
+        match = self.__local_pattern.match(self.__line)
         if not match:
-            self._handle_udfa_errors()
+            self.__handle_udfa_errors()
 
         ignore_species = {"CR", "CRP", "PHOTON", "CRPHOT", ""}
 
@@ -486,16 +543,25 @@ class NetworkParser:
             p.strip() for p in products.split(":")[:-1] if p.strip() not in ignore_species
         ]
 
-        self.parsed_list.append((rr, pp, t_min, t_max, rate))
+        self.__parsed_list.append(
+            {
+                "r": rr,
+                "p": pp,
+                "tmin": t_min,
+                "tmax": t_max,
+                "rate": rate,
+                "string": self.__line.strip(),
+            }
+        )
 
-    def _handle_udfa_errors(self):
-        self._raise_error("Invalid UDFA reaction detected")
+    def __handle_udfa_errors(self):
+        self.__raise_error("Invalid UDFA reaction detected")
 
-    def _handle_uclchem(self):
-        assert self.local_pattern is not None
-        match = self.local_pattern.match(self.line)
+    def __handle_uclchem(self):
+        assert self.__local_pattern is not None
+        match = self.__local_pattern.match(self.__line)
         if not match:
-            self._handle_uclchem_errors()
+            self.__handle_uclchem_errors()
 
         reactants: str = match.group("reactants")
         products: str = match.group("products")
@@ -531,14 +597,12 @@ class NetworkParser:
         t_max: float = 1e6 if extrapolate else tmax
 
         rr: list[str] = [
-            self._normalize_uclchem_species(r)
-            for r in reactants.split(",")
-            if r.strip() not in ignore_species
+            self.__normalize_uclchem_species(r) for r in reactants.split(",")
         ]
         pp: list[str] = [
-            self._normalize_uclchem_species(p)
+            self.__normalize_uclchem_species(p)
             for p in products.split(",")
-            if p.strip() not in ignore_species
+            if p.strip().upper() not in ignore_species
         ]
 
         rate = "0.0"
@@ -548,30 +612,34 @@ class NetworkParser:
             "PHOTON": f"{ka:.2e} * fuv * exp(-{kc:.2f} * av)",
             "FREEZE": f"(1e0 + {kb:.2e} * 1.671e-3/tgas/asize)*nuth*sigmah*sqrt(tgas/m)",
         }
-
-        line_upper = self.line.upper()
-        if ",CRP," in line_upper:
-            rate = rate_dict["CRP"]
-        elif ",CRPHOT," in line_upper:
-            rate = rate_dict["CRPHOT"]
-        elif ",PHOTON," in line_upper:
-            rate = rate_dict["PHOTON"]
-        elif ",FREEZE," in line_upper:
-            rate = rate_dict["FREEZE"]
+        for r in rr:
+            if r.upper() in rate_dict:
+                rate = rate_dict[r.upper()]
+                break
+        rr = [r for r in rr if r.strip().upper() not in ignore_species]
 
         # FIXME: old parser sets rate = "0.0" at the very end
         rate = "0.0"
 
-        self.parsed_list.append((rr, pp, t_min, t_max, rate))
+        self.__parsed_list.append(
+            {
+                "r": rr,
+                "p": pp,
+                "tmin": t_min,
+                "tmax": t_max,
+                "rate": rate,
+                "string": self.__line.strip(),
+            }
+        )
 
-    def _handle_uclchem_errors(self):
-        self._raise_error("Invalid UCLCHEM reaction detected")
+    def __handle_uclchem_errors(self):
+        self.__raise_error("Invalid UCLCHEM reaction detected")
 
-    def _handle_kida(self):
-        assert self.local_pattern is not None
-        match = self.local_pattern.match(self.line)
+    def __handle_kida(self):
+        assert self.__local_pattern is not None
+        match = self.__local_pattern.match(self.__line)
         if not match:
-            self._handle_kida_errors()
+            self.__handle_kida_errors()
 
         reactants: str = match.group("reactants")
         products: str = match.group("products")
@@ -586,16 +654,16 @@ class NetworkParser:
         t_max = tmax if tmax < 9999.0 else None
 
         rates_dict = {
-            1: f"{ka} * crate",
-            2: f"{ka} * exp(-{kc}*av)",
-            3: f"{ka}"
-            + (f" * (tgas / 300) ** ({kb})" if kb != 0.0 else "")
-            + (f" * exp(-{kc} / tgas)" if kc != 0.0 else ""),
-            4: f"{ka * kb}"
-            + (f" * (0.62 + 0.4767 * {kc} * sqrt(300 / tgas))" if kc != 0.0 else ""),
-            5: f"{ka * kb}"
+            1: f"{ka:.2e} * crate",
+            2: f"{ka:.2e} * exp(-{kc:.2e}*av)",
+            3: f"{ka:.2e}"
+            + (f" * (tgas / 300) ** ({kb:.2e})" if kb != 0.0 else "")
+            + (f" * exp(-{kc:.2f} / tgas)" if kc != 0.0 else ""),
+            4: f"{ka * kb:.2e}"
+            + (f" * (0.62 + 0.4767 * {kc:2e} * sqrt(300 / tgas))" if kc != 0.0 else ""),
+            5: f"{ka * kb:.2e}"
             + (
-                f" * (1 + 0.0967 * {kc} * sqrt(300 / tgas + {kc**2} * 3e2 / 10.526 / tgas))"
+                f" * (1 + 0.0967 * {kc:.2e} * sqrt(300 / tgas + {kc**2:.2e} * 3e2 / 10.526 / tgas))"
                 if kc != 0.0
                 else ""
             ),
@@ -603,25 +671,34 @@ class NetworkParser:
 
         rate = rates_dict.get(formula, "0.0")
 
-        ignore_species = {"CR", "CRP", "Photon"}
+        ignore_species = {"cr", "crp", "photon"}
         rr = [
             r.strip()
             for r in reactants.split()
-            if r != "+" and r.strip() not in ignore_species
+            if r != "+" and r.strip().lower() not in ignore_species
         ]
         pp = [
             p.strip()
             for p in products.split()
-            if p != "+" and p.strip() not in ignore_species
+            if p != "+" and p.strip().lower() not in ignore_species
         ]
 
-        self.parsed_list.append((rr, pp, t_min, t_max, rate))
+        self.__parsed_list.append(
+            {
+                "r": rr,
+                "p": pp,
+                "tmin": t_min,
+                "tmax": t_max,
+                "rate": rate,
+                "string": self.__line.strip(),
+            }
+        )
 
-    def _handle_kida_errors(self):
-        self._raise_error("Invalid KIDA reaction detected")
+    def __handle_kida_errors(self):
+        self.__raise_error("Invalid KIDA reaction detected")
 
     @staticmethod
-    def _normalize_uclchem_species(s: str):
+    def __normalize_uclchem_species(s: str):
         s = s.strip()
         if s.startswith("#"):
             s = s[1:] + "_DUST"
@@ -637,7 +714,34 @@ class NetworkParser:
 
         return s
 
-    def _global_patterns_dict(self) -> dict[str, patternProps]:
+    def __set_known_replacments(self) -> None:
+        # Some krome replacements
+        # Order matters here
+        # Expressions with dependencies must come first
+        replacements = {
+            "invt32": "1e0 / t32",
+            "invte": "1e0 / te",
+            "t32": "tgas/3e2",
+            "te": "tgas*8.617343e-5",
+            "invtgas": "1e0 / tgas",
+            "sqrtgas": "sqrt(tgas)",
+            "user_tdust": "tdust",
+            "user_av": "av",
+            "get_hnuclei(n)": "nh",
+            "n(idx_h2)": "nh2",
+            "n(idx_h)": "nh0",
+            "n_global(idx_h2)": "nh2",
+        }
+
+        for k, v in replacements.items():
+            self.__globals[k] = parse_expr(v)
+
+    def __normalize_rates(self):
+        for r in self.__parsed_list:
+            assert isinstance(r["rate"], str)
+            r["rate"] = r["rate"].lower()
+
+    def __global_patterns_dict(self) -> dict[str, patternProps]:
         patterns: dict = {
             "krome_format": {
                 "global_re": r"^\s*@format\s*:(?P<format>.*?)$",
@@ -650,7 +754,7 @@ class NetworkParser:
                     r"(?P<tmax>(?i:tmax)\s*,?\s*)?"
                     r"(?P<rate>(?i:rate)\s*)?\s*$"
                 ),
-                "handler": self._handle_krome_format,
+                "handler": self.__handle_krome_format,
             },
             "krome_var": {
                 "global_re": r"^\s*@var\s*:(?P<segment>.*?)$",
@@ -660,7 +764,7 @@ class NetworkParser:
                     r"\s*=\s*"
                     r"\s*(?P<expr>.*?)\s*$"
                 ),
-                "handler": self._handle_krome_var,
+                "handler": self.__handle_krome_var,
             },
             "prizmo_vars": {
                 "global_re": (
@@ -679,7 +783,7 @@ class NetworkParser:
                     r"\s*=\s*"
                     r"\s*(?P<expr>.*?)\s*$"
                 ),
-                "handler": self._handle_prizmo_vars,
+                "handler": self.__handle_prizmo_vars,
             },
             "prizmo": {
                 "global_re": r"^(?!\s*[!#]).*->.*$",
@@ -696,7 +800,7 @@ class NetworkParser:
                     r"(?P<rate>.*)"
                     r"\s*$"
                 ),
-                "handler": self._handler_prizmo,
+                "handler": self.__handle_prizmo,
             },
             "udfa": {
                 "global_re": r"^(?!\s*[!#@]).*:.*$",
@@ -712,7 +816,7 @@ class NetworkParser:
                     r"\s*(?P<tmin>[^:]*)\s*:"
                     r"\s*(?P<tmax>[^:]*?)(?:\s*:.*)?$"
                 ),
-                "handler": self._handle_udfa,
+                "handler": self.__handle_udfa,
             },
             "krome": {
                 "global_re": (
@@ -726,25 +830,25 @@ class NetworkParser:
                     r"(?!.*,\s*(?i:NAN)\s*(?:,|$))"
                     + (
                         r"(?P<idx>[^,]*)\s*,\s*"
-                        if self.format_props["krome"]["idx"]
+                        if self.__format_props["krome"]["idx"]
                         else ""
                     )
-                    + rf"(?P<reactants>(?:[^,]*\s*,\s*){{{self.format_props['krome']['nreact']}}})"
-                    + rf"(?P<products>(?:[^,]*\s*,\s*){{{self.format_props['krome']['nprod']}}})"
+                    + rf"(?P<reactants>(?:[^,]*\s*,\s*){{{self.__format_props['krome']['nreact']}}})"
+                    + rf"(?P<products>(?:[^,]*\s*,\s*){{{self.__format_props['krome']['nprod']}}})"
                     + (
                         r"(?P<tmin>[^,]*)\s*,\s*"
-                        if self.format_props["krome"]["tmin"]
+                        if self.__format_props["krome"]["tmin"]
                         else ""
                     )
                     + (
                         r"(?P<tmax>[^,]*)\s*,\s*"
-                        if self.format_props["krome"]["tmax"]
+                        if self.__format_props["krome"]["tmax"]
                         else ""
                     )
-                    + (r"(?P<rate>.*)" if self.format_props["krome"]["rate"] else "")
+                    + (r"(?P<rate>.*)" if self.__format_props["krome"]["rate"] else "")
                     + r"\s*$"
                 ),
-                "handler": self._handler_krome,
+                "handler": self.__handler_krome,
             },
             "uclchem": {
                 "global_re": (r"^(?!\s*[!]|(?:\s*#\s)).*,\s*(?i:NAN)\s*(?:,|$)"),
@@ -761,7 +865,7 @@ class NetworkParser:
                     r"(?P<extrapolate>.*?)"
                     r"\s*$"
                 ),
-                "handler": self._handle_uclchem,
+                "handler": self.__handle_uclchem,
             },
             "kida": {
                 "global_re": r"^(?!\s*[!#@]).{34}.{57}",
@@ -777,7 +881,7 @@ class NetworkParser:
                     r"\s*(?P<formula>[^\s]+)"
                     r".*$"
                 ),
-                "handler": self._handle_kida,
+                "handler": self.__handle_kida,
             },
         }
 
