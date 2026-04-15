@@ -19,8 +19,8 @@ struct ChemistryODE {
   using jacobian_type = std::array<std::array<integrators::Real, neqs>, neqs>;
 
   // Species indices and common constants
-  // $JAFF REPEAT idx, specie IN species_with_normalized_sign
-  static constexpr int idx_$specie$ = $idx$;
+  // $JAFF REPEAT idx, specie_with_normalized_sign IN species_with_normalized_sign
+  static constexpr int idx_$specie_with_normalized_sign$ = $idx$;
   // $JAFF END
   // $JAFF SUB nspec,nreact
   static constexpr int nspecs = $nspec$;
