@@ -41,3 +41,10 @@ class ParserError(Exception):
         error_str += self.message
 
         return error_str
+
+
+class NotJaffFileError(Exception):
+    def __init__(self, message: str, file: Path | None = None):
+        message = f"{message}\n{'File: {file}' if file is not None else ''}"
+
+        super().__init__(message)

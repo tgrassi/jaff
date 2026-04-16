@@ -13,15 +13,12 @@ import numpy as np
 import sympy
 from sympy import (
     Basic,
-    Expr,
     Float,
     Function,
     Idx,
     MatrixSymbol,
     Max,
     Min,
-    Piecewise,
-    Symbol,
     lambdify,
     parse_expr,
     srepr,
@@ -31,14 +28,15 @@ from sympy.core.function import AppliedUndef, UndefinedFunction
 from tqdm import tqdm
 
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
-from .common import resolve_symbolic_dependencies
-from .common.helper import resolve_dependencies
+from .common import is_jaff_file
+from .common.helper import load_mass_dict, resolve_dependencies
+from .core.io import JaffProps, from_jaff_file, to_jaff_file
 from .core.logger import JaffLogger
-from .drivers.sqlite import JaffDb
-from .errors.parser import ParserError
+from .errors import ParserError
 from .fastlog import fast_log2, inverse_fast_log2
 from .network_parser import NetworkParser
 from .photochemistry import Photochemistry
+from .physics import constants
 from .radiation import Radiation
 from .reaction import Reaction
 from .species import Species
@@ -71,45 +69,64 @@ class Network:
     # ****************
     def __init__(
         self,
-        fname,
-        errors=False,
-        label=None,
-        funcfile=None,
-        replace_nH=True,
-        rad_bands=[],
+        fname: str | Path,
+        errors: bool = False,
+        label: str | None = None,
+        funcfile: str | Path | None = None,
+        replace_nH: bool = True,
+        rad_bands: list[str | int | float | Basic] = [],
         rad_powerlaw_index: int | float = 0,
         rad_energy_density: bool = False,
-        c: float = 2.99792458e10,  # Speed of light in cgs unit
+        c: float = constants.c,  # Speed of light in cgs unit
     ):
+        if isinstance(fname, str):
+            fname = Path(fname)
+
+        fname = fname.resolve()
+        if not fname.exists():
+            raise FileNotFoundError(
+                f"Invalid network file supplied: {fname}\n"
+                "File not found in local file system"
+            )
+
+        jaff_props: JaffProps = {}
+        loaded_from_jaff_file = is_jaff_file(fname)
+        if loaded_from_jaff_file:
+            jaff_props = from_jaff_file(fname, errors)
+
+        self.file_name: Path = jaff_props.get("file_name", fname)
+        self.label = jaff_props.get("label", label or self.file_name.stem)
         self.logger: logging.Logger = JaffLogger().get_logger()
         self.motd()
 
         # Get the path to the data file relative to this module
         self.mass_dict: dict[str, ElementProps] = {}
-        self.species = []
-        self.species_dict = {}
-        self.reactions_dict = {}
+        self.species: list[Species] = []
+        self.species_dict: dict[str, int] = {}
         self.reactions: list[Reaction] = []
-        self.rlist = self.plist = None
-        self.dEdt_chem = Float(0.0)
-        self.dEdt_other = Float(0.0)
-        self.file_name = fname
-        self.label = label if label else os.path.basename(fname).split(".")[0]
+        self.reactions_dict: dict[str, int] = {}
+        self.rlist: np.ndarray | None = None
+        self.plist: np.ndarray | None = None
+        self.dEdt_chem: Basic = Float(0.0)
+        self.dEdt_other: Basic = Float(0.0)
+        self.dRad_dt_extra: Basic = Float(0.0)
         self.radiation: Radiation | None = (
             Radiation(rad_bands, rad_powerlaw_index, rad_energy_density, c)
-            if rad_bands
+            if len(rad_bands) > 0
             else None
         )
-        self.dRad_dt_extra = Float(0.0)
 
         self.logger.info(f"Loading network from {fname}")
         self.logger.info(f"Network label: {self.label}")
 
-        self.load_mass_dict()
+        self.mass_dict = load_mass_dict()
         self.photochemistry = Photochemistry()
 
-        self.load_network(fname, funcfile, replace_nH)
-        self.__calculate_nework_extras(replace_nH)
+        if not loaded_from_jaff_file:
+            self.__load_network(fname, funcfile, replace_nH)
+        else:
+            self.__load_network_from_jaff_file(jaff_props)
+        self.__normalize_nework_extras(replace_nH)
 
         self.check_sink_sources(errors)
         self.check_recombinations(errors)
@@ -143,15 +160,7 @@ class Network:
         print(welcome_text)
         print(f"Just Another {fword.title()} Format!\n")
 
-    def load_mass_dict(self) -> None:
-        with JaffDb() as jdb:
-            rows = jdb.table("atomic_masses").all_rows()
-
-        self.mass_dict = {}
-        for row in rows:
-            self.mass_dict[row["element"]] = {"mass": row["mass"], "name": row["name"]}
-
-    def load_network(
+    def __load_network(
         self,
         fname,
         funcfile,
@@ -256,6 +265,7 @@ class Network:
                 if aux_chem_rate not in aux_funcs:
                     self.radiation.set_reaction_rate_coefficient(rea)
                 elif aux_chem_rate in aux_funcs and aux_delta_rad:
+                    rea.custom_rad_rate = True
                     self.radiation.set_custom_rate(rea)
                 else:
                     raise ParserError(
@@ -289,7 +299,32 @@ class Network:
         if undef_funcs:
             self.logger.warning(f"Found undefined functions {', '.join(undef_funcs)}")
 
-    def __calculate_nework_extras(self, replace_nH):
+    def __load_network_from_jaff_file(self, jaff_props: JaffProps):
+        self.species = jaff_props["species"]
+        self.species_dict = jaff_props["species_dict"]
+        for reaction in jaff_props["reactions"]:
+            rea = Reaction(
+                reactants=reaction["reactants"],
+                products=reaction["products"],
+                rate=reaction["rate"],
+                dE=reaction["dE"],
+                dRad_dt=Float("dRad_dt"),
+                tmin=reaction["tmin"],
+                tmax=reaction["tmax"],
+                original_string=reaction["original_string"],
+            )
+            rea.xsecs_dict = reaction["xsecs_dict"]
+            rea.custom_rad_rate = reaction["custom_rad_rate"]
+            self.reactions.append(rea)
+
+            if rea.guess_type() == "photo" and self.radiation is not None:
+                if rea.custom_rad_rate:
+                    self.radiation.set_custom_rate(rea)
+                    continue
+
+                self.radiation.set_custom_rate(rea)
+
+    def __normalize_nework_extras(self, replace_nH):
         # Apply replacement rules to replace standard symbols
         # appearing in rates with terms involving known species
         nden = MatrixSymbol("nden", len(self.species), 1)
@@ -346,7 +381,7 @@ class Network:
 
     @staticmethod
     def __detect_undefined_functions(
-        expr: sympy.Expr, undef_funcs: set, interp_funcs: set
+        expr: sympy.Expr | Basic, undef_funcs: set, interp_funcs: set
     ) -> None:
         for f in expr.atoms(AppliedUndef):
             if "interp" in f.func.__name__:
@@ -413,294 +448,8 @@ class Network:
 
         return func_dict
 
-    # ****************
-    def to_jaff_file(self, filename):
-        """
-        Serialize this Network to a .jaff file (gzip-compressed JSON payload).
-
-        Notes:
-            - Uses a versioned, whitelisted SymPy JSON AST for expressions.
-            - Excludes photochemistry-specific runtime state; reactions may still
-              include xsecs if present.
-            - Files are written with gzip compression even when the filename ends
-              with `.jaff` (no `.gz` suffix).
-        """
-        filename = os.fspath(filename)
-        if not (str(filename).endswith(".jaff") or str(filename).endswith(".jaff.gz")):
-            raise ValueError(
-                "Network.to_jaff_file requires a filename ending with '.jaff' or '.jaff.gz'"
-            )
-
-        from . import __version__ as jaff_version
-        from .sympy_json import SCHEMA_VERSION as SYMPY_SCHEMA
-        from .sympy_json import to_jsonable as sympy_to_jsonable
-
-        def has_undefined_functions(expr):
-            if not isinstance(expr, sympy.Basic):
-                return False
-            for f in expr.atoms(Function):
-                if type(f.func) is UndefinedFunction:
-                    return True
-            return False
-
-        def encode_maybe_sympy(value):
-            if isinstance(value, str):
-                return {"kind": "string", "value": value}
-            if isinstance(value, sympy.Basic):
-                if has_undefined_functions(value):
-                    raise ValueError(
-                        "Cannot serialize: expression contains undefined SymPy function(s)"
-                    )
-                return sympy_to_jsonable(value, include_assumptions=False)
-            if value is None:
-                return None
-            raise TypeError(f"Unsupported value type for serialization: {type(value)!r}")
-
-        def jsonable(obj):
-            if obj is None or isinstance(obj, (str, int, float, bool)):
-                return obj
-            if isinstance(obj, np.ndarray):
-                return obj.tolist()
-            if isinstance(obj, (np.floating, np.integer)):
-                return obj.item()
-            if isinstance(obj, dict):
-                return {str(k): jsonable(v) for k, v in obj.items()}
-            if isinstance(obj, (list, tuple)):
-                return [jsonable(v) for v in obj]
-            return obj
-
-        payload = {
-            "format": "jaff.network_json",
-            "schema_version": 1,
-            "jaff_version": jaff_version,
-            "sympy_schema_version": SYMPY_SCHEMA,
-            "sympy_version": sympy.__version__,
-            "label": self.label,
-            "file_name": self.file_name,
-            "species": [
-                {
-                    "name": sp.name,
-                    "index": int(sp.index),
-                    "mass": float(sp.mass) if sp.mass is not None else None,
-                    "charge": int(sp.charge) if sp.charge is not None else None,
-                }
-                for sp in self.species
-            ],
-            "rate_symbols": [
-                {
-                    "name": sym.name,
-                    "assumptions": {
-                        k: v
-                        for k, v in (sym.assumptions0 or {}).items()
-                        if isinstance(k, str) and isinstance(v, bool)
-                    },
-                }
-                for sym in sorted(
-                    {
-                        s
-                        for r in self.reactions
-                        if isinstance(r.rate, sympy.Basic)
-                        for s in r.rate.free_symbols
-                    },
-                    key=lambda s: s.name,
-                )
-            ],
-            "reactions": [
-                {
-                    "reactants": [int(s.index) for s in r.reactants],
-                    "products": [int(s.index) for s in r.products],
-                    "rate": encode_maybe_sympy(r.rate),
-                    "tmin": r.tmin,
-                    "tmax": r.tmax,
-                    "dE": encode_maybe_sympy(r.dE),
-                    "original_string": r.original_string,
-                    "xsecs": jsonable(r.xsecs_dict),
-                }
-                for r in self.reactions
-            ],
-        }
-
-        with gzip.open(filename, "wt", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2, sort_keys=True)
-
-    # ****************
-    @classmethod
-    def from_jaff_file(cls, filename, *, errors=False):
-        """
-        Deserialize a Network previously written by Network.to_jaff_file.
-
-        Parameters:
-            filename : str
-                `.jaff` file to read (gzip-compressed JSON by default; legacy
-                uncompressed JSON is also supported).
-            errors : bool
-                If True, run Network validation checks and exit on errors.
-        """
-        from .sympy_json import from_jsonable as sympy_from_jsonable
-
-        filename = os.fspath(filename)
-
-        # Prefer gzip if the filename indicates it; otherwise, sniff the magic header
-        # so we can transparently read both compressed and legacy uncompressed files.
-        use_gzip = str(filename).endswith(".gz")
-        if not use_gzip:
-            with open(filename, "rb") as fb:
-                use_gzip = fb.read(2) == b"\x1f\x8b"
-
-        opener = gzip.open if use_gzip else open
-        with opener(filename, "rt", encoding="utf-8") as f:
-            payload = json.load(f)
-
-        if not isinstance(payload, dict) or payload.get("format") != "jaff.network_json":
-            raise ValueError("Not a jaff.network_json file")
-        if payload.get("schema_version") != 1:
-            raise ValueError(
-                f"Unsupported Network schema_version={payload.get('schema_version')!r}"
-            )
-
-        # Build an instance without going through __init__ (which parses files).
-        net = cls.__new__(cls)
-
-        # Minimal initialization of attributes expected by other methods.
-        net.file_name = payload.get("file_name")
-        net.label = payload.get("label")
-        net.reactions = []
-        net.reactions_dict = {}
-        net.species = []
-        net.species_dict = {}
-        net.rlist = net.plist = None
-        net.photochemistry = Photochemistry()
-
-        # Load default mass dict (same source as __init__).
-        net.load_mass_dict()
-
-        species_payload = payload.get("species") or []
-        if not isinstance(species_payload, list):
-            raise ValueError("Invalid species list in JSON")
-
-        # Create species list in index order.
-        by_index = {}
-        for spj in species_payload:
-            if not isinstance(spj, dict):
-                raise ValueError("Invalid species entry in JSON")
-            name = spj.get("name")
-            idx = spj.get("index")
-            if not isinstance(name, str) or not isinstance(idx, int):
-                raise ValueError("Invalid species name/index in JSON")
-            if idx in by_index:
-                raise ValueError(f"Duplicate species index {idx}")
-            by_index[idx] = name
-
-        species_by_index = {}
-        for idx in sorted(by_index.keys()):
-            name = by_index[idx]
-            sp_obj = Species(name, net.mass_dict, idx)
-            net.species.append(sp_obj)
-            net.species_dict[name] = idx
-            species_by_index[idx] = sp_obj
-
-        rate_symbols_payload = payload.get("rate_symbols") or []
-        rate_symbol_assumptions = {}
-        if isinstance(rate_symbols_payload, list):
-            for item in rate_symbols_payload:
-                if not isinstance(item, dict):
-                    continue
-                name = item.get("name")
-                assumptions = item.get("assumptions") or {}
-                if not isinstance(name, str) or not isinstance(assumptions, dict):
-                    continue
-                rate_symbol_assumptions[name] = {
-                    k: v
-                    for k, v in assumptions.items()
-                    if isinstance(k, str) and isinstance(v, bool)
-                }
-
-        def apply_symbol_assumptions(expr):
-            if not rate_symbol_assumptions:
-                return expr
-            symbols = [s for s in expr.free_symbols if s.name in rate_symbol_assumptions]
-            if not symbols:
-                return expr
-            replacements = {}
-            for sym in symbols:
-                assumptions = rate_symbol_assumptions.get(sym.name, {})
-                replacements[sym] = sympy.Symbol(sym.name, **assumptions)
-            return expr.xreplace(replacements)
-
-        def decode_maybe_sympy(node):
-            if node is None:
-                return None
-            if isinstance(node, dict):
-                kind = node.get("kind")
-                if kind == "string":
-                    value = node.get("value")
-                    if not isinstance(value, str):
-                        raise ValueError("Invalid string value encoding")
-                    return value
-                if kind is not None:
-                    raise ValueError(f"Unknown encoded value kind={kind!r}")
-            if isinstance(node, (dict, list, int, float)):
-                return apply_symbol_assumptions(sympy_from_jsonable(node))
-            raise ValueError("Invalid encoded value")
-
-        reactions_payload = payload.get("reactions") or []
-        if not isinstance(reactions_payload, list):
-            raise ValueError("Invalid reactions list in JSON")
-
-        for rj in reactions_payload:
-            if not isinstance(rj, dict):
-                raise ValueError("Invalid reaction entry in JSON")
-            reactants_idx = rj.get("reactants") or []
-            products_idx = rj.get("products") or []
-            if not isinstance(reactants_idx, list) or not isinstance(products_idx, list):
-                raise ValueError("Invalid reactants/products list in JSON")
-            try:
-                reactants = [species_by_index[int(i)] for i in reactants_idx]
-                products = [species_by_index[int(i)] for i in products_idx]
-            except Exception as e:
-                raise ValueError(f"Invalid species indices in reaction: {e}") from e
-
-            rate = decode_maybe_sympy(rj.get("rate"))
-            dE = decode_maybe_sympy(rj.get("dE"))
-            tmin = rj.get("tmin")
-            tmax = rj.get("tmax")
-            original_string = rj.get("original_string") or ""
-            xsecs = rj.get("xsecs")
-
-            rea = Reaction(
-                reactants=reactants,
-                products=products,
-                rate=rate,
-                tmin=tmin,
-                tmax=tmax,
-                dRad_dt=parse_expr("0.0"),  # Support for drad_dt will be added soon
-                dE=dE or parse_expr("0"),
-                original_string=original_string,
-                errors=False,
-            )
-            rea.xsecs_dict = xsecs
-            net.reactions.append(rea)
-
-        # Recompute derived structures.
-        net.generate_reactions_dict()
-        net.generate_reaction_matrices()
-
-        # Recompute dEdt_chem, matching load_network behavior.
-        net.dEdt_chem = parse_expr("0")
-        nden = MatrixSymbol("nden", len(net.species), 1)
-        for r in net.reactions:
-            dE_dt = r.dE * r.rate
-            for s in r.reactants:
-                dE_dt *= nden[Idx(net.species_dict[s.name])]
-            net.dEdt_chem += dE_dt
-
-        if errors:
-            net.check_sink_sources(errors=True)
-            net.check_recombinations(errors=True)
-            net.check_isomers(errors=True)
-            net.check_unique_reactions(errors=True)
-
-        return net
+    def to_jaff(self, filename: str | Path):
+        to_jaff_file(filename, self)
 
     @staticmethod
     def free_symbols(expr: Basic) -> set[Basic]:

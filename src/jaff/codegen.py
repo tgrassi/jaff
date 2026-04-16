@@ -755,6 +755,8 @@ class Codegen:
                     [nden_matrix[i, 0] for i, _ in enumerate(self.net.species)],
                     0,
                 )
+        assert isinstance(self.net.dEdt_chem, sp.Expr)
+        assert isinstance(self.net.dEdt_other, sp.Expr)
 
         return (self.net.dEdt_chem + self.net.dEdt_other) / den_tot
 

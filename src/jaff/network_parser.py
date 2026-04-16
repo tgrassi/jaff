@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from .common import f90_convert, resolve_symbolic_dependencies
 from .core.logger import JaffLogger
-from .errors.parser import ParserError
+from .errors import ParserError
 
 patternProps = TypedDict(
     "patternProps",

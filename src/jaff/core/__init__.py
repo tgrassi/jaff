@@ -1,3 +1,3 @@
-from . import logger
+from . import io, logger
 
-__all__ = ["logger"]
+__all__ = ["logger", "io"]

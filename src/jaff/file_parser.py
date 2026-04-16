@@ -33,7 +33,7 @@ from typing import Any, Callable, TypedDict
 from . import Codegen, Network
 from .codegen import IndexedReturn
 from .elements import Elements
-from .errors.parser import ParserError
+from .errors import ParserError
 from .jaff_types import IndexedList
 
 

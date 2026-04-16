@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Tuple
 
 import sympy
+
+from ..errors import SympyJsonError
 
 try:
     from sympy.core.symbol import Str as _SympyStr
@@ -26,10 +28,6 @@ except Exception:  # pragma: no cover
 
 
 SCHEMA_VERSION = 2
-
-
-class SympyJsonError(ValueError):
-    pass
 
 
 def dumps(

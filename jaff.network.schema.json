@@ -143,6 +143,8 @@
         "tmin",
         "tmax",
         "dE",
+        "dRad_dt",
+        "custom_rad_rate",
         "original_string",
         "xsecs"
       ],
@@ -170,6 +172,12 @@
         },
         "dE": {
           "$ref": "#/$defs/encoded_value"
+        },
+        "dRad_dt": {
+          "$ref": "#/$defs/encoded_value"
+        },
+        "custom_rad_rate": {
+          "type": "boolean"
         },
         "original_string": {
           "type": "string"

@@ -7,7 +7,7 @@ import sympy as sp
 from sympy.core.function import AppliedUndef
 
 from .common import resolve_symbolic_dependencies
-from .errors.parser import ParserError
+from .errors import ParserError
 
 FunctionsDict = TypedDict(
     "FunctionsDict",

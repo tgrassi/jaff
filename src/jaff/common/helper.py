@@ -7,12 +7,24 @@ from typing import TYPE_CHECKING
 from sympy import Basic, Piecewise
 from sympy.core.function import AppliedUndef
 
-from ..errors.parser import ParserError
+from ..drivers.sqlite import JaffDb
+from ..errors import ParserError
 
 if TYPE_CHECKING:
     from ..auxilary_file_parser import FunctionsDict
 
 F90_PATTERN = re.compile(r"([0-9_.])d([0-9_+-])")
+
+
+def load_mass_dict() -> dict:
+    with JaffDb() as jdb:
+        rows = jdb.table("atomic_masses").all_rows()
+
+    mass_dict = {}
+    for row in rows:
+        mass_dict[row["element"]] = {"mass": row["mass"], "name": row["name"]}
+
+    return mass_dict
 
 
 def f90_convert(expr: str) -> str:
@@ -116,3 +128,10 @@ def resolve_dependencies(
     expr = expr.xreplace(subs_dict)
 
     return expr
+
+
+def is_jaff_file(file: Path) -> bool:
+    return file.suffix.lower() == ".jaff" or [fn.lower() for fn in file.suffixes] == [
+        ".jaff",
+        ".gz",
+    ]

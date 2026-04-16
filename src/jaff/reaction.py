@@ -25,6 +25,7 @@ class Reaction:
         self.dE = dE
         self.dRad_dt = dRad_dt
         self.reaction = None
+        self.custom_rad_rate: bool = False
         self.rad_xsecs = None
         self.xsecs_dict = (
             None  # dictionary {"energy": [], "xsecs": []}, energy in erg, xsecs in cm^2
