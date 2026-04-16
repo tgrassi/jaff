@@ -2,26 +2,28 @@ from __future__ import annotations
 
 import gzip
 import json
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, NotRequired, TypedDict
 
+import h5py
 import numpy as np
-from sympy import Basic, Symbol, __version__
+from sympy import Basic, Symbol, __version__, expand_log, lambdify, log, srepr, symbols
 from sympy.core.function import AppliedUndef
-
-from jaff.common.helper import load_mass_dict
 
 from .. import __version__ as jaff_version
 from ..common import SCHEMA_VERSION as SYMPY_SCHEMA
+from ..common import fast_log2, inverse_fast_log2, is_jaff_file, load_mass_dict
 from ..common import from_jsonable as sympy_from_jsonable
-from ..common import is_jaff_file
 from ..common import to_jsonable as sympy_to_jsonable
+from ..core.logger import JaffLogger
 from ..errors import NotJaffFileError
 
 if TYPE_CHECKING:
-    from .. import Network, Species
+    from .. import Network, Reaction, Species
 else:
     Species = "Species"
+    Reaction = "Reaction"
     Network = "Network"
 
 ReactionProps = TypedDict(
@@ -332,3 +334,443 @@ def from_jaff_file(filename: str | Path, errors=False):
         )
 
     return net_data
+
+
+def get_table(
+    reactions: list[Reaction],
+    logger: logging.Logger | None,
+    T_min=None,
+    T_max=None,
+    nT=64,
+    err_tol=0.01,
+    rate_min=1e-30,
+    rate_max=1e100,
+    fast_log=False,
+    verbose=False,
+):
+    """
+    Return a tabulation of rate coefficients as a function of
+    temperature for all reactions.
+
+    Parameters
+    ----------
+        T_min : float or None
+            minimum temperature for the tabulation; if left as None,
+            will be set to the minimum temperature over reactions in
+            the network
+        T_max : float or None
+            maximum temperature for the tabulation; if left as None,
+            will be set to the maximum temperature over reactions in
+            the network
+        nT : int
+            initial guess for number of sampling temperatures
+        err_tol : float or None
+            relative error tolerance for interpolation; if set to
+            None, adaptive resampling is disabled and the table size
+            will be exactly nT
+        rate_min : float
+            adaptive error tolerance is not applied to rates below
+            rate_min
+        rate_max : float
+            rataes above rate_max are clipped to rate_max to prevent
+            overflow
+        fast_log : bool
+            if True, sample points are equally spaced in fast_log2(T)
+            rather than log(T)
+        verbose : bool
+            if True, produce verbose output while adaptively refining
+
+    Returns
+    -------
+        temp : array, shape (nTemp)
+            gas temperatures at which rates are sampled
+        coeff : array, shape (nreact, nTemp)
+            tabulated reaction rate coefficients at temperatures temp
+
+    Notes
+    -----
+        1) By default temperature is sampled logarithmically in the
+        output, i.e., temp =
+        np.logspace(np.log10(T_min), np.log10(T_max), nTemp)
+        where nTemp is the number of temperatures in the output
+        table. If fast_log is set to True, then the outputs are
+        instead uniformly spaced in fast_log2 rather than the
+        true logarithm.
+        2) For reaction rates that depend on something other than
+        tgas, the results are computed at av = 0 and crate = 1;
+        rates that depend on any other quantities are not tabulated,
+        and the table entries for such reactions will be set to NaN.
+        3) Adaptive sampling is performed by comparing the results
+        of a logarithmic interpolation between each rate
+        coefficient at each pair of sampled temperature with
+        a calculation of the exact rate coefficient at a temperature
+        halfway between the two sample points; the errors is taken
+        to be abs((interp_value - exact_value) / (exact_value + rate_min)),
+        and nTemp is increased until the error for all coefficients
+        is below tolerance.
+    """
+
+    if logger is None:
+        logger = JaffLogger().get_logger()
+
+    # Get min and max temperature if not provided
+    if T_min is None:
+        T_min = np.nanmin([r.tmin if r.tmin is not None else np.nan for r in reactions])
+    if T_max is None:
+        T_max = np.nanmax([r.tmax if r.tmax is not None else np.nan for r in reactions])
+    if T_min is None or T_max is None:
+        raise ValueError(
+            "could not determine T_min or T_max from "
+            "reaction list; set T_min and T_max manually"
+        )
+
+    # First step: for each reaction, create a sympy object we can
+    # use to substitute to get an expression in terms of the
+    # primitive variables
+    react_sympy = [r.get_sympy() for r in reactions]
+
+    # Second step: set av = 0 and crate = 1
+    react_subst = []
+    for r in react_sympy:
+        r = r.subs(symbols("av"), 0.0)
+        r = r.subs(symbols("crate"), 1.0)
+        react_subst.append(r)
+
+    # Third step: create numpy fucntions for each reaction
+    react_func = []
+    for i, r in enumerate(react_subst):
+        if len(r.free_symbols) == 0:
+            # Reaction rates that are just constants; in this
+            # case just copy that constant to the list of functions
+            react_func.append(np.log(float(r)))
+        elif (
+            (len(r.free_symbols) > 1)
+            or (symbols("tgas") not in r.free_symbols)
+            or ("Function" in srepr(r))
+        ):
+            # For reaction rates that do not depend on temperature,
+            # that depend on variables other than temperature,
+            # or that contain arbitrary functions, we cannot
+            # tabulate, so just store None
+            react_func.append(None)
+        else:
+            # Case of reactions that depend only on temperature; to
+            # avoid overflows we will take the log of the rate function
+            # and expand it before converting to numpy, and then we will
+            # exponentiate at the very end
+            logr = expand_log(log(r))
+            react_func.append(lambdify(symbols("tgas"), logr, "numpy"))
+
+    # Fourth step: generate rate coefficient table for initial guess
+    # table size
+    nTemp = nT
+    if not fast_log:
+        temp = np.logspace(np.log10(T_min), np.log10(T_max), nTemp)
+    else:
+        # Generate sample points that are uniformly sampled in fast_log2
+        log_temp_min = fast_log2(T_min)
+        log_temp_max = fast_log2(T_max)
+        log_temp = np.linspace(log_temp_min, log_temp_max, nTemp)
+        temp = inverse_fast_log2(log_temp)
+    log_rates = np.zeros((len(react_func), nTemp))
+    for i, f in enumerate(react_func):
+        if isinstance(f, float):
+            log_rates[i, :] = f
+        elif f is None:
+            log_rates[i, :] = np.nan
+        else:
+            # Note: it would be much faster to do this via an array operation
+            # rather than a list comprehension, but sympy (as of v1.13) does
+            # not consistently generate numpy expressions that work properly
+            # with vector inputs, so restricting the input to scalars is safer.
+            f_eval = np.array([f(t) for t in temp])
+            log_rates[i, :] = np.clip(f_eval, a_min=None, a_max=np.log(rate_max))
+
+    # Fifth step: do adaptive growth of table
+    if err_tol is not None:
+        while True:
+            # Compute estimates at half-way points
+            nTemp = 2 * nTemp - 1
+            temp_grow = np.zeros(nTemp)
+            temp_grow[::2] = temp
+            if not fast_log:
+                temp_grow[1::2] = np.sqrt(temp[1:] * temp[:-1])
+            else:
+                log_temp_lo = fast_log2(temp[:-1])
+                log_temp_hi = fast_log2(temp[1:])
+                temp_grow[1::2] = inverse_fast_log2(0.5 * (log_temp_lo + log_temp_hi))
+            log_rates_grow = np.zeros((len(react_func), nTemp))
+            log_rates_grow[:, ::2] = log_rates
+            log_rates_approx = np.zeros((len(react_func), (nTemp - 1) // 2))
+            for i, f in enumerate(react_func):
+                if isinstance(f, float):
+                    log_rates_grow[i, 1::2] = f
+                    log_rates_approx[i, :] = f
+                elif f is None:
+                    log_rates_grow[i, 1::2] = np.nan
+                    log_rates_approx[i, :] = np.nan
+                else:
+                    # See comment above about why we're using a list comprehension
+                    # here instead of a straight array operation
+                    f_eval = np.array([f(t) for t in temp_grow[1::2]])
+                    log_rates_grow[i, 1::2] = np.clip(
+                        f_eval, a_min=None, a_max=np.log(rate_max)
+                    )
+                    log_rates_approx[i, :] = 0.5 * (
+                        log_rates_grow[i, :-1:2] + log_rates_grow[i, 2::2]
+                    )
+
+            # Copy new estimates to current ones
+            temp = temp_grow
+            log_rates = log_rates_grow
+
+            # Make error estimate
+            rel_err = np.abs(
+                (np.exp(log_rates_approx) - np.exp(log_rates[:, 1::2]))
+                / (np.exp(log_rates[:, 1::2]) + rate_min)
+            )
+            max_err = np.nanmax(rel_err)
+
+            # Print output if verbose
+            if verbose:
+                idx_max = np.unravel_index(np.nanargmax(rel_err), rel_err.shape)
+                logger.info(
+                    f"nTemp = {nTemp}, max_err = {max_err} in reaction "
+                    f"{reactions[idx_max[0]].get_verbatim()} at T = {temp[idx_max[1]]}"
+                )
+
+            # Check for convergence
+            if max_err < err_tol:
+                break
+
+    # Return final table
+    return temp, np.exp(log_rates)
+
+
+def write_data_table(
+    reactions: list[Reaction],
+    logger: logging.Logger | None,
+    fname: str | Path,
+    label: str | None = None,
+    T_min=None,
+    T_max=None,
+    nT=64,
+    err_tol=0.01,
+    rate_min=1e-30,
+    rate_max=1e100,
+    fast_log=False,
+    format="auto",
+    include_all=False,
+    verbose=False,
+):
+    """
+    Write a tabulation of rate coefficients as a function of
+    temperature for all reactions.
+
+    Parameters
+    ----------
+        fname : string
+            name of output file
+        T_min : float or None
+            minimum temperature for the tabulation; if left as None,
+            will be set to the minimum temperature over reactions in
+            the network
+        T_max : float or None
+            maximum temperature for the tabulation; if left as None,
+            will be set to the maximum temperature over reactions in
+            the network
+        nT : int
+            initial guess for number of sampling temperatures
+        err_tol : float or None
+            relative error tolerance for interpolation; if set to
+            None, adaptive resampling is disabled and the table size
+            will be exactly nT
+        rate_min : float
+            adaptive error tolerance is not applied to rates below
+            rate_min
+        rate_max : float
+            rataes above rate_max are clipped to rate_max to prevent
+            overflow
+        fast_log : bool
+            if True, sample points are equally spaced in fast_log2(T)
+            rather than log(T)
+        format : 'auto' | 'txt' | 'hdf5'
+            output format; if set to 'auto', format will be guessed from
+            extension of fname, otherwise output will be set to either
+            text for hdf5 format
+        include_all : bool
+            if True, the output table will contain all reactions, with
+            entries for rate coefficients that cannot be tabulated
+            just as a function of temperature set to NaN; if False,
+            the output table only includes coefficients that can be
+            tabulated and are non-constant
+        verbose : bool
+            if True, produce verbose output while adaptively refining
+
+    Returns
+    -------
+        Nothing
+
+    Raises
+    ------
+        ValueError
+            if format is set to 'auto' and the extension is of fname
+            is not 'txt', 'hdf', or 'hdf5'
+        IOError
+            if the output fille cannot be opened
+
+    Notes
+    -----
+        See notes to get_table for details on how temperature sampling
+        and error tolerance is handled.
+    """
+    if logger is None:
+        logger = JaffLogger().get_logger()
+
+    if isinstance(fname, str):
+        fname = Path(fname)
+
+    supported_formats = ["auto", "hdf5", "txt"]
+    supported_extensions = [".hdf", ".hdf5", ".txt"]
+
+    if format not in supported_formats:
+        raise ValueError(
+            f"Unknown output format {format}\n"
+            f"Supported output formats are {', '.join(supported_formats)}"
+        )
+
+    # Deduce output format
+    if format in supported_formats and format != "auto":
+        out_type = supported_formats[supported_formats.index(format)]
+    elif format == "auto":
+        if fname.suffix in supported_extensions:
+            out_type = supported_extensions[supported_extensions.index(fname.suffix)]
+        else:
+            raise ValueError(
+                f"Cannot deduce output type from extension for file: {fname}\n"
+                f"Supported extensions are .txt, .hdf5 and .hdf"
+            )
+
+    if label is None:
+        label = fname.stem
+
+    # Get rate coefficients
+    temp, coef = get_table(
+        reactions=reactions,
+        logger=logger,
+        T_min=T_min,
+        T_max=T_max,
+        nT=nT,
+        err_tol=err_tol,
+        rate_min=rate_min,
+        rate_max=rate_max,
+        fast_log=fast_log,
+        verbose=verbose,
+    )
+
+    # Remove from table reaction rates that are either constant
+    # or NaN
+    if include_all:
+        react_list = list(range(len(coef)))
+    else:
+        react_list = []
+        for i, c in enumerate(coef):
+            if np.sum(np.isnan(c)) > 0 or np.amax(c) - np.amin(c) == 0.0:
+                continue
+            react_list.append(i)
+    coef = coef[react_list]
+
+    # For the reactions that we are including, grab the reaction
+    # type and lists of reactants and products
+    rtype = []
+    reactants = []
+    products = []
+    for i in react_list:
+        if reactions[i].guess_type() == "unknown":
+            rtype.append("2_body")
+        else:
+            rtype.append(reactions[i].guess_type())
+        reactants_ = {}
+        for r in reactions[i].reactants:
+            if r.name in reactants_.keys():
+                reactants_[r.name] += 1
+            else:
+                reactants_[r.name] = 1
+        reactants.append(reactants_)
+        products_ = {}
+        for p in reactions[i].products:
+            if p.name in products_.keys():
+                products_[p.name] += 1
+            else:
+                products_[p.name] = 1
+        products.append(products_)
+
+    def to_text():
+        # Text output
+        with open(fname) as fp:
+            # Write header
+            fp.write("# JAFF auto-generated rate coefficient table\n")
+            fp.write("# Network name: {:s}\n".format(label))
+            fp.write("# Reactions included\n")
+            fp.write("#   (reactants) (products) (reaction type)\n")
+            for rt, r, p in zip(rtype, reactants, products):
+                fp.write(f"#   {r} {p} {rt}\n")
+
+            # Write data in quokka table format
+            fp.write("1\n")  # Table is 1d
+            fp.write(f"{len(coef)}\n")  # N outputs per table entry
+            if fast_log:
+                fp.write("3\n")  # Table is uniform in fast_log
+            else:
+                fp.write("2\n")  # Table is uniform in log
+            fp.write(f"{len(temp)}\n")  # Number of temperature entries
+            fp.write(f"{temp[0]} {temp[-1]}\n")  # Min/max temperature
+
+            # Now write the data
+            for c in coef:
+                for c_ in c:
+                    fp.write(f"{c_} ")
+                fp.write("\n")
+
+    def to_hdf5():
+        # HDF5 output
+        with h5py.File(fname, mode="w") as fp:
+            # Create a group to contain the data
+            grp = fp.create_group("reaction_coeff")
+
+            # Store metadata in the attributes
+            grp.attrs["input_names"] = ["temperature"]
+            grp.attrs["input_units"] = ["K"]
+            grp.attrs["xlo"] = np.array([temp[0]])
+            grp.attrs["xhi"] = np.array([temp[-1]])
+            if fast_log:  # Spacing type
+                grp.attrs["spacing"] = ["fast_log"]
+            else:
+                grp.attrs["spacing"] = ["log"]
+
+            # Store information on which reactions / rate coefficients
+            # are included; note that we store these as data sets
+            # instead of attributes to avoid problems in the case where
+            # the number of reactions is very large, and thus resulting
+            # size of the output reaction list exceeds the HDF5 limit
+            # on the sizes of attributes
+            output_names = []
+            output_units = []
+            for i, rt, r, p in zip(range(len(rtype)), rtype, reactants, products):
+                output_names.append(f"{rt} rate coefficient: {r} --> {p}")
+                output_units.append("cm^3 s^-1")
+            grp.create_dataset(
+                "output_names", data=output_names, dtype=h5py.string_dtype()
+            )
+            grp.create_dataset(
+                "output_units", data=output_units, dtype=h5py.string_dtype()
+            )
+
+            # Create data set holding the coefficient table
+            grp.create_dataset("data", data=coef)
+
+    # Write output in appropriate format
+    if out_type == "txt":
+        to_text()
+    elif out_type == "hdf5":
+        to_hdf5()
