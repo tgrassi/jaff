@@ -829,7 +829,7 @@ class Codegen:
             sp.symbols(f"k[{i}]"): rea.rate for i, rea in enumerate(self.net.reactions)
         }
 
-        ode_symbols = self.net.get_sodes()
+        ode_symbols = self.net.sodes()
         ode_symbols = [sode.xreplace(subs_k) for sode in ode_symbols]
 
         if use_cse:
@@ -962,12 +962,12 @@ class Codegen:
             sp.symbols(f"k[{i}]"): rea.rate for i, rea in enumerate(self.net.reactions)
         }
 
-        rhs_symbols = self.net.get_sodes()
+        rhs_symbols = self.net.sodes()
         rhs_symbols = [sode.xreplace(subs_k) for sode in rhs_symbols]
         rhs_symbols.extend(
             [
                 self.__gen_sdedt(specific_eint, norm),
-                *(self.net.get_sradodes(rad_order) if radiation else []),
+                *(self.net.sradodes(rad_order) if radiation else []),
             ]
         )
 
@@ -1067,7 +1067,7 @@ class Codegen:
             "extras": {"cse": IndexedList()},
             "expressions": IndexedList(),
         }
-        radode_symbols = self.net.get_sradodes(order)
+        radode_symbols = self.net.sradodes(order)
 
         if use_cse:
             cse_var = sp.numbered_symbols(prefix=cse_var)
@@ -1255,13 +1255,13 @@ class Codegen:
         subs_k = {
             sp.symbols(f"k[{i}]"): k_exprs[i] for i in range(len(self.net.reactions))
         }
-        ode_symbols = self.net.get_sodes()
+        ode_symbols = self.net.sodes()
 
         if use_dedt:
             ode_symbols.append(self.__gen_sdedt(specific_eint=specific_eint, norm=norm))
 
         if radiation:
-            ode_symbols.extend(self.net.get_sradodes(order=rad_order))
+            ode_symbols.extend(self.net.sradodes(order=rad_order))
 
         ode_symbols = [
             sode.xreplace({**nden_to_y, **radden_to_y, **radflux_to_y, **subs_k})
