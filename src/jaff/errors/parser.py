@@ -48,3 +48,7 @@ class NotJaffFileError(Exception):
         message = f"{message}\n{'File: {file}' if file is not None else ''}"
 
         super().__init__(message)
+
+
+class SympyJsonError(ValueError):
+    pass

@@ -1,3 +1,3 @@
-from .parser import NotJaffFileError, ParserError
+from .parser import NotJaffFileError, ParserError, SympyJsonError
 
-__all__ = ["NotJaffFileError", "ParserError"]
+__all__ = ["NotJaffFileError", "ParserError", "SympyJsonError"]
