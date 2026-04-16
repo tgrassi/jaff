@@ -2,9 +2,9 @@ from typing import TypedDict, cast
 
 import sympy as sp
 
-from .common.integrators import smart_integrate
-from .drivers.sqlite import JaffDb
-from .reaction import Reaction
+from ..common.integrators import smart_integrate
+from ..drivers.sqlite import JaffDb
+from ..reaction import Reaction
 
 RadiationGroupReactionProps = TypedDict(
     "RadiationGroupReactionProps",

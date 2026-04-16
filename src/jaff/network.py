@@ -1,9 +1,8 @@
-import logging
 import re
 import sys
 from pathlib import Path
 from textwrap import dedent
-from typing import NotRequired, TypedDict
+from typing import TYPE_CHECKING, NotRequired, TypedDict
 
 import numpy as np
 from sympy import (
@@ -21,6 +20,8 @@ from sympy import (
 from sympy.core.function import AppliedUndef, UndefinedFunction
 from tqdm import tqdm
 
+from jaff.physics.equations import get_sfluxes, get_sodes, get_sradodes
+
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
 from .common import is_jaff_file
 from .common.helper import load_mass_dict, resolve_dependencies
@@ -30,9 +31,12 @@ from .errors import ParserError
 from .network_parser import NetworkParser
 from .photochemistry import Photochemistry
 from .physics import constants
-from .radiation import Radiation
+from .physics.radiation import Radiation
 from .reaction import Reaction
 from .species import Species
+
+if TYPE_CHECKING:
+    import logging
 
 NetworkProps = TypedDict(
     "NetworkProps",
@@ -802,101 +806,14 @@ class Network:
         self.logger.error(f"Reaction with verbatim '{verbatim}' not found")
         sys.exit(1)
 
-    def get_sfluxes(self) -> list[Expr]:
-        nspec = len(self.species)
-        nreact = len(self.reactions)
-        fluxes: list[Expr] = [Float(0.0) for _ in range(nreact)]
-        nden_matrix = MatrixSymbol("nden", nspec, 1)
+    def sfluxes(self) -> list[Expr]:
+        return get_sfluxes(self.reactions, self.species_dict)
 
-        for i, reaction in enumerate(self.reactions):
-            flux = reaction.rate
-            for reactant in reaction.reactants:
-                flux *= nden_matrix[self.species_dict[str(reactant)]]
+    def sodes(self) -> list[Basic]:
+        return get_sodes(self.reactions, self.species_dict)
 
-            fluxes[i] = flux
-
-        return fluxes
-
-    def get_sodes(self) -> list[Basic]:
-        nspec = len(self.species)
-        fluxes = self.get_sfluxes()
-        sodes: list[Basic] = [Float(0.0) for _ in range(nspec)]
-
-        for i, reaction in enumerate(self.reactions):
-            for rr in reaction.reactants:
-                idx = (
-                    rr.index
-                    if isinstance(rr.fidx, str) and rr.fidx.startswith("idx_")
-                    else int(rr.fidx)
-                )
-                sodes[idx] -= fluxes[i]
-
-            # Add flux to products
-            for pp in reaction.products:
-                idx = (
-                    pp.index
-                    if isinstance(pp.fidx, str) and pp.fidx.startswith("idx_")
-                    else int(pp.fidx)
-                )
-                sodes[idx] += fluxes[i]
-
-        return sodes
-
-    def get_sradodes(self, order: int = 0) -> list[Expr]:
-        # Check if radiation is enabled
-        if self.radiation is None:
-            raise RuntimeError(
-                "No radiation bands found. Radiation odes cannot be generated"
-            )
-
-        # Raise if order is not supported
-        if order not in [0, 1, 2, 3]:
-            raise ValueError("Invalid order: Supported orders are 0, 1, 2, 3")
-
-        rad_groups = self.radiation.groups
-        nden = MatrixSymbol("nden", len(self.species), 1)
-
-        den = MatrixSymbol(
-            "radeden" if self.radiation.energy_density else "photden",
-            self.radiation.nbands,
-            1,
-        )
-        rflux = MatrixSymbol("rflux", self.radiation.nbands, 1)
-        flux_map = {den[Idx(i)]: rflux[Idx(i)] for i in range(self.radiation.nbands)}
-        grate, gflux = (
-            [Float(0.0)] * self.radiation.nbands,
-            [Float(0.0)] * self.radiation.nbands,
-        )
-
-        for group in rad_groups:
-            group_rate: Basic = Float(0.0)
-            group_dRad_dt_extra = Float(0.0)
-            for reaction, props in group.props.items():
-                rrate = props["k"]
-                group_dRad_dt_extra += props["delta_rad"]
-                for reactant in reaction.reactants:
-                    rrate *= nden[Idx(self.species_dict[str(reactant)])]
-
-                group_rate -= rrate
-
-            # Flux
-            flux = group_rate.xreplace(flux_map)
-            # dRad_dt_extra assumed to be in units of energy density rate
-            group_rate += group_dRad_dt_extra / (
-                1 if self.radiation.energy_density else (group.eavg or 1)
-            )
-
-            grate[group.index] = group_rate
-            gflux[group.index] = flux
-
-        radodes: list[Expr] = [Float(0.0) for _ in range(2 * self.radiation.nbands)]
-
-        for i, (rate, flux) in enumerate(zip(grate, gflux)):
-            ei, fi = self.radiation.ordered_index(i, order)
-            radodes[ei] = rate
-            radodes[fi] = flux
-
-        return radodes
+    def sradodes(self, order: int = 0) -> list[Expr]:
+        return get_sradodes(self.radiation, self.species_dict, order)
 
     def to_hdf5(
         self,
