@@ -63,7 +63,6 @@ ElementProps = TypedDict(
 
 
 class Network:
-    # ****************
     def __init__(
         self,
         fname: str | Path,
@@ -74,7 +73,7 @@ class Network:
         rad_bands: list[str | int | float | Basic] = [],
         rad_powerlaw_index: int | float = 0,
         rad_energy_density: bool = False,
-        c: float = constants.c,  # Speed of light in cgs unit
+        c: float = constants.cgs.c,  # Speed of light in cgs unit
     ):
         if isinstance(fname, str):
             fname = Path(fname)
@@ -96,7 +95,6 @@ class Network:
         self.logger: logging.Logger = JaffLogger().get_logger()
         self.motd()
 
-        # Get the path to the data file relative to this module
         self.mass_dict: dict[str, ElementProps] = {}
         self.species: list[Species] = []
         self.species_dict: dict[str, int] = {}
