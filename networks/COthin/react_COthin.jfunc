@@ -1,0 +1,15 @@
+# This file contains the special functions used in the react_COthin network
+
+@function fselfH2(NH2, b)   # H2 self-shielding function
+# This implements the Draine & Bertoldi (1996) shielding function
+# NH2 H2 column density in units of cm^-2
+# b Doppler parameter in units of cm/s
+x = 2e-15 * NH2  # Normalized column density
+b5 = 1e-5 * b    # Normalized doppler broadening
+return 0.965 / (1 + x/b5)**2 + 0.035 / sqrt(1 + x) * exp(max(-8.5e-4 * sqrt(1+x), -250.))
+
+@function fHnOj(av)         # H2O+ and H3O+ self-shielding function
+# This implements the self-shielding function for H2O+ and H3O+
+# from lover+2010 MNRAS sect 2.2 eqn.4
+# av Visual extinction in magnitudes
+return Piecewise((exp(-2.55 * av + 0.0165 * av**2), av < 15), (exp(-2.8 * av), True))

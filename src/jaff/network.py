@@ -20,8 +20,6 @@ from sympy import (
 from sympy.core.function import AppliedUndef, UndefinedFunction
 from tqdm import tqdm
 
-from jaff.physics.equations import get_sfluxes, get_sodes, get_sradodes
-
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
 from .common import is_jaff_file
 from .common.helper import load_mass_dict, resolve_dependencies
@@ -31,6 +29,7 @@ from .errors import ParserError
 from .network_parser import NetworkParser
 from .photochemistry import Photochemistry
 from .physics import constants
+from .physics.equations import get_sfluxes, get_sodes, get_sradodes
 from .physics.radiation import Radiation
 from .reaction import Reaction
 from .species import Species

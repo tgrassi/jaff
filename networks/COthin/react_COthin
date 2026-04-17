@@ -1,0 +1,551 @@
+#rates for CO network similar to Glover+2010 MNRAS from there and other authors
+@var:Hnuclei = get_Hnuclei(n(:))
+@common: user_crate,user_Av,user_Tdust
+
+@var: Te = Tgas*8.617343d-5
+@var: invT = 1d0/Tgas
+@var: lnTe = log(Te)
+@var: T = Tgas
+
+@format:idx,R,R,R,P,P,P,P,Tmin,Tmax,rate
+#Glover+2010 MNRAS
+1,H,E,,H+,E,E,,2.73d0,1e8,dexp(-32.71396786d0+13.5365560d0*lnTe-5.73932875d0*(lnTe**2)+1.56315498d0*(lnTe**3)-0.28770560d0*(lnTe**4)+3.48255977d-2*(lnTe**5)-2.63197617d-3*(lnTe**6)+1.11954395d-4*(lnTe**7)-2.03914985d-6*(lnTe**8))
+2,H+,E,,H,g,,,2.73d0,.LE.5.5e3,3.92d-13*invTe**0.6353d0
+3,H+,E,,H,g,,,>5.5e3,1e8,exp(-28.61303380689232d0-0.7241125657826851d0*lnTe-0.02026044731984691d0*lnTe**2-0.002380861877349834d0*lnTe**3-0.0003212605213188796d0*lnTe**4-0.00001421502914054107d0*lnTe**5+4.989108920299513d-6*lnTe**6+5.755614137575758d-7*lnTe**7-1.856767039775261d-8*lnTe**8-3.071135243196595d-9*lnTe**9)
+
+#Glover+2010 MNRAS
+4,HE,E,,HE+,E,E,,2.73d0,1e8,dexp(-44.09864886d0+23.91596563d0*lnTe-10.7532302d0*(lnTe**2)+3.05803875d0*(lnTe**3)-0.56851189d0*(lnTe**4)+6.79539123d-2*(lnTe**5)-5.00905610d-3*(lnTe**6)+2.06723616d-4*(lnTe**7)-3.64916141d-6*(lnTe**8))
+5,HE+,E,,HE,g,,,2.73d0,.LE.9.28e3,3.92d-13*invTe**0.6353d0
+6,HE+,E,,HE,g,,,>9.28e3,1e8,1.54d-9*(1.d0+0.3d0/exp(8.099328789667d0*invTe))/(exp(40.49664394833662d0*invTe)*Te**1.5d0)+3.92d-13/Te**0.6353d0
+7,HE+,E,,HE++,E,E,,2.73d0,1e8,exp(-68.71040990212001d0+43.93347632635d0*lnTe-18.48066993568d0*lnTe**2+4.701626486759002d0*lnTe**3-0.7692466334492d0*lnTe**4+0.08113042097303d0*lnTe**5-0.005324020628287001d0*lnTe**6+0.0001975705312221d0*lnTe**7-3.165581065665d-6*lnTe**8)
+@format:idx,R,R,R,P,P,P,Tmin,Tmax,rate
+8,He+,H,,He,H+,,NONE,NONE,1.25d-15*(T32)**.25
+9,He,H+,,He+,H,,NONE,1d4,1.26d-9*Tgas**(-.75)*exp(-127500d0*invT)
+10,He,H+,,He+,H,,1d4,NONE,4d-37*Tgas**4.74
+@var:invTe=1d0/Te
+@var:logT=log10(Tgas)
+@var:invsqrT=1d0/sqrt(Tgas)
+@var:kl11 = 1d1**(-27.029d0+3.801d0*logT-29487d0*invT)
+@var:kh11 = 1d1**(-2.729d0-1.75d0*logT-23474d0*invT)
+@var:ncr11 = 1d1**(5.0792d0*(1d0-1.23d-5*(Tgas-2d3)))
+@var:a11=1.d0/(1.d0+(Hnuclei/(ncr11+1d-40)))
+@noTabNext
+11,H2,He,,H,H,He,NONE,NONE,kh11**(1.-a11)*kl11**a11
+
+#Glover+2011
+12,H2,He+,,He,H2+,,NONE,NONE,7.2d-15
+@format:idx,R,R,R,P,P,P,Tmin,Tmax,rate
+13,H2,He+,,He,H,H+,NONE,NONE,3.7d-14*exp(35d0*invT)
+
+#KIDA
+14,H2,He+,,He+,H,H,NONE,NONE,3d-11*sqrt(T32)*exp(-5.2d4*invT)
+15,HE++,E,,HE+,g,,2.73d0,1e8,3.36d-10/sqrTgas/(Tgas*1.d-3)**0.2/(1d0+(Tgas*1.d-6)**0.7)
+16,H,E,,H-,g,,2.73d0,1e8,6.77d-15*Te**0.8779d0
+17,H-,H,,H2,E,,2.73d0,1160,1.43d-9
+18,H-,H,,H2,E,,>1160,1e8,exp(-20.06913897587003d0+0.2289800603272916d0*lnTe+0.03599837721023835d0*lnTe**2-0.004555120027032095d0*lnTe**3-0.0003105115447124016d0*lnTe**4+0.0001073294010367247d0*lnTe**5-8.36671960467864d-6*lnTe**6+2.238306228891639d-7*lnTe**7)
+19,H,H+,,H2+,g,,2.73d0,.LE.6.7e3,1.85d-23*Tgas**1.8d0
+20,H,H+,,H2+,g,,>6.7e3,1e8,5.81d-16*(Tgas/5.62d4)**(-0.6657d0*log10(Tgas/5.62d4))
+21,H2+,H,,H2,H+,,2.73d0,1e8,6.0d-10
+22,H2,H+,,H2+,H,,>3.48e3,1e8,exp(-24.24914687731536d0+3.400824447095291d0*lnTe-3.898003964650152d0*lnTe**2+2.045587822403071d0*lnTe**3-0.5416182856220388d0*lnTe**4+0.0841077503763412d0*lnTe**5-0.007879026154483455d0*lnTe**6+0.0004138398421504563d0*lnTe**7-9.36345888928611d-6*lnTe**8)
+23,H2,E,,H,H,E,2.73d0,1e8,5.6d-11*exp(-102124.d0*invT)*Tgas**0.5d0
+24,H2,H,,H,H,H,2.73d0,1e8,1.0670825d-10*Te**2.012d0*exp(-4.463d0*invTe)/(1.d0+0.2472d0*Te)**3.512d0
+25,H-,E,,H,E,E,2.73d0,1e8,exp(-18.01849334273d0+2.360852208681d0*lnTe-0.2827443061704d0*lnTe**2+0.01623316639567d0*lnTe**3-0.03365012031362999d0*lnTe**4+0.01178329782711d0*lnTe**5-0.001656194699504d0*lnTe**6+0.0001068275202678d0*lnTe**7-2.631285809207d-6*lnTe**8)
+26,H-,H,,H,H,E,2.73d0,.LE.1.16e3,2.56d-9*Te**1.78186d0
+27,H-,H,,H,H,E,>1.16e3,1e8,exp(-20.37260896533324d0+1.139449335841631d0*lnTe-0.1421013521554148d0*lnTe**2+0.00846445538663d0*lnTe**3-0.0014327641212992d0*lnTe**4+0.0002012250284791d0*lnTe**5+0.0000866396324309d0*lnTe**6-0.00002585009680264d0*lnTe**7+2.4555011970392d-6*lnTe**8-8.06838246118d-8*lnTe**9)
+28,H-,H+,,H,H,,2.73d0,1e8,6.5d-9/sqrt(Te)
+29,H-,H+,,H2+,E,,2.73d0,1e8,1.d-8*Tgas**(-0.4d0)
+30,H2+,E,,H,H,,2.73d0,.LE.6.17e2,1.d-8
+31,H2+,E,,H,H,,>6.17e2,1e8,1.32d-6*Tgas**(-0.76d0)
+32,H2+,H-,,H,H2,,2.73d0,1e8,5.d-7*sqrt(1.d2*invT)
+@var:kl21 = 1.18d-10*exp(-6.95d4*invT)
+@var:kh21 = 8.125d-8*invsqrT*exp(-5.2d4*invT)*(1.d0-exp(-6d3*invT))
+@var:ncr21 = 1d1**(4.845d0-1.3d0*log10(T*1d-4)+1.62d0*log10(T*1d-4)**2)
+@var:a21=1.d0/(1.d0+(Hnuclei/(ncr21+1d-40)))
+@noTabNext
+33,H2,H2,,H,H,H2,NONE,NONE,kh21**(1.-a21)*kl21**a21
+34,H,H,He,H2,He,,NONE,NONE,6.9d-32*Tgas**(-.4)
+
+#DEUTERIUM CHEMISTRY
+#26,H+,D,,H,D+,,2.73d0,1e8,1.0d-9 *exp(-4.1d1*invT)
+#
+#27,H,D+,,H+,D,,2.73d0,1e8,1.0d-9
+#
+#28,H2,D+,,HD,H+,,2.73d0,1e8,2.1d-9
+#
+#29,HD,H+,,H2,D+,,2.73d0,1e8,1.0d-9 *exp(-4.57d2*invT)
+#
+#30,H2,D,,HD,H,,2.73d0,1e8,7.5d-11*exp(-3.82d3*invT)
+#
+#31,HD,H,,H2,D,,2.73d0,1e8,7.5d-11*exp(-4.24d3*invT)
+#
+#32,D,H-,,HD,E,,2.73d0,1e8,1.5d-9*(T32)**(-0.1d0)
+#THREE-BODY REACTIONS
+35,H,H,H,H2,H,,2.73d0,.LE.3e2,1.3d-32*(T32)**(-0.38d0)
+36,H,H,H,H2,H,,>3e2,1e8,1.3d-32*(T32)**(-1.00d0)
+37,H2,H,H,H2,H2,,2.73d0,.LE.3e2,1.3d-32*(T32)**(-0.38d0) / 8.d0
+38,H2,H,H,H2,H2,,>3e2,1e8,1.3d-32*(T32)**(-1.00d0) / 8.d0
+
+#METALS FROM Glover&Jappsen 2010 from #30
+39,C+,E,,C,g,,2.73d0,.LE.7950d0,4.67d-12*(T32)**(-0.6d0)
+40,C+,E,,C,g,,>7950d0,.LE.21140d0,1.23d-17*(T32)**2.49*exp(21845.6d0*invT)
+41,C+,E,,C,g,,>21140d0,.LE.21140d0,9.62d-8*(T32)**(-1.37)*exp(-115786.2d0*invT)
+42,Si+,E,,Si,g,,2.73d0,.LE.2.d3,7.5d-12*(T32)**(-0.55d0)
+43,Si+,E,,Si,g,,>2.d3,NONE,4.86d-12*(T32)**(-0.32d0)
+44,O+,E,,O,g,,2.73d0,.LE.4.d2,1.30d-10*(Tgas)**(-0.64d0)
+45,O+,E,,O,g,,>4.d2,1d8,1.41d-10*(Tgas)**(-0.66d0) + 7.4d-4*(Tgas)**(-1.5d0)*exp(-1.75d5*invT)*(1.d0+0.062d0*exp(-1.45d5*invT))
+@var:u1 = 11.26d0*invTe
+@var:u2 = 8.2d0*invTe
+@var:u3 = 13.6*invTe
+@format:idx,R,R,R,P,P,P,P,Tmin,Tmax,rate
+46,C,E,,C+,E,E,,2.73d0,1d8,6.85d-8*u1**0.25*exp(-u1)/(0.193d0+u1)
+47,Si,E,,Si+,E,E,,2.73d0,1d8,1.88d-7*(1d0+u2**0.5)*u2**0.25*exp(-u2)/(0.376d0+u2)
+48,O,E,,O+,E,E,,2.73d0,1d8,3.59d-8*u3**0.34*exp(-u3)/(0.073d0+u3)
+49,O+,H,,O,H+,,,2.73d0,1d8,4.99d-11*Tgas**0.405d0 + 7.54d-10*invT**(0.458d0)
+50,O,H+,,O+,H,,,2.73d0,1d8,(1.08d-11*Tgas**0.517d0 + 4.0d-10*Tgas**(0.00669d0))*exp(-2.27d2*invT)
+51,O,HE+,,O+,HE,,,2.73d0,1d8,4.991d-15*(Tgas*1d-4)**0.3794d0*exp(-Tgas*8.9206d-7)+2.78d-15*(Tgas*1d-4)**(-0.2163d0)*exp(-Tgas*1.2258d-6)
+52,C,H+,,C+,H,,,2.73d0,1d8,3.9d-16*Tgas**(0.213d0)
+53,C+,H,,C,H+,,,2.73d0,1d8,6.08d-14*(Tgas*1d-4)**(1.96d0)*exp(-1.7d5*invT)
+54,C,HE+,,C+,HE,,,2.73d0,.LE.2d2,8.58d-17*Tgas**(0.757d0)
+55,C,HE+,,C+,HE,,,>2d2,.LE.2d3,3.25d-17*Tgas**(0.968d0)
+56,C,HE+,,C+,HE,,,>2d3,1d8,2.77d-19*Tgas**(1.597d0)
+57,Si,H+,,Si+,H,,,2.73d0,.LE.1d4,5.88d-13*Tgas**(0.848d0)
+58,Si,H+,,Si+,H,,,>1.d4,1d8,1.45d-13*Tgas
+59,Si,HE+,,Si+,HE,,,2.73d0,1d8,3.3d-9
+60,C+,Si,,C,Si+,,,2.73d0,1d8,2.1d-9
+
+#Trange from original Kingdon+Ferland1996
+61,Si+,H+,,Si++,H,,,NONE,1d6,4.10d-10*(Tgas*1d-4)**(0.24)*(1.0d0+3.17d0*exp(Tgas*4.184d-7))*exp(-3.178d0*invTe)
+62,Si++,H,,Si+,H+,,,NONE,1d6,1.23d-9*(Tgas*1d-4)**(0.24)*(1.0d0+3.17d0*exp(Tgas*4.184d-7))
+63,Si++,E,,Si+,g,,,2.73d0,1d8,1.75d-12*(Tgas/1d4)**(-0.6346d0)
+64,OH,H,,O,H,H,,NONE,NONE,6d-9*exp(-5.09d4*invT)
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+65,HOC+,H2,HCO+,H2,NONE,NONE,3d-10
+
+#ionpol1 rate from 10 K. Below this limit constant ionpol1(T=10K), otherwise explode
+66,HOC+,CO,HCO+,CO,NONE,1d1,1.14d-9
+67,HOC+,CO,HCO+,CO,1d1,NONE,8.68d-10*(1.+2.42717d-2*sqrt(3e2*invT)+7.1537*invT)
+68,C,H2,CH,H,NONE,NONE,6.64d-10*exp(-11700d0*invT)
+69,CH,H,C,H2,NONE,NONE,1.31d-10*exp(-8d1*invT)
+70,CH,H2,CH2,H,NONE,NONE,5.46d-10*exp(-1943d0*invT)
+71,CH,C,C2,H,NONE,NONE,2.40d-10
+72,CH,O,CO,H,NONE,2d3,6.6d-11
+73,CH,O,CO,H,2d3,NONE,1.02d-10*exp(-914d0*invT)
+
+#UMIST
+74,CH,O,HCO+,E,NONE,NONE,1.9d-11*(T32)**(-2.2)*exp(-165.1d0*invT)
+
+#UMIST
+75,CH,O,OH,C,NONE,NONE,2.52d-11*exp(-2381d0*invT)
+
+#KIDA
+76,CH2,H,CH,H2,NONE,NONE,2.2d-10
+
+#KIDA
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+77,CH2,O,CO,H,H,NONE,NONE,2.04d-10*exp(-270d0*invT)
+
+#KIDA
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+78,CH2,O,CO,H2,NONE,NONE,1.36d-10*exp(-270d0*invT)
+
+#KIDA
+79,CH2,O,HCO,H,NONE,NONE,5.01d-11
+
+#KIDA
+80,CH2,O,CH,OH,NONE,NONE,4.98d-10*exp(-6d3*invT)
+
+#KIDA below 300K, while above Glover+2010 only for slope (0.757)
+81,C2,O,CO,C,NONE,3d2,2d-12*(T32)**(-.12)
+82,C2,O,CO,C,3d2,NONE,2d-12*(T32)**(.757)
+
+#KIDA (lower recomanded value)
+83,O,H2,OH,H,NONE,NONE,1.46e-12*exp(-9650.*invT)
+
+#Glover+2010
+84,OH,H,O,H2,NONE,NONE,6.99d-14*T32**2.8*exp(-1950d0*invT)
+
+#from Baluch+2005
+87,H2,OH,H2O,H,NONE,NONE,3.6d-16*T**(1.52)*exp(-1.74d3*invT)
+
+#KIDA, recomended, below 10K constant
+88,C,OH,H,CO,NONE,1d1,3.68d-10
+89,C,OH,H,CO,1d1,NONE,2.25d-11*(T32)**(-.339)*exp(-.108d0*invT)
+
+#KIDA, recomended
+90,O,OH,H,O2,NONE,NONE,2.4d-11*exp(-110.d0*invT)
+
+#KIDA, recomended, below 200K and above 350K constant
+91,O,OH,H,O2,NONE,2d2,2.42d-12
+92,O,OH,H,O2,2d2,350,6.2d-14*(T32)**(2.62)*exp(-945d0*invT)
+93,O,OH,H,O2,350,NONE,1.38d-12
+
+#Glover+2010
+93,OH,OH,H2O,O,NONE,NONE,1.65d-12*(T32)**1.14*exp(-5d1*invT)
+
+#Glover+2010
+94,H2O,H,H2,OH,NONE,NONE,1.59d-11*(T32)*1.2*exp(-9610.*invT)
+
+#Glover+2010
+95,O2,H,OH,O,NONE,NONE,2.61d-10*1.2*exp(-8156.*invT)
+
+#Glover+2010
+96,O2,H2,OH,OH,NONE,NONE,3.16d-10*exp(-21890.d0*invT)
+
+#Glover+2010
+97,O2,C,CO,O,NONE,295d0,4.7d-11*T32**(-.34)
+98,O2,C,CO,O,295d0,NONE,2.48d-12*T32**1.54*exp(613d0*invT)
+
+#Glover+2010
+99,CO,H,C,OH,NONE,NONE,1.1d-10*T32**0.5*exp(-77700d0*invT)
+
+#Glover+2010
+100,H2+,H2,H3+,H,NONE,NONE,2.24d-9*T32**.042*exp(-Tgas/46600.)
+
+#Glover+2010
+101,H3+,H,H2+,H2,NONE,NONE,7.7d-9*exp(-17560d0*invT)
+
+#Glover+2010
+102,C,H2+,CH+,H,NONE,NONE,2.4d-9
+
+#O'Connor+2014 (http://arxiv.org/abs/1408.4696), original range 10-1e4 K, here extended
+103,C,H3+,CH+,H2,NONE,NONE,(1.0218d-9 + 7.2733d-11*sqrt(Tgas) + 5.9203d-14*Tgas)/(Tgas**0.1667 + 4.4914d-2*sqrt(Tgas) - 5.9203d-14*Tgas + 2.6397d-6*Tgas**1.5)
+
+#additional channel from O'Connor+2014 (http://arxiv.org/abs/1408.4696), original range 10-1e4 K, here extended
+103,C,H3+,CH2+,H,NONE,NONE,(8.5145d-10)/(Tgas**(.1667) + 9.5666d-4*sqrt(Tgas) - 4.404d-5*Tgas + 2.3496d-6 * Tgas**1.5)
+
+#Glover+2010
+104,C+,H2,CH+,H,NONE,NONE,1d-10*exp(-4640d0*invT)
+
+#Glover+2010
+105,CH+,H,C+,H2,NONE,NONE,7.5d-10
+
+#Glover+2010
+106,CH+,H2,CH2+,H,NONE,NONE,1.2d-9
+
+#Glover+2010
+107,CH+,O,CO+,H,NONE,NONE,3.5d-10
+
+#Glover+2010
+108,CH2+,H,CH+,H2,NONE,NONE,1d-9*exp(-7080d0*invT)
+
+#Glover+2010
+109,CH2+,H2,CH3+,H,NONE,NONE,1.6d-9
+
+#Glover+2010
+110,CH2+,O,HCO+,H,NONE,NONE,7.5d-10
+
+#Glover+2010
+111,CH3+,H,CH2+,H2,NONE,NONE,7.d-10*exp(-10560d0*invT)
+
+#KIDA, including additional channel, while H2CO+ channel ignored
+112,CH3+,O,HOC+,H2,NONE,NONE,2.5d-10
+113,CH3+,O,HCO+,H2,NONE,NONE,2.5d-10
+
+#KIDA
+114,C2,O+,CO+,C,NONE,NONE,4.8d-10
+
+#KIDA
+116,O+,H2,H,OH+,NONE,NONE,1.69d-9
+
+#Glover+2010
+117,O,H2+,H,OH+,NONE,NONE,1.5d-9
+
+#KIDA and additional channel both recomended
+118,O,H3+,H2,OH+,NONE,NONE,7.98d-10*T32**(-.156)*exp(-1.41d0*invT)
+119,O,H3+,H,H2O+,NONE,NONE,3.42d-10*T32**(-.156)*exp(-1.41d0*invT)
+
+#KIDA, below 10K constant
+120,OH,H3+,H2,H2O+,NONE,1d1,2.28d-8
+121,OH,H3+,H2,H2O+,1d1,NONE,1.52d-9*(0.62d0 + 2.62185d0*(3d2*invT)**.5)
+
+#KIDA, below 10K constant
+122,OH,C+,H,CO+,NONE,1d1,2.28d-8
+123,OH,C+,H,CO+,1d1,NONE,9.15d-10*(0.62d0 + 2.62185d0*(3d2*invT)**.5)
+
+#Glover+2010
+124,OH+,H2,H2O+,H,NONE,NONE,1.01d-9
+
+#Glover+2010
+125,H2O+,H2,H3O+,H,NONE,NONE,6.4d-10
+
+#KIDA, constant below 10K
+126,H2O,H3+,H2,H3O+,NONE,1d1,2.55d-8
+127,H2O,H3+,H2,H3O+,1d1,NONE,1.73d-9*(0.62d0 + 2.578947d0*(3d2*invT)**.5)
+
+#Glover+2010, KIDA, constant below 10K, and KIDA for additional channel
+128,H2O,C+,HOC+,H,NONE,NONE,1.8d-9
+129,H2O,C+,HCO+,H,NONE,1d1,5.03d-9
+130,H2O,C+,HCO+,H,1d1,NONE,3.4093e-10*(0.62d0 + 2.578947d0*(3d2*invT)**.5)
+131,H2O,C+,H2O+,C,NONE,NONE,2.4d-10
+
+#Glover+2010
+132,H3O+,C,HCO+,H2,NONE,NONE,1d-11
+
+#KIDA, both recomended
+133,O2,C+,CO+,O,NONE,NONE,3.42d-10
+134,O2,C+,CO,O+,NONE,NONE,4.53d-10
+
+#Glover+2010, KIDA HOCO+ channel ignored
+135,O2,CH2+,HCO+,OH,NONE,NONE,9.1d-10
+
+#Glover+2010, KIDA additional channel
+136,C,O2+,O,CO+,NONE,NONE,5.2d-11
+137,C,O2+,O2,C+,NONE,NONE,5.2d-11
+
+#KIDA, constant below 10K
+138,CO,H3+,H2,HCO+,NONE,1d1,2.47d-9
+139,CO,H3+,H2,HCO+,1d1,NONE,1.88055d-9*(1d0 + 0.02427d0*(3d2*invT)**.5 + 1.79558d0*invT)
+
+#KIDA, constant below 10K
+140,CO,H3+,H2,HOC+,NONE,1d1,1.45d-10
+141,CO,H3+,H2,HOC+,1d1,NONE,1.08256d-10*(1d0 + 0.02427d0*(3d2*invT)**.5 + 1.79558d0*invT)
+
+#Glover+2010
+142,HCO+,C,CO,CH+,NONE,1d1,1d-9
+
+#KIDA, constant below 10K
+143,HCO+,H2O,CO,H3O+,NONE,1d1,1.23d-8
+144,HCO+,H2O,CO,H3O+,1d1,NONE,8.34d-10*(1d0 + 0.5232d0*(3d2*invT)**.5 + 834.165880*invT)
+
+#KIDA, constant below 10K
+145,CH,H+,CH+,H,NONE,1d1,3.3d-8
+146,CH,H+,CH+,H,1d1,NONE,3.54e-09*(0.62d0 + 1.587411d0*(3d2*invT)**.5)
+
+#KIDA, same rate for both channels
+147,CH2,H+,H2,CH+,NONE,1.5d2,1.765d-9*(0.62d0 + 0.672147d0*(3d2*invT)**.5)
+148,CH2,H+,H2,CH+,1.5d2,NONE,1.765d-9*(1d0 + 0.136347d0*(3d2*invT)**.5 + 56.66255d0*invT)
+149,CH2,H+,H,CH2+,NONE,1.5d2,1.765d-9*(0.62d0 + 0.672147d0*(3d2*invT)**.5)
+150,CH2,H+,H,CH2+,1.5d2,NONE,1.765d-9*(1d0 + 0.136347d0*(3d2*invT)**.5 + 56.66255d0*invT)
+
+#KIDA, same rate for both channels
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+151,CH2,He+,He,H2,C+,NONE,1.5d2,9.65d-10*(0.62d0 + 0.672147d0*(3d2*invT)**.5)
+152,CH2,He+,He,H2,C+,1.5d2,NONE,9.65d-10*(1d0 + 0.136347d0*(3d2*invT)**.5 + 56.6625498765d0*invT)
+153,CH2,He+,He,H,CH+,NONE,1.5d2,9.65d-10*(0.62d0 + 0.672147d0*(3d2*invT)**.5)
+154,CH2,He+,He,H,CH+,1.5d2,NONE,9.65d-10*(1d0 + 0.136347d0*(3d2*invT)**.5 + 56.6625498765d0*invT)
+
+155,C2,He+,C+,C,He,NONE,NONE,1.6d-9
+
+#KIDA, constant below 10K
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+155,OH,H+,OH+,H,NONE,1d1,3.75d-8
+156,OH,H+,OH+,H,1d1,NONE,2.5d-9*(0.62d0 + 2.62185d0*(3d2*invT)**.5)
+
+#KIDA, constant below 10K
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+157,OH,He+,O+,He,H,NONE,1d1,2.2d-8
+158,OH,He+,O+,He,H,1d1,NONE,1.35d-9*(0.62d0 + 2.62185d0*(3d2*invT)**.5)
+
+#KIDA, constant below 10K
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+159,H2O,H+,H,H2O+,NONE,1d1,4.2d-8
+160,H2O,H+,H,H2O+,1d1,NONE,2.85d-9*(0.62d0 + 2.578947d0*(3d2*invT)**.5)
+
+#KIDA,constant below 10K
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+161,H2O,He+,He,OH,H+,NONE,1d1,7.56d-9
+162,H2O,He+,He,OH,H+,1d1,NONE,5.1282d-10*(0.62d0 + 2.578947d0*(3d2*invT)**.5)
+
+#KIDA,constant below 10K
+163,H2O,He+,He,OH+,H,NONE,1d1,7.56d-9
+164,H2O,He+,He,OH+,H,1d1,NONE,5.1282d-10*(0.62d0 + 2.578947d0*(3d2*invT)**.5)
+
+#KIDA,constant below 10K
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+165,H2O,He+,He,H2O+,NONE,1d1,7.56d-9
+166,H2O,He+,He,H2O+,1d1,NONE,5.1282d-10*(0.62d0 + 2.578947d0*(3d2*invT)**.5)
+
+#G+10
+167,O2,H+,O2+,H,NONE,NONE,2d-9
+
+#G+10
+168,O2,He+,O2+,He,NONE,NONE,3.3d-11
+
+#G+10
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+169,O2,He+,O+,He,O,NONE,NONE,1.1d-9
+
+#G+10
+170,CO,He+,C+,He,O,NONE,NONE,1.4d-9*(T32)**(-.5)
+171,CO,He+,C,He,O+,NONE,NONE,1.4d-16*(T32)**(-.5)
+
+#G+10
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+172,CO+,H,CO,H+,NONE,NONE,7.5d-10
+
+#G+10
+173,C-,H+,C,H,NONE,NONE,2.3d-7*(T32)**(-.5)
+
+#G+10
+174,O-,H+,O,H,NONE,NONE,2.3d-7*(T32)**(-.5)
+
+#G+10
+175,HE+,H-,H,HE,NONE,NONE,2.3d-7*T32**(-.5)
+176,H3+,E,H2,H,NONE,NONE,2.34d-8*T32**(-.52)
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+177,H3+,E,H,H,H,NONE,NONE,4.36d-8*T32**(-.52)
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+178,CH+,E,C,H,NONE,NONE,7d-8*T32**(-.5)
+179,CH2+,E,CH,H,NONE,NONE,1.6d-7*T32**(-.6)
+180,CH2+,E,C,H2,NONE,NONE,7.68d-8*T32**(-.6)
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+181,CH2+,E,C,H,H,NONE,NONE,4.03d-7*T32**(-.6)
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+182,CH3+,E,CH2,H,NONE,NONE,7.75d-8*T32**(-.5)
+183,CH3+,E,CH,H2,NONE,NONE,1.95d-7*T32**(-.5)
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+184,CH3+,E,CH,H,H,NONE,NONE,2d-7*T32**(-.5)
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+185,OH+,E,O,H,NONE,NONE,6.3d-9*T32**(-.48)
+186,H2O+,E,O,H2,NONE,NONE,3.9d-8*T32**(-.5)
+187,H2O+,E,OH,H,NONE,NONE,8.6d-8*T32**(-.5)
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+188,H2O+,E,O,H,H,NONE,NONE,3.05d-7*T32**(-.5)
+189,H3O+,E,OH,H,H,NONE,NONE,2.58d-7*T32**(-.5)
+190,H3O+,E,O,H,H2,NONE,NONE,5.6d-9*T32**(-.5)
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+191,H3O+,E,H,H2O,NONE,NONE,1.08d-7*T32**(-.5)
+192,H3O+,E,OH,H2,NONE,NONE,6.02d-7*T32**(-.5)
+193,O2+,E,O,O,NONE,NONE,1.95d-7*T32**(-.7)
+194,CO+,E,C,O,NONE,NONE,2.75d-7*T32**(-.55)
+195,HCO+,E,CO,H,NONE,NONE,2.76d-7*T32**(-.64)
+196,HCO+,E,OH,C,NONE,NONE,2.4d-8*T32**(-.64)
+197,HOC+,E,CO,H,NONE,NONE,1.1d-7*invT32
+198,H-,C,CH,E,NONE,NONE,1d-9
+199,H-,O,OH,E,NONE,NONE,1d-10
+200,H-,OH,H2O,E,NONE,NONE,5d-10
+201,C-,H,CH,E,NONE,NONE,1d-13
+202,C-,H2,CH2,E,NONE,NONE,5d-10
+203,C-,O,CO,E,NONE,NONE,5d-10
+204,O-,H,OH,E,NONE,NONE,7d-10
+205,O-,H2,H2O,E,NONE,NONE,7d-10
+207,O-,C,CO,E,NONE,NONE,5d-10
+
+#KIDA, including additional channel
+208,H2,H+,H,H2+,NONE,NONE,6.4d-10*exp(-21300d0*invT)
+@format:idx,R,R,P,P,P,Tmin,Tmax,rate
+209,H2,H+,H,H,H+,NONE,NONE,3d-11*T32**(.5)*exp(-52000d0*invT)
+
+@format:idx,R,R,P,Tmin,Tmax,rate
+209,H2,H+,H3+,NONE,NONE,1d-16
+
+
+#G+10
+@format:idx,R,R,P,P,Tmin,Tmax,rate
+210,C,E,C-,,NONE,NONE,2.25d-15
+211,C,H,CH,,NONE,NONE,1d-17
+212,C,H2,CH2,,NONE,NONE,1d-17
+213,C,C,C2,,NONE,NONE,4.36d-18*T32**.35*exp(-161.3d0*invT)
+214,C,O,CO,,NONE,3d2,1d-19
+215,C,O,CO,,3d2,NONE,3.09d-17*T32**.33*exp(-1629d0*invT)
+216,C+,H,CH+,,NONE,NONE,4.46d-16*Tgas**(-.5)*exp(-4.93*Tgas**(-.6667))
+
+#KIDA, recomended
+217,C+,H2,CH2+,,NONE,NONE,2d-16*T32**(-1.3)*exp(-23d0*invTgas)
+218,C+,O,CO+,,NONE,3d2,2.5d-18
+219,C+,O,CO+,,3d2,NONE,3.14d-18*T32**(-.15)*exp(-68d0*invT)
+220,O,E,O-,,NONE,NONE,1.5d-15
+221,O,H,OH,,NONE,NONE,9.9d-19*T32**(-.38)
+222,O,O,O2,,NONE,NONE,4.9d-20*T32**(1.58)
+223,OH,H,H2O,,NONE,NONE,5.26d-18*T32**(-5.22)*exp(-9d1*invT)
+
+#H2 ON GRAINS WITH RATE APPROXIMATION
+@format:idx,R,R,P,rate
+@var:fA = 1d0/(1d0+1d4*exp(-6d2/(user_Tdust+1d-40)))
+@noTabNext
+223,H,H,H2,3d-18*sqrt(Tgas)*fA/(1d0+0.04d0*sqrt(Tgas+user_Tdust)+0.002d0*Tgas+8d-6*Tgas**2)/n(idx_H)*Hnuclei
+
+#PHOTOREACTIONS THIN WITH Av
+@format:idx,R,P,P,rate
+
+@noTab_start
+
+#integrated with J21*13.6/E flux, up to 200eV
+#223,H,H+,E,2.19e-12*exp(-1.14e4*user_Av)
+
+#FROM GLOVER+2009
+224,H-,H,E,7.1d-7*exp(-.5*user_Av)
+225,H2+,H,H+,1.1d-9*exp(-1.9*user_Av)
+@var: user_H2self = fselfH2(1.87d21*(merge(n(idx_H2),n_global(idx_H2),n(idx_H2) > 0.0_8)*1d-3)**(2./3.), 1d5)
+226,H2,H,H,5.6d-11*exp(-3.74*user_Av)*user_H2self
+227,H3+,H2,H+,4.9d-13*exp(-1.8*user_Av)
+228,H3+,H2+,H,4.9d-13*exp(-2.3*user_Av)
+229,C,C+,E,3.1d-10*exp(-3.*user_Av)
+230,C-,C,E,2.4d-7*exp(-.9*user_Av)
+231,CH,C,H,8.7d-10*exp(-1.2*user_Av)
+232,CH,CH+,E,7.7d-10*exp(-2.8*user_Av)
+233,CH+,C,H+,2.6d-10*exp(-2.5*user_Av)
+234,CH2,CH,H,7.1d-10*exp(-1.7*user_Av)
+235,CH2,CH2+,E,5.9d-10*exp(-2.3*user_Av)
+236,CH2+,CH+,H,4.6d-10*exp(-1.7*user_Av)
+237,CH3+,CH2+,H,1d-9*exp(-1.7*user_Av)
+238,CH3+,CH+,H2,1d-9*exp(-1.7*user_Av)
+239,C2,C,C,1.5d-10*exp(-2.1*user_Av)
+240,O-,O,E,2.4d-7*exp(-.5*user_Av)
+241,OH,O,H,3.7d-10*exp(-1.7*user_Av)
+242,OH,OH+,E,1.6d-12*exp(-3.1*user_Av)
+243,OH+,O,H+,1d-12*exp(-1.8*user_Av)
+244,H2O,OH,H,6d-10*exp(-1.7*user_Av)
+245,H2O,H2O+,E,3.2d-11*exp(-3.9*user_Av)
+@var: HnOj = fHnOj(user_Av)
+246,H2O+,H2+,O,5.d-11*HnOj
+247,H2O+,H+,OH,5.d-11*HnOj
+248,H2O+,O+,H2,5.d-11*HnOj
+249,H2O+,OH+,H,1.5d-10*HnOj
+250,H3O+,H+,H2O,2.5d-11*HnOj
+251,H3O+,H2+,OH,2.5d-11*HnOj
+252,H3O+,H2O+,H,7.5d-12*HnOj
+253,H3O+,OH+,H2,2.5d-11*HnOj
+254,O2,O2+,E,5.6d-11*exp(-3.7*user_Av)
+255,O2,O,O,7d-10*exp(-1.8*user_Av)
+256,CO,C,O,2.d-10*exp(-3.53*user_Av)
+@noTab_end
+
+
+#cosmic rays processes from OSU
+@CR_start
+257,H,H+,E,4.6d-1*user_crate
+258,He,He+,E,5.d-1*user_crate
+259,O,O+,E,2.8d0*user_crate
+260,CO,C,O,5d0*user_crate
+261,CO,CO+,E,3d0*user_crate
+262,C2,C,C,2.37d2*user_crate
+263,H2,H,H,1d-1*user_crate
+264,H2,H+,H-,3d-4*user_crate
+265,H2,H2+,E,9.3d-1*user_crate
+266,C,C+,E,1.02d3*user_crate
+267,CH,C,H,7.3d2*user_crate
+268,O2,O,O,7.5d2*user_crate
+269,O2,O2+,E,1.17d2*user_crate
+270,OH,O,H,5.1d2*user_crate
+271,CH2,CH2+,E,5d2*user_crate
+273,H2O,OH,H,9.7d2*user_crate
+274,HCO,CO,H,4.21d2*user_crate
+275,HCO,HCO+,E,1.17d3*user_crate
+@format:idx,R,P,P,P,rate
+279,H2,H,H+,E,9.3d-1*user_crate
+@CR_stop
+
+
+#3body catalysis
+@noTab_start
+@var:ntot=sum(n(1:nmols))
+@format:idx,R,R,P,Tmin,Tmax,rate
+280,C,C,C2,NONE,5d3,5.99d-33*(Tgas/5d3)**(-1.6)*ntot
+281,C,C,C2,5d3,NONE,5.99d-33*(Tgas/5d3)**(-0.64)*exp(5255./Tgas)*ntot
+
+282,C,O,CO,NONE,2d3,6.16d-29*(Tgas/3d2)**(-3.08)*ntot
+283,C,O,CO,2d3,NONE,2.14d-29*(Tgas/3d2)**(-3.08)*exp(2114./Tgas)*ntot
+
+284,C+,O,CO+,NONE,2d3,6.16d-27*(Tgas/3d2)**(-3.08)*ntot
+285,C+,O,CO+,2d3,NONE,2.14d-27*(Tgas/3d2)**(-3.08)*exp(2114./Tgas)*ntot
+
+286,C,O+,CO+,NONE,2d3,6.16d-27*(Tgas/3d2)**(-3.08)*ntot
+287,C,O+,CO+,2d3,NONE,2.14d-27*(Tgas/3d2)**(-3.08)*exp(2114./Tgas)*ntot
+
+288,H,O,OH,NONE,NONE,4.33d-32*(T32)**(-1)*ntot
+289,OH,H,H2O,NONE,NONE,2.56d-31*(T32)**(-2)*ntot
+290,O,O,O2,NONE,NONE,9.2d-34*(T32)**(-1)*ntot
+
+@noTab_stop
+
