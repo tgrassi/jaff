@@ -65,11 +65,17 @@ def test_repo_networks_roundtrip_json():
         has_undef = False
         for r in net.reactions:
             if isinstance(r.rate, sympy.Basic):
-                if any(type(f.func) is sympy.core.function.UndefinedFunction for f in r.rate.atoms(sympy.Function)):
+                if any(
+                    type(f.func) is sympy.core.function.UndefinedFunction
+                    for f in r.rate.atoms(sympy.Function)
+                ):
                     has_undef = True
                     break
             if isinstance(r.dE, sympy.Basic):
-                if any(type(f.func) is sympy.core.function.UndefinedFunction for f in r.dE.atoms(sympy.Function)):
+                if any(
+                    type(f.func) is sympy.core.function.UndefinedFunction
+                    for f in r.dE.atoms(sympy.Function)
+                ):
                     has_undef = True
                     break
         if has_undef:
@@ -105,7 +111,9 @@ def test_repo_networks_roundtrip_json():
     # If you want this test to be strict about undefined functions, set
     # JAFF_TEST_REPO_NETWORKS_STRICT=1.
     if os.environ.get("JAFF_TEST_REPO_NETWORKS_STRICT") == "1":
-        msg = ["Some repo networks are unserializable due to undefined SymPy function calls:"]
+        msg = [
+            "Some repo networks are unserializable due to undefined SymPy function calls:"
+        ]
         for p in unserializable:
             msg.append(f"- {p}")
         pytest.fail("\n".join(msg))

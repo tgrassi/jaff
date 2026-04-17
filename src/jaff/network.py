@@ -302,7 +302,7 @@ class Network:
                 products=reaction["products"],
                 rate=reaction["rate"],
                 dE=reaction["dE"],
-                dRad_dt=Float("dRad_dt"),
+                dRad_dt=reaction["dRad_dt"],
                 tmin=reaction["tmin"],
                 tmax=reaction["tmax"],
                 original_string=reaction["original_string"],

@@ -34,7 +34,7 @@ class TestNetworkInitialization:
             network = Network(sample_kida_file)
 
         # Check basic attributes are initialized
-        assert network.file_name == sample_kida_file
+        assert network.file_name == Path(sample_kida_file).resolve()
         assert network.label == "sample_kida"
         assert isinstance(network.species, list)
         assert isinstance(network.reactions, list)
@@ -54,7 +54,7 @@ class TestNetworkInitialization:
             network = Network(sample_kida_file, label=custom_label)
 
         assert network.label == custom_label
-        assert network.file_name == sample_kida_file
+        assert network.file_name == Path(sample_kida_file).resolve()
 
     def test_initialization_with_nonexistent_file(self):
         """Test initialization fails gracefully with non-existent file."""
@@ -71,9 +71,13 @@ class TestNetworkInitialization:
 
         # Test with path containing directories
         test_path = os.path.join("some", "long", "path", "to", "network_file.txt")
-        with patch("builtins.print"), patch("builtins.open", MagicMock()):
+        with (
+            patch("builtins.print"),
+            patch("builtins.open", MagicMock()),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
             with patch("jaff.network.Photochemistry", MagicMock()):
-                with patch.object(Network, "load_network", MagicMock()):
+                with patch.object(Network, "_Network__load_network", MagicMock()):
                     with patch.object(Network, "check_sink_sources", MagicMock()):
                         with patch.object(Network, "check_recombinations", MagicMock()):
                             with patch.object(Network, "check_isomers", MagicMock()):
@@ -96,7 +100,6 @@ class TestNetworkInitialization:
         """Test mass dictionary loading"""
         fpath = os.path.join(fixtures_dir, "empty_network.dat")
         net = Network(fpath)
-        net.load_mass_dict()
 
         assert net.mass_dict["H"]["mass"] == pytest.approx(1.673773e-24)
         assert net.mass_dict["He"]["mass"] == pytest.approx(6.646473e-24)
@@ -128,7 +131,7 @@ class TestNetworkInitialization:
     def test_initialization_workflow(self, sample_kida_file):
         """Test that all initialization steps are called in correct order."""
         with patch("builtins.print"):
-            with patch.object(Network, "load_network") as mock_load:
+            with patch.object(Network, "_Network__load_network") as mock_load:
                 with patch.object(Network, "check_sink_sources") as mock_sink:
                     with patch.object(Network, "check_recombinations") as mock_recomb:
                         with patch.object(Network, "check_isomers") as mock_isomers:
@@ -144,7 +147,7 @@ class TestNetworkInitialization:
                                         network = Network(sample_kida_file, errors=True)
 
         # Verify all methods were called
-        mock_load.assert_called_once_with(sample_kida_file, None, True)
+        mock_load.assert_called_once_with(Path(sample_kida_file).resolve(), None, True)
         mock_sink.assert_called_once_with(True)
         mock_recomb.assert_called_once_with(True)
         mock_isomers.assert_called_once_with(True)

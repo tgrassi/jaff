@@ -10,7 +10,7 @@ import sympy
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from jaff.sympy_json import dumps, loads, to_jsonable, from_jsonable
+from jaff.common.sympy_json import dumps, from_jsonable, loads, to_jsonable
 
 
 def _rt(expr: sympy.Basic) -> sympy.Basic:
@@ -20,7 +20,13 @@ def _rt(expr: sympy.Basic) -> sympy.Basic:
 def test_roundtrip_basic_arithmetic_and_numbers():
     x = sympy.Symbol("x", real=True)
     y = sympy.Symbol("y")
-    expr = sympy.Add(sympy.Integer(2), sympy.Rational(1, 3), sympy.Float("1.0e-10"), x * y, evaluate=False)
+    expr = sympy.Add(
+        sympy.Integer(2),
+        sympy.Rational(1, 3),
+        sympy.Float("1.0e-10"),
+        x * y,
+        evaluate=False,
+    )
 
     expr2 = _rt(expr)
     diff = sympy.simplify(expr2 - expr)
@@ -44,7 +50,11 @@ def test_roundtrip_commutative_order_is_deterministic():
 
 def test_roundtrip_piecewise_strict_lessthan():
     x = sympy.Symbol("x")
-    pw = sympy.Piecewise((x, sympy.StrictLessThan(x, sympy.Integer(0))), (sympy.Integer(0), sympy.true), evaluate=False)
+    pw = sympy.Piecewise(
+        (x, sympy.StrictLessThan(x, sympy.Integer(0))),
+        (sympy.Integer(0), sympy.true),
+        evaluate=False,
+    )
     pw2 = _rt(pw)
     assert pw2 == pw
 
