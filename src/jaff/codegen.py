@@ -1307,6 +1307,7 @@ class Codegen:
             # Generate Jacobian code with only the needed CSE assignments
             pattern = re.compile(r"(\d+)")
             for var, expr in replacements:
+                expr = self.__convert_unknown_derivatives(expr)
                 match = pattern.search(str(var))
                 idx: int = int(match.group(0)) if match is not None else 0
                 expr_str = self.code_gen(expr, strict=False, allow_unknown_functions=True)
@@ -1332,6 +1333,7 @@ class Codegen:
             if expr == 0:
                 continue
 
+            expr = self.__convert_unknown_derivatives(expr)
             expr_str = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             expr_str = dpattern.sub(lambda m: replace_y(m, "nden"), expr_str)
 
@@ -1428,6 +1430,33 @@ class Codegen:
             jac_code += f"{jac_var}{mlb}{ioff + i}{matrix_sep}{ioff + j}{mrb} {assign_op} {expr}{lend}\n"
 
         return jac_code
+
+    @staticmethod
+    def __convert_unknown_derivatives(expr: sp.Expr):
+        replacement_dict = {}
+
+        for ex in expr.atoms(sp.Subs):
+            deriv = ex.args[0]
+            sub_var = cast(tuple[sp.Basic, ...], ex.args[1])
+            sub_val = cast(tuple[sp.Basic, ...], ex.args[2])
+
+            if isinstance(deriv, sp.Derivative):
+                sub_dict = dict(zip(sub_var, sub_val))
+                dexpr = deriv.expr
+                deriv_name = dexpr.func.__name__
+                vars = [var.xreplace(sub_dict) for var in deriv.variables]
+                args = [arg.xreplace(sub_dict) for arg in dexpr.args]
+
+                func_sig_suffix = "_".join(
+                    [str(i) for i in [args.index(var) for var in vars]]
+                )
+                new_func_sig = f"{deriv_name}_partial_{func_sig_suffix}"
+
+                new_func = sp.Function(new_func_sig)(*args)  # type: ignore
+                replacement_dict[ex] = new_func
+        expr = expr.xreplace(replacement_dict)
+
+        return expr
 
     @staticmethod
     def __prune_cse(
