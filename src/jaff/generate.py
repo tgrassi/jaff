@@ -181,7 +181,6 @@ class JaffGen:
             return
 
         for file in input_files:
-            print(template)
             infile: Path = Path(file).resolve()
 
             if not infile.exists():
