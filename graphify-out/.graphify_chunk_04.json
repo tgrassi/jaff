@@ -1,0 +1,188 @@
+{
+  "nodes": [
+    {
+      "id": "logo_alt_jaff_logo_alt",
+      "label": "JAFF Alt Logo",
+      "file_type": "image",
+      "source_file": "assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_svg_graphic",
+      "label": "SVG Vector Graphic",
+      "file_type": "image/svg+xml",
+      "source_file": "assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_rounded_rectangle_border",
+      "label": "Rounded Rectangle Border",
+      "file_type": null,
+      "source_file": "assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_color_amber_gold",
+      "label": "Amber/Gold Color (#d98f00)",
+      "file_type": null,
+      "source_file": "assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_graph_network_visual",
+      "label": "Graph/Network Visualization",
+      "file_type": null,
+      "source_file": "assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_nodes_circles",
+      "label": "Circular Node Markers (6 nodes)",
+      "file_type": null,
+      "source_file": "assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_edges_lines",
+      "label": "Graph Edge Lines",
+      "file_type": null,
+      "source_file": "assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_curved_path",
+      "label": "Curved Path (J-shape / chemical network arc)",
+      "file_type": null,
+      "source_file": "assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_jaff_project",
+      "label": "JAFF Project (astrochemistry network tool)",
+      "file_type": null,
+      "source_file": null,
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "from": "logo_alt_jaff_logo_alt",
+      "to": "logo_alt_svg_graphic",
+      "relation": "IS_FORMAT",
+      "context": "The alt logo is encoded as an SVG vector file",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_jaff_logo_alt",
+      "to": "logo_alt_color_amber_gold",
+      "relation": "USES_COLOR",
+      "context": "Primary stroke and fill color throughout the logo is #d98f00 (amber/gold)",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_jaff_logo_alt",
+      "to": "logo_alt_rounded_rectangle_border",
+      "relation": "HAS_ELEMENT",
+      "context": "Outer rounded rectangle border (48px corner radius) frames the logo",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_jaff_logo_alt",
+      "to": "logo_alt_graph_network_visual",
+      "relation": "DEPICTS",
+      "context": "Interior shapes form a graph/network diagram with nodes and edges",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_graph_network_visual",
+      "to": "logo_alt_nodes_circles",
+      "relation": "CONTAINS",
+      "context": "Six filled circular markers (r=8) serve as graph nodes at specific coordinates",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_graph_network_visual",
+      "to": "logo_alt_edges_lines",
+      "relation": "CONTAINS",
+      "context": "Straight line segments connect node positions forming graph edges",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_graph_network_visual",
+      "to": "logo_alt_curved_path",
+      "relation": "CONTAINS",
+      "context": "A curved bezier path traces a J/hook shape through the network",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_jaff_logo_alt",
+      "to": "logo_alt_jaff_project",
+      "relation": "REPRESENTS",
+      "context": "This is the alternate brand logo for the JAFF software project",
+      "provenance": "INFERRED",
+      "confidence_score": 0.9
+    },
+    {
+      "from": "logo_alt_graph_network_visual",
+      "to": "logo_alt_jaff_project",
+      "relation": "SYMBOLIZES",
+      "context": "The graph/network motif likely symbolizes astrochemical reaction networks, which is JAFFs domain",
+      "provenance": "INFERRED",
+      "confidence_score": 0.8
+    },
+    {
+      "from": "logo_alt_curved_path",
+      "to": "logo_alt_jaff_project",
+      "relation": "ALLUDES_TO",
+      "context": "The curved J-shape path may allude to the letter J in JAFF",
+      "provenance": "AMBIGUOUS",
+      "confidence_score": 0.3
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

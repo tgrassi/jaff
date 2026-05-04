@@ -1,0 +1,192 @@
+{
+  "nodes": [
+    {
+      "id": "logo_alt_docs_jaff_logo_alt",
+      "label": "JAFF Docs Alt Logo",
+      "file_type": "image",
+      "source_file": "docs/assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_svg_format",
+      "label": "SVG Vector Format",
+      "file_type": "concept",
+      "source_file": "docs/assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_color_amber",
+      "label": "Amber/Gold Color (#d98f00)",
+      "file_type": "concept",
+      "source_file": "docs/assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_rounded_rect_border",
+      "label": "Rounded Rectangle Border",
+      "file_type": "concept",
+      "source_file": "docs/assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_graph_nodes",
+      "label": "Graph Nodes (circular dots)",
+      "file_type": "concept",
+      "source_file": "docs/assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_graph_edges",
+      "label": "Graph Edges (connecting lines)",
+      "file_type": "concept",
+      "source_file": "docs/assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_network_diagram",
+      "label": "Network/Graph Diagram Visual",
+      "file_type": "concept",
+      "source_file": "docs/assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_curved_path",
+      "label": "Curved Path (loop shape)",
+      "file_type": "concept",
+      "source_file": "docs/assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "logo_alt_jaff_project",
+      "label": "JAFF Project Brand Identity",
+      "file_type": "concept",
+      "source_file": "docs/assets/logo_alt.svg",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "from": "logo_alt_docs_jaff_logo_alt",
+      "to": "logo_alt_svg_format",
+      "relation": "has_format",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_docs_jaff_logo_alt",
+      "to": "logo_alt_color_amber",
+      "relation": "uses_color",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_docs_jaff_logo_alt",
+      "to": "logo_alt_rounded_rect_border",
+      "relation": "contains_element",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_docs_jaff_logo_alt",
+      "to": "logo_alt_graph_nodes",
+      "relation": "contains_element",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_docs_jaff_logo_alt",
+      "to": "logo_alt_graph_edges",
+      "relation": "contains_element",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_docs_jaff_logo_alt",
+      "to": "logo_alt_curved_path",
+      "relation": "contains_element",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_graph_nodes",
+      "to": "logo_alt_graph_edges",
+      "relation": "connected_by",
+      "provenance": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "from": "logo_alt_graph_nodes",
+      "to": "logo_alt_network_diagram",
+      "relation": "part_of",
+      "provenance": "INFERRED",
+      "confidence_score": 0.95
+    },
+    {
+      "from": "logo_alt_graph_edges",
+      "to": "logo_alt_network_diagram",
+      "relation": "part_of",
+      "provenance": "INFERRED",
+      "confidence_score": 0.95
+    },
+    {
+      "from": "logo_alt_docs_jaff_logo_alt",
+      "to": "logo_alt_network_diagram",
+      "relation": "depicts",
+      "provenance": "INFERRED",
+      "confidence_score": 0.9
+    },
+    {
+      "from": "logo_alt_docs_jaff_logo_alt",
+      "to": "logo_alt_jaff_project",
+      "relation": "represents_brand",
+      "provenance": "INFERRED",
+      "confidence_score": 0.85
+    },
+    {
+      "from": "logo_alt_network_diagram",
+      "to": "logo_alt_jaff_project",
+      "relation": "symbolizes_domain",
+      "provenance": "INFERRED",
+      "confidence_score": 0.8
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 0,
+  "output_tokens": 0
+}
