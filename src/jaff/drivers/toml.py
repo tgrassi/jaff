@@ -13,7 +13,6 @@ class Toml:
         self.data = self.__get_dict()
 
     def __get_dict(self) -> dict:
-        data = {}
         with open(self.file, "rb") as f:
             data = tomllib.load(f)
 
@@ -21,3 +20,9 @@ class Toml:
 
     def get_key(self, key) -> Any:
         return self.data.get(key, None)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        del self.file

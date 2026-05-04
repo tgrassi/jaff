@@ -6,6 +6,8 @@ from typing import Any
 
 import pandas as pd
 
+from .csv import csv_to_df
+
 
 class Db:
     def __init__(self, db_path: Path | str):
@@ -98,9 +100,9 @@ class Db:
         return Table(name, self.connection, self.cursor)
 
     def table_from_csv(self, name: str, file: Path, delimiter: str) -> Table:
-        df: pd.DataFrame = pd.read_csv(file, sep=delimiter, index_col=0)
-
-        return self.table_from_dataframe(name, df)
+        return self.table_from_dataframe(
+            name, csv_to_df(file, sep=delimiter, index_col=0)
+        )
 
     def query(self, query: str) -> list[Any]:
         try:
