@@ -7,16 +7,24 @@ from typing import TYPE_CHECKING
 from sympy import Basic, Piecewise
 from sympy.core.function import AppliedUndef
 
-from ..drivers.sqlite import JaffDb
 from ..errors import ParserError
 
 if TYPE_CHECKING:
     from ..auxilary_file_parser import FunctionsDict
 
+HDF_EXTENSIONS = [".hdf5", ".hdf", ".h5"]
+CSV_EXTENSIONS = [".csv", ".txt", ".dat"]
+C_EXTENSIONS = [".c", ".h"]
+CPP_EXTENSIONS = [".cpp", ".hpp", ".cc", ".cxx", ".hh", ".hxx"]
+FORTRAN_EXTENSIONS = [".f", ".f90", ".f95", ".f03", ".f08", ".for", ".f77"]
+RUST_EXTENSIONS = [".rs"]
+
 F90_PATTERN = re.compile(r"([0-9_.])d([0-9_+-])")
 
 
 def load_mass_dict() -> dict:
+    from ..drivers.sqlite import JaffDb
+
     with JaffDb() as jdb:
         rows = jdb.table("atomic_masses").all_rows()
 

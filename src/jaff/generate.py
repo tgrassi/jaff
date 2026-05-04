@@ -24,162 +24,105 @@ import argparse
 from inspect import signature
 from pathlib import Path
 
+import pandas as pd
+
 from .codegen import Codegen as cg
+from .config_table_parser import ConfigTable
 from .core.logger import JaffLogger
+from .drivers.hdf5 import HDF5
 from .drivers.toml import Toml
 from .file_parser import Fileparser
+from .jaff_types import HDF5Dict
 from .network import Network, NetworkProps
 
 
-def main() -> None:
-    """
-    Main entry point for the JAFF code generator CLI.
+class JaffGen:
+    def __init__(self):
+        self.parser: argparse.ArgumentParser = self.__get_parser()
+        self.__set_parser_props()
 
-    Parses command-line arguments, validates input files and directories, and processes
-    template files to generate code based on the specified chemical reaction network.
+        self.logger = JaffLogger().get_logger()
+        self.args: argparse.Namespace = self.parser.parse_args()
 
-    Command-line Arguments:
-        --network: Path to the chemical reaction network file (required)
-        --outdir: Output directory for generated files (optional, defaults to current directory)
-        --indir: Input directory containing template files to process (optional)
-        --files: Individual template files to process (optional)
-        --template: Name of a predefined template directory to use (optional)
-        --lang: Default programming language for files without language detection (optional)
-    """
-    # Set up argument parser with comprehensive help text
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        prog="jaff.generate",
-        description="Generate code for chemical reaction networks in multiple programming languages.",
-        epilog="""
-Examples:
-  # Generate from a template directory
-  python -m jaff.generate --network networks/react_COthin --indir templates/ --outdir output/
+        # Locate JAFF package directory and built-in template directory
+        # Templates are stored in jaff/templates/generator/
+        self.jaff_dir: Path = Path(__file__).parent
+        self.network_dir: Path = self.jaff_dir.parent.parent / "networks"
+        self.generator_template_dir: Path = self.jaff_dir / "templates" / "generator"
+        self.preprocessor_template_dir: Path = (
+            self.jaff_dir / "templates" / "preprocessor"
+        )
+        self.files: list[Path] = []
 
-  # Use a predefined template collection
-  python -m jaff.generate --network networks/react_COthin --template chemistry_solver --outdir output/
+        self.outdir = self.__get_output_dir(self.args.outdir)
+        self.netfile = self.__set_network(self.args.network)
+        self.default_lang = self.__get_default_lang(self.args.lang)
+        self.jaff_config_file: Path | None = None
+        self.jaff_config_dir: Path | None = None
 
-  # Process specific files with Rust
-  python -m jaff.generate --network networks/test.dat --files rates.txt odes.txt --lang rust --outdir output/
+        self.__set_input_dir(self.args.indir)
+        self.__set_input_files(self.args.files)
+        self.__set_network(self.args.network)
+        self.__set_template(self.args.lang)
 
-  # Combine template and custom files
-  python -m jaff.generate --network networks/test.dat --template base --files custom.cpp --outdir output/
+        # Ensure at least one input file was provided
+        if not self.files:
+            raise RuntimeError("No valid input file/folder/template have been supplied")
 
-Supported Languages:
-  c, cxx (c++, cpp), fortran (f90), python (py), rust (rs), julia (jl), r
+        self.net_kwargs: NetworkProps = {"fname": str(self.netfile)}
+        self.__read_jaff_config()
 
-For more information, visit: https://github.com/tgrassi/jaff
-        """,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+        # Create a new network instance
+        self.net: Network = Network(**self.net_kwargs)
+        self.__process_files()
 
-    # Required arguments
-    parser.add_argument(
-        "--network",
-        required=True,
-        metavar="FILE",
-        help="Path to chemical reaction network file (required)",
-    )
+    def __process_files(self):
+        # Process each template file
+        for file in self.files:
+            # Initialize file parser for this template
+            fparser: Fileparser = Fileparser(self.net, file, self.default_lang)
 
-    # Output options
-    parser.add_argument(
-        "--outdir",
-        metavar="DIR",
-        help="Output directory for generated files (default: jaff/generated)",
-    )
+            # Parse and generate code
+            lines: str = fparser.parse_file()
 
-    # Input source options (mutually compatible)
-    input_group = parser.add_argument_group("Input sources (can combine multiple)")
-    input_group.add_argument(
-        "--indir", metavar="DIR", help="Directory containing template files to process"
-    )
-    input_group.add_argument(
-        "--files",
-        nargs="+",
-        metavar="FILE",
-        help="Individual template file(s) to process",
-    )
-    input_group.add_argument(
-        "--template",
-        metavar="NAME",
-        help="Name of predefined template collection in jaff/templates/generator/",
-    )
+            # Write generated code to output file
+            outfile: Path = self.outdir / file.name
+            with open(outfile, "w") as f:
+                f.write(lines)
 
-    # Code generation options
-    gen_group = parser.add_argument_group("Code generation options")
-    gen_group.add_argument(
-        "--lang",
-        metavar="LANGUAGE",
-        choices=[
-            "c",
-            "cxx",
-            "fortran",
-            "python",
-            "rust",
-            "julia",
-        ],
-        help="Default programming language for unsupported files (choices: %(choices)s)",
-    )
-    logger = JaffLogger().get_logger()
-    args: argparse.Namespace = parser.parse_args()
+            self.logger.info(f"{file.name} created at {self.outdir}")
 
-    # Extract command-line arguments
-    output_dir: str | None = args.outdir
-    input_dir: str | None = args.indir
-    input_files: list[str] | None = args.files
-    network_file: str | None = args.network
-    default_lang: str | None = args.lang
-    template: str | None = args.template
+        self.logger.info("Successfully generated files")
+        self.logger.info(f"Generated files can be found at {self.outdir}")
 
-    # List to collect all files to process
-    files: list[Path] = []
+    def __read_jaff_config(self) -> None:
+        jaff_config_index: int | None = next(
+            (i for i, f in enumerate(self.files) if f.name == "jaff.toml"), None
+        )
 
-    # Locate JAFF package directory and built-in template directory
-    # Templates are stored in jaff/templates/generator/
-    jaff_dir: Path = Path(__file__).parent
-    network_dir: Path = jaff_dir.parent.parent / "networks"
-    generator_template_dir: Path = jaff_dir / "templates" / "generator"
-    preprocessor_template_dir: Path = jaff_dir / "templates" / "preprocessor"
+        # Set radiation related props in radiation in present
+        if jaff_config_index is not None:
+            self.jaff_config_file = self.files[jaff_config_index]
+            self.jaff_config_dir = self.jaff_config_file.parent
+            jaff_config = Toml(self.jaff_config_file)
 
-    # Validate network file is provided
-    if network_file is None:
-        raise RuntimeError("No network file supplied. Please enter a network file")
+            rad_props = jaff_config.get_key("radiation")
+            if rad_props:
+                self.__handle_radiation(rad_props)
 
-    # Resolve and validate network file path
-    netfile = Path(network_file)
-    netfile: Path = netfile.resolve() if netfile.is_symlink() else netfile
-    networks = {f.name for f in network_dir.iterdir() if f.is_file()}
-    is_predefined_network = str(netfile) in networks
+            table_props = jaff_config.get_key("table")
+            if table_props:
+                self.__handle_data_tables(table_props)
 
-    if not netfile.exists() and not is_predefined_network:
-        raise FileNotFoundError(f"Unable to find network file: {netfile}")
+    def __set_template(self, template: str) -> None:
+        if template is None:
+            return
 
-    if is_predefined_network:
-        netfile = network_dir / netfile.name
-
-    if not netfile.is_file():
-        raise FileNotFoundError(f"{netfile} is not a valid file")
-
-    # Handle output directory
-    if output_dir is None:
-        logger.warning("No output directory has been supplied.")
-        logger.warning(f"Files will be generated at {Path.cwd()}")
-
-    outdir: Path = (
-        Path(output_dir).resolve() if output_dir is not None else jaff_dir / "generated"
-    )
-    if not outdir.exists():
-        # Create output directory if it doesn't exist
-        Path.mkdir(outdir)
-
-    if not outdir.is_dir():
-        raise NotADirectoryError(f"Output path is not a directory: {outdir}")
-
-    # Handle predefined template directory if specified
-    if template is not None:
+        # Handle predefined template directory if specified
         # Get list of available template directory names
         # Each subdirectory in templates/generator/ is a template collection
         generator_templates: list[str] = [
-            file.name for file in generator_template_dir.iterdir() if file.is_dir()
+            file.name for file in self.generator_template_dir.iterdir() if file.is_dir()
         ]
 
         # Validate that the requested template exists
@@ -189,29 +132,54 @@ For more information, visit: https://github.com/tgrassi/jaff
             )
 
         # Recursively collect all files from the template directory
-        generator_template_path: Path = generator_template_dir / template
-        preprocessor_template_path: Path = preprocessor_template_dir / template
+        generator_template_path: Path = self.generator_template_dir / template
+        preprocessor_template_path: Path = self.preprocessor_template_dir / template
         generator_files = [
             file for file in generator_template_path.rglob("*") if not file.is_dir()
         ]
         preprocesor_files = [
             file for file in preprocessor_template_path.rglob("*") if not file.is_dir()
         ]
-        files.extend(generator_files)
+        self.files.extend(generator_files)
 
         # Keep preproc files that don't have a corresponding generator file, otherwise use the generator file
         generator_file_names = [file.name for file in generator_files]
         for file in preprocesor_files:
             if file.name not in generator_file_names:
-                files.append(file)
+                self.files.append(file)
 
-    # Collect files from input directory if specified
-    if input_dir is not None:
-        indir: Path = Path(input_dir).resolve()
-        files.extend([f for f in indir.iterdir() if f.is_file()])
+    def __get_default_lang(self, default_lang: str) -> str:
+        # Ensure default language is supported by jaff code generation
+        if default_lang and default_lang not in cg.get_language_tokens():
+            raise ValueError(f"Unsupported language specified: {default_lang}")
 
-    # Collect individual files if specified
-    if input_files is not None:
+        return default_lang
+
+    def __set_network(self, network_file: str) -> Path:
+        # Validate network file is provided
+        if network_file is None:
+            raise RuntimeError("No network file supplied. Please enter a network file")
+
+        # Resolve and validate network file path
+        netfile = Path(network_file).resolve()
+        networks = {f.name for f in self.network_dir.iterdir() if f.is_file()}
+        is_predefined_network = str(netfile) in networks
+
+        if not netfile.exists() and not is_predefined_network:
+            raise FileNotFoundError(f"Unable to find network file: {netfile}")
+
+        if is_predefined_network:
+            netfile = self.network_dir / netfile.name
+
+        if not netfile.is_file():
+            raise FileNotFoundError(f"{netfile} is not a valid file")
+
+        return netfile
+
+    def __set_input_files(self, input_files: list[str]) -> None:
+        if input_files is None:
+            return
+
         for file in input_files:
             infile: Path = Path(file).resolve()
 
@@ -221,64 +189,147 @@ For more information, visit: https://github.com/tgrassi/jaff
             if not infile.is_file():
                 raise FileNotFoundError(f"{file} is not a file")
 
-            files.append(infile)
+            self.files.append(infile)
 
-    # Ensure at least one input file was provided
-    if not files:
-        raise RuntimeError("No valid input file/folder/template have been supplied")
+    def __set_input_dir(self, input_dir: str) -> None:
+        if input_dir is None:
+            return
 
-    # Ensure default language is supported by jaff code generation
-    if default_lang and default_lang not in cg.get_language_tokens():
-        raise ValueError(f"Unsupported language specified: {default_lang}")
+        indir: Path = Path(input_dir).resolve()
+        self.files.extend([f for f in indir.iterdir() if f.is_file()])
 
-    # Get index of jaff.toml config file
-    net_kwargs: NetworkProps = {"fname": str(netfile)}
-    jaff_config_index: int | None = next(
-        (i for i, f in enumerate(files) if f.name == "jaff.toml"), None
-    )
+    def __get_output_dir(self, output_dir: str) -> Path:
+        if output_dir is None:
+            self.logger.warning("No output directory has been supplied.")
+            self.logger.warning(f"Files will be generated at {Path.cwd()}")
 
-    # Set radiation related props in radiation in present
-    if jaff_config_index is not None:
+        outdir: Path = (
+            Path(output_dir).resolve()
+            if output_dir is not None
+            else self.jaff_dir / "generated"
+        )
+
+        # Create output directory if it doesn't exist
+        if not outdir.exists():
+            Path.mkdir(outdir)
+
+        if not outdir.is_dir():
+            raise NotADirectoryError(f"Output path is not a directory: {outdir}")
+
+        return outdir
+
+    def __get_parser(self) -> argparse.ArgumentParser:
+        return argparse.ArgumentParser(
+            prog="jaff.generate",
+            description="Generate code for chemical reaction networks in multiple programming languages.",
+            epilog="""
+            Examples:
+              # Generate from a template directory
+              python -m jaff.generate --network networks/react_COthin --indir templates/ --outdir output/
+
+              # Use a predefined template collection
+              python -m jaff.generate --network networks/react_COthin --template chemistry_solver --outdir output/
+
+              # Process specific files with Rust
+              python -m jaff.generate --network networks/test.dat --files rates.txt odes.txt --lang rust --outdir output/
+
+              # Combine template and custom files
+              python -m jaff.generate --network networks/test.dat --template base --files custom.cpp --outdir output/
+
+            Supported Languages:
+              c, cxx (c++, cpp), fortran (f90), python (py), rust (rs), julia (jl), r
+
+            For more information, visit: https://github.com/tgrassi/jaff
+                    """,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+
+    def __set_parser_props(self):
+        # Required arguments
+        self.parser.add_argument(
+            "--network",
+            required=True,
+            metavar="FILE",
+            help="Path to chemical reaction network file (required)",
+        )
+
+        # Output options
+        self.parser.add_argument(
+            "--outdir",
+            metavar="DIR",
+            help="Output directory for generated files (default: jaff/generated)",
+        )
+
+        # Input source options (mutually compatible)
+        input_group = self.parser.add_argument_group(
+            "Input sources (can combine multiple)"
+        )
+        input_group.add_argument(
+            "--indir",
+            metavar="DIR",
+            help="Directory containing template files to process",
+        )
+        input_group.add_argument(
+            "--files",
+            nargs="+",
+            metavar="FILE",
+            help="Individual template file(s) to process",
+        )
+        input_group.add_argument(
+            "--template",
+            metavar="NAME",
+            help="Name of predefined template collection in jaff/templates/generator/",
+        )
+
+        # Code generation options
+        gen_group = self.parser.add_argument_group("Code generation options")
+        gen_group.add_argument(
+            "--lang",
+            metavar="LANGUAGE",
+            choices=[
+                "c",
+                "cxx",
+                "fortran",
+                "python",
+                "rust",
+                "julia",
+            ],
+            help="Default programming language for unsupported files (choices: %(choices)s)",
+        )
+
+    def __handle_radiation(self, props: dict) -> None:
         net_params = signature(Network.__init__).parameters
-        jaff_config_file = files[jaff_config_index]
-        rad_props = Toml(jaff_config_file).get_key("radiation")
+        bands: list = props.get("bands", net_params["rad_bands"].default)
+        power: int | float = props.get(
+            "power_law_index", net_params["rad_powerlaw_index"].default
+        )
+        energy_density: bool = props.get(
+            "energy_density", net_params["rad_energy_density"].default
+        )
+        c: float = props.get("rsl", net_params["c"].default)
 
-        if rad_props:
-            bands: list = rad_props.get("bands", net_params["rad_bands"].default)
-            power: int | float = rad_props.get(
-                "power_law_index", net_params["rad_powerlaw_index"].default
-            )
-            energy_density: bool = rad_props.get(
-                "energy_density", net_params["rad_energy_density"].default
-            )
-            c: float = rad_props.get("rsl", net_params["c"].default)
+        self.net_kwargs["rad_bands"] = bands
+        self.net_kwargs["rad_powerlaw_index"] = power
+        self.net_kwargs["rad_energy_density"] = energy_density
+        self.net_kwargs["c"] = c
 
-            net_kwargs["rad_bands"] = bands
-            net_kwargs["rad_powerlaw_index"] = power
-            net_kwargs["rad_energy_density"] = energy_density
-            net_kwargs["c"] = c
+    def __handle_data_tables(self, props: list):
+        assert self.jaff_config_dir is not None
+        assert self.jaff_config_file is not None
 
-    # Create a new network instance
-    net: Network = Network(**net_kwargs)
+        for table_props in props:
+            ct = ConfigTable(table_props, self.jaff_config_file, self.netfile)
+            parsed_out = ct.parse()
 
-    # Process each template file
-    for file in files:
-        # Initialize file parser for this template
-        fparser: Fileparser = Fileparser(net, file, default_lang)
+            if isinstance(parsed_out, HDF5Dict):
+                HDF5().from_dict(self.outdir / ct.target_props["path"], parsed_out)
 
-        # Parse and generate code
-        lines: str = fparser.parse_file()
-
-        # Write generated code to output file
-        outfile: Path = outdir / file.name
-        with open(outfile, "w") as f:
-            f.write(lines)
-
-        logger.info(f"{file.name} created at {outdir}")
-
-    logger.info("Successfully generated files")
-    logger.info(f"Generated files can be found at {outdir}")
+            if isinstance(parsed_out, pd.DataFrame):
+                parsed_out.to_csv(
+                    self.outdir / ct.target_props["path"],
+                    sep=ct.target_props["delimiter"],
+                )
 
 
 if __name__ == "__main__":
-    main()
+    JaffGen()

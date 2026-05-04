@@ -710,7 +710,7 @@ def write_data_table(
         with open(fname) as fp:
             # Write header
             fp.write("# JAFF auto-generated rate coefficient table\n")
-            fp.write("# Network name: {:s}\n".format(label))
+            fp.write(f"# Network name: {label}\n")
             fp.write("# Reactions included\n")
             fp.write("#   (reactants) (products) (reaction type)\n")
             for rt, r, p in zip(rtype, reactants, products):
