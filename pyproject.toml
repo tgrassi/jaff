@@ -112,8 +112,4 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-jaff = [
-    "data/*.dat",
-    "templates/**/*",
-    "db/jaff.db"
-]
+jaff = ["data/*.dat", "templates/**/*", "db/jaff.db"]

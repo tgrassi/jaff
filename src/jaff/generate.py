@@ -63,7 +63,7 @@ class JaffGen:
         self.__set_input_dir(self.args.indir)
         self.__set_input_files(self.args.files)
         self.__set_network(self.args.network)
-        self.__set_template(self.args.lang)
+        self.__set_template(self.args.template)
 
         # Ensure at least one input file was provided
         if not self.files:
@@ -181,6 +181,7 @@ class JaffGen:
             return
 
         for file in input_files:
+            print(template)
             infile: Path = Path(file).resolve()
 
             if not infile.exists():
@@ -331,5 +332,9 @@ class JaffGen:
                 )
 
 
-if __name__ == "__main__":
+def main():
     JaffGen()
+
+
+if __name__ == "__main__":
+    main()
