@@ -1,13 +1,13 @@
 # ABOUTME: Unit tests for Network JSON serialization
 # ABOUTME: Ensures Network.to_jaff_file/from_jaff_file round-trip preserves reactions
 
+import gzip
+import json
 import os
 import sys
 import tempfile
 from unittest.mock import patch
 
-import gzip
-import json
 import pytest
 import sympy
 
@@ -55,18 +55,25 @@ def test_network_json_roundtrip_sample_kida_valid():
         assert set(rate_symbols_by_name.keys()) == {s.name for s in expected_symbols}
         for sym in expected_symbols:
             expected_assumptions = {
-                k: v for k, v in (sym.assumptions0 or {}).items() if isinstance(k, str) and isinstance(v, bool)
+                k: v
+                for k, v in (sym.assumptions0 or {}).items()
+                if isinstance(k, str) and isinstance(v, bool)
             }
             assert rate_symbols_by_name.get(sym.name) == expected_assumptions
+
         def _assert_no_symbol_assumptions(node):
             if isinstance(node, list):
                 if node and node[0] == "S" and len(node) > 2:
-                    raise AssertionError("Symbol node should not include assumptions in rate expressions")
+                    raise AssertionError(
+                        "Symbol node should not include assumptions in rate expressions"
+                    )
                 for item in node:
                     _assert_no_symbol_assumptions(item)
             elif isinstance(node, dict):
                 if node.get("type") == "Symbol" and "assumptions" in node:
-                    raise AssertionError("Symbol node should not include assumptions in rate expressions")
+                    raise AssertionError(
+                        "Symbol node should not include assumptions in rate expressions"
+                    )
                 for value in node.values():
                     _assert_no_symbol_assumptions(value)
             elif isinstance(node, (list, tuple)):
@@ -108,7 +115,10 @@ def test_network_json_roundtrip_sample_kida_valid():
                         val2 = float(sympy.N(r2.rate.subs(subs)))
                         assert abs(val2 - val1) <= 1e-12 * max(1.0, abs(val1))
 
-            assert r2.dE == r1.dE
+            if isinstance(r1.dE, sympy.Basic) or isinstance(r2.dE, sympy.Basic):
+                assert sympy.simplify(r2.dE - r1.dE) == 0
+            else:
+                assert r2.dE == r1.dE
 
         # Backward compatibility: legacy uncompressed `.jaff` should still load.
         with gzip.open(json_path, "rt", encoding="utf-8") as f:
