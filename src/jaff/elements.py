@@ -32,7 +32,7 @@ class Elements:
         """
         self.net: Network = network
         self.elements: list[str] = []
-        self.nelms = 0
+        self.nelems = 0
         self.__set_elements()
 
     def __set_elements(self):

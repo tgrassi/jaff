@@ -109,7 +109,7 @@ class Network:
         self.photochemistry = Photochemistry()
 
         self.load_network(fname, funcfile, replace_nH)
-        self.__calculate_nework_extras(replace_nH)
+        self.__calculate_network_extras(replace_nH)
 
         self.check_sink_sources(errors)
         self.check_recombinations(errors)
@@ -255,7 +255,7 @@ class Network:
             if is_photoreaction and self.radiation is not None:
                 if aux_chem_rate not in aux_funcs:
                     self.radiation.set_reaction_rate_coefficient(rea)
-                elif aux_chem_rate in aux_funcs and aux_delta_rad:
+                elif aux_chem_rate in aux_funcs and aux_delta_rad in aux_funcs:
                     self.radiation.set_custom_rate(rea)
                 else:
                     raise ParserError(
@@ -289,7 +289,7 @@ class Network:
         if undef_funcs:
             self.logger.warning(f"Found undefined functions {', '.join(undef_funcs)}")
 
-    def __calculate_nework_extras(self, replace_nH):
+    def __calculate_network_extras(self, replace_nH):
         # Apply replacement rules to replace standard symbols
         # appearing in rates with terms involving known species
         nden = MatrixSymbol("nden", len(self.species), 1)

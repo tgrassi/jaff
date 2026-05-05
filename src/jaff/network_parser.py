@@ -172,16 +172,16 @@ class NetworkParser:
         assert self.__matched_group is not None
         format = self.__matched_group.group("format")
         if format is None:
-            self.__raise_error("Empty @format KROME declerative")
+            self.__raise_error("Empty @format KROME declarative")
 
         format = format.strip()
         if not format:
-            self.__raise_error("Empty @format KROME declerative")
+            self.__raise_error("Empty @format KROME declarative")
 
         if "," not in format:
             self.__raise_error(
-                "Invalid @format KROME declerative\n"
-                "@format decelerative must be separated by ','"
+                "Invalid @format KROME declarative\n"
+                "@format declarative must be separated by ','"
             )
 
         expected_tokens = {"idx", "R", "P", "tmin", "tmax", "rate"}
@@ -193,7 +193,7 @@ class NetworkParser:
                     f"Supported tokens are {','.join(expected_tokens)}"
                 )
 
-        self.__raise_error("Invalid @format KROME declerative")
+        self.__raise_error("Invalid @format KROME declarative")
 
     def __handle_krome_var(self) -> None:
         assert self.__local_pattern is not None
@@ -216,16 +216,16 @@ class NetworkParser:
         segment = self.__matched_group.group("segment")
 
         if segment is None:
-            self.__raise_error("Empty segment after KROME @var declerative")
+            self.__raise_error("Empty segment after KROME @var declarative")
 
         segment = segment.strip()
         if not segment:
-            self.__raise_error("Empty segment after KROME @var declerative")
+            self.__raise_error("Empty segment after KROME @var declarative")
 
         if "=" not in segment:
             self.__raise_error(
-                "Invalid KROME @var declerative\n"
-                "@var declerative must follow format: @var: varname=expression"
+                "Invalid KROME @var declarative\n"
+                "@var declarative must follow format: @var: varname=expression"
             )
 
         var_name, expr = segment.split("=", 1)
@@ -234,15 +234,15 @@ class NetworkParser:
 
         if not var_name:
             self.__raise_error(
-                "Invalid KROME @var declerative\nVariable name cannot be empty"
+                "Invalid KROME @var declarative\nVariable name cannot be empty"
             )
 
         if not expr:
             self.__raise_error(
-                "Invalid KROME @var declerative\nExpression cannot be empty"
+                "Invalid KROME @var declarative\nExpression cannot be empty"
             )
 
-        self.__raise_error("Invalid KROME @var declerative")
+        self.__raise_error("Invalid KROME @var declarative")
 
     def __handle_prizmo_vars(self) -> None:
         assert self.__local_pattern is not None
@@ -456,7 +456,7 @@ class NetworkParser:
         num_fields = (
             int(props["idx"])
             + props["nreact"]
-            + props["nreact"]
+            + props["nprod"]
             + int(props["tmin"])
             + int(props["tmax"])
             + int(props["rate"])
@@ -491,7 +491,7 @@ class NetworkParser:
             self.__raise_error(
                 "Expected number of products did not match krome format\n"
                 f"Number of products expected: {props['nprod']}\n"
-                f"Number of products detected: {props['nprod']}\n"
+                f"Number of products detected: {segment.count('p')}\n"
                 + (
                     f"KROME format defined on line: {props['format_nline']}"
                     if props["format_nline"]
