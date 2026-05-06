@@ -60,7 +60,7 @@ edit_uri = "edit/main/docs/"
 # -----------------------------------------------------------------------------
 [project.theme]
 variant = "modern"  # This enables the floating cards + dot matrix background
-logo = "assets/logo_alt.svg"
+logo = "assets/logo.webp"
 icon.repo = "fontawesome/brands/github"
 favicon = "assets/favicon.ico"
 font.text = "Inter"

@@ -8,7 +8,7 @@ icon: lucide/house
 
 <div align="left" markdown>
 <div style="display: flex; align-items: center;">
-    <img class="jaff-logo" src="assets/logo.svg" alt="JAFF Logo" width="60" style="margin-right: 20px;">
+    <img class="jaff-logo" src="assets/logo.png" alt="JAFF Logo" width="60" style="margin-right: 20px;">
     <div>
     <strong>Just Another Fancy Format</strong>
     <br>

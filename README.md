@@ -1,7 +1,7 @@
 # JAFF
 
 <div align="center">
-    <img src="assets/logo_alt.svg" alt="Logo" width="100" /><br>
+    <img src="assets/logo.png" alt="Logo" width="100" /><br>
     (Just Another Fancy Format)
     <br><br>
 </div>
