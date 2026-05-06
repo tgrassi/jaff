@@ -1,6 +1,5 @@
-# JAFF
-
 <div align="center">
+    <h1>JAFF</h1>
     <img src="assets/logo.png" alt="Logo" width="100" /><br>
     (Just Another Fancy Format)
     <br><br>
