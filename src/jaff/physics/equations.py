@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from sympy import Basic, Expr, Float, Idx, MatrixSymbol
@@ -50,7 +52,7 @@ def get_sodes(reactions: list["Reaction"], species_dict: dict[str, int]) -> list
 
 
 def get_sradodes(
-    radiation: Radiation | None, species_dict: dict[str, int], order: int = 0
+    radiation: "Radiation" | None, species_dict: dict[str, int], order: int = 0
 ) -> list[Expr]:
     # Check if radiation is enabled
     if radiation is None:
