@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from .radiation import Radiation
 
 
-def get_sfluxes(reactions: list[Reaction], species_dict: dict[str, int]) -> list[Expr]:
+def get_sfluxes(reactions: list["Reaction"], species_dict: dict[str, int]) -> list[Expr]:
     nspec = len(species_dict)
     nreact = len(reactions)
     fluxes: list[Expr] = [Float(0.0) for _ in range(nreact)]
@@ -23,7 +23,7 @@ def get_sfluxes(reactions: list[Reaction], species_dict: dict[str, int]) -> list
     return fluxes
 
 
-def get_sodes(reactions: list[Reaction], species_dict: dict[str, int]) -> list[Basic]:
+def get_sodes(reactions: list["Reaction"], species_dict: dict[str, int]) -> list[Basic]:
     nspec = len(species_dict)
     fluxes = get_sfluxes(reactions, species_dict)
     sodes: list[Basic] = [Float(0.0) for _ in range(nspec)]
