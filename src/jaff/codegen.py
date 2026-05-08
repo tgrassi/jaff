@@ -44,6 +44,7 @@ from itertools import product
 from typing import Any, List, Set, Tuple, TypedDict, cast
 
 import sympy as sp
+from sympy.core.backend import Symbol
 
 from .jaff_types import IndexedList, IndexedValue
 from .network import Network
@@ -1307,7 +1308,7 @@ class Codegen:
             # Generate Jacobian code with only the needed CSE assignments
             pattern = re.compile(r"(\d+)")
             for var, expr in replacements:
-                expr = self.__convert_unknown_derivatives(expr)
+                expr = self.__convert_unknown_derivatives(expr, replacements)
                 match = pattern.search(str(var))
                 idx: int = int(match.group(0)) if match is not None else 0
                 expr_str = self.code_gen(expr, strict=False, allow_unknown_functions=True)
@@ -1333,7 +1334,9 @@ class Codegen:
             if expr == 0:
                 continue
 
-            expr = self.__convert_unknown_derivatives(expr)
+            expr = self.__convert_unknown_derivatives(
+                expr, replacements if use_cse else None
+            )
             expr_str = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             expr_str = dpattern.sub(lambda m: replace_y(m, "nden"), expr_str)
 
@@ -1432,28 +1435,69 @@ class Codegen:
         return jac_code
 
     @staticmethod
-    def __convert_unknown_derivatives(expr: sp.Expr):
+    def __convert_unknown_derivatives(expr: sp.Expr, cse_defs: dict | list | None = None):
+        cse_dict = {str(k): v for k, v in dict(cse_defs).items()} if cse_defs else {}
         replacement_dict = {}
+
+        def resolve_dexpr(dexpr: sp.Basic) -> sp.Basic:
+            while str(dexpr) in cse_dict:
+                dexpr = cse_dict[str(dexpr)]
+            return dexpr
+
+        for ex in expr.atoms(sp.Derivative):
+            dexpr = resolve_dexpr(ex.expr)
+
+            if (
+                not hasattr(dexpr, "func")
+                or not hasattr(dexpr.func, "__name__")
+                or not hasattr(dexpr, "args")
+            ):
+                continue
+
+            deriv_name = dexpr.func.__name__
+            vars = list(ex.variables)
+            args = list(dexpr.args)
+
+            try:
+                func_sig_suffix = "_".join([str(args.index(var)) for var in vars])
+            except ValueError:
+                continue
+
+            new_func_sig = f"{deriv_name}_partial_{func_sig_suffix}"
+            new_func = sp.Function(new_func_sig)(*args)  # type: ignore
+            replacement_dict[ex] = new_func
 
         for ex in expr.atoms(sp.Subs):
             deriv = ex.args[0]
-            sub_var = cast(tuple[sp.Basic, ...], ex.args[1])
-            sub_val = cast(tuple[sp.Basic, ...], ex.args[2])
-
             if isinstance(deriv, sp.Derivative):
+                sub_var = cast(tuple[sp.Basic, ...], ex.args[1])
+                sub_val = cast(tuple[sp.Basic, ...], ex.args[2])
                 sub_dict = dict(zip(sub_var, sub_val))
-                dexpr = deriv.expr
+
+                dexpr = resolve_dexpr(deriv.expr)
+
+                if (
+                    not hasattr(dexpr, "func")
+                    or not hasattr(dexpr.func, "__name__")
+                    or not hasattr(dexpr, "args")
+                ):
+                    continue
+
                 deriv_name = dexpr.func.__name__
                 vars = [var.xreplace(sub_dict) for var in deriv.variables]
                 args = [arg.xreplace(sub_dict) for arg in dexpr.args]
 
-                func_sig_suffix = "_".join(
-                    [str(i) for i in [args.index(var) for var in vars]]
-                )
+                try:
+                    func_sig_suffix = "_".join([str(args.index(var)) for var in vars])
+                except ValueError:
+                    continue
+
                 new_func_sig = f"{deriv_name}_partial_{func_sig_suffix}"
 
                 new_func = sp.Function(new_func_sig)(*args)  # type: ignore
                 replacement_dict[ex] = new_func
+
+        # Replace all matched nodes top-down
         expr = expr.xreplace(replacement_dict)
 
         return expr
