@@ -48,7 +48,7 @@
 @var kB = 1.380649e-17             # Boltzmann's constant
 @var c_light = 2.99892458e10       # Speed of light
 @var sigma_SB = 5.670374419e-15    # Stefan-Boltmzann constant
-@var a_R = 4 * sigma_SB / c        # Radiation constant
+@var a_R = 4 * sigma_SB / c_light  # Radiation constant
 @var c_a = c_light * a_R           # c * a_R
 @var amu = 1.66054e-24             # 1 amu in gram
 @var eV = 1.602177e-12             # 1 eV in erg
@@ -307,7 +307,7 @@
     A_kCHx = 1.04e-9
     c0 = 3.4e-8
     c1 = 6.97e-9
-    c2 = 1.31e-8
+    c2 = 1.31e-7
     c3 = 1.51e-4
     T0 = 7.62
     T1 = 1.38
@@ -512,7 +512,7 @@
     # Reaction 49: O + H+ -> O+ + H
     # tgas Gas temperature in K
 
-    return (1e-11 * tgas**0.517 + 4.0e-10 * tgas**6.69e-3 ) \
+    return (1.1e-11 * tgas**0.517 + 4.0e-10 * tgas**6.69e-3 ) \
         * exp(-227/tgas)
 
 @function chemRate50(tgas)
@@ -719,7 +719,7 @@
     k10 = 1.77e-8 * T4**0.15 / (1 + (T4/5)**0.65) * n_e
 
     # Compute cooling rate
-    return n_H0 * cooling_2level(T10, A10, g1, g0, k10, tgas)
+    return n_H0 * cooling_2level(T10, A10, g0, g1, k10, tgas)
 
 @function cooling_H2(n_H2, n_H0, n_Hp, n_He, n_e, tgas)
     # Cooling rate for H2
@@ -923,7 +923,7 @@
     k10 = k_e * n_e + k_H * n_H + (k_oH2 * f_oH2 + k_pH2 * f_pH2) * n_H2
 
     # Compute cooling rate
-    return n_Cp * cooling_2level(T10, A10, g1, g0, k10, tgas)
+    return n_Cp * cooling_2level(T10, A10, g0, g1, k10, tgas)
 
 # Cooling for oxygen species
 
@@ -1041,7 +1041,7 @@
     # Get cooling rate in the limit where dust temperature is set
     # solely by gas collisions; in this gas the dust temperature is
     # given implicitly by the solution to
-    #    0.01 * sigma_d10 * c * a * T_d**4 =
+    #    0.01 * sigma_d10 * c_light * a * T_d**4 =
     #       alpha_GD * nH * T_g**(1/2) * (T_g - T_d)
     # Since this is a 6th order equation in T_d, it does not have an
     # analytic root, and thus the cooling rate cannot be written down
