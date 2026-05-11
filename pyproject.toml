@@ -19,16 +19,15 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Chemistry",
 ]
 dependencies = [
-  "colorlog>=6.10.1",
   "h5py>=3.9.0",
   "ipykernel>=7.2.0",
   "matplotlib>=3.9.4",
   "numpy>=2.0.0",
   "pandas>=2.3.3",
   "pygments>=2.19.2",
+  "rich>=15.0.0",
   "scipy>=1.13.0",
   "sympy>=1.14.0",
-  "tqdm>=4.67.1",
 ]
 
 [project.urls]

@@ -95,7 +95,7 @@ These are automatically installed with JAFF:
 - **numpy** (≥2.0.0) - Numerical computations
 - **scipy** (≥1.13.0) - Scientific computing
 - **sympy** (≥1.14.0) - Symbolic mathematics
-- **tqdm** (≥4.67.1) - Progress bars
+- **rich** (≥15.0.0) - Progress bars
 - **h5py** (≥3.9.0) - HDF5 file support
 
 ### Development Dependencies

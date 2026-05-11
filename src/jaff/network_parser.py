@@ -4,10 +4,9 @@ from pathlib import Path
 from typing import Callable, TypedDict
 
 from sympy import Basic, parse_expr
-from tqdm import tqdm
 
 from .common import f90_convert, resolve_symbolic_dependencies
-from .core.logger import JaffLogger
+from .core.logger import JaffLogger, jaff_progress
 from .errors import ParserError
 
 patternProps = TypedDict(
@@ -63,7 +62,7 @@ parsedListProps = TypedDict(
         "p": list[str],
         "tmin": float | None,
         "tmax": float | None,
-        "rate": str | Basic,
+        "rate": str,
         "string": str,
     },
 )
@@ -124,8 +123,9 @@ class NetworkParser:
 
     def __parse_file(self) -> None:
         with open(self.__file, "r") as f:
+            lines = f.readlines()
             for i, line in enumerate(
-                tqdm(f, desc=f"Parsing {self.__file.name}", unit=" lines")
+                jaff_progress.track(lines, description=f"Parsing {self.__file.name}")
             ):
                 self.__nline = i + 1
                 self.__line = line

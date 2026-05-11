@@ -18,13 +18,12 @@ from sympy import (
     symbols,
 )
 from sympy.core.function import AppliedUndef, UndefinedFunction
-from tqdm import tqdm
 
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
 from .common import is_jaff_file
 from .common.helper import load_mass_dict, resolve_dependencies
 from .core.io import JaffProps, from_jaff_file, to_jaff_file, write_data_table
-from .core.logger import JaffLogger
+from .core.logger import JaffLogger, jaff_progress
 from .errors import ParserError
 from .network_parser import NetworkParser
 from .photochemistry import Photochemistry
@@ -186,7 +185,10 @@ class Network:
         }
 
         for i, reaction in enumerate(
-            tqdm(reactions_list, desc=f"Creating {self.label} network", unit=" reactions")
+            jaff_progress.track(
+                reactions_list,
+                description=f"Creating {self.label} network",
+            )
         ):
             reactants: list[str] = reaction["r"]
             products: list[str] = reaction["p"]
