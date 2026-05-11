@@ -1,4 +1,0 @@
-numpy
-sympy
-tqdm
-h5py
