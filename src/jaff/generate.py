@@ -23,6 +23,7 @@ Examples:
 import argparse
 from inspect import signature
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -35,13 +36,16 @@ from .file_parser import Fileparser
 from .jaff_types import HDF5Dict
 from .network import Network, NetworkProps
 
+if TYPE_CHECKING:
+    import logging
+
 
 class JaffGen:
     def __init__(self):
         self.parser: argparse.ArgumentParser = self.__get_parser()
         self.__set_parser_props()
 
-        self.logger = JaffLogger().get_logger()
+        self.logger: logging.Logger = JaffLogger().get_logger()
         self.args: argparse.Namespace = self.parser.parse_args()
 
         # Locate JAFF package directory and built-in template directory
@@ -54,9 +58,9 @@ class JaffGen:
         )
         self.files: list[Path] = []
 
-        self.outdir = self.__get_output_dir(self.args.outdir)
-        self.netfile = self.__set_network(self.args.network)
-        self.default_lang = self.__get_default_lang(self.args.lang)
+        self.outdir: Path = self.__get_output_dir(self.args.outdir)
+        self.netfile: Path = self.__set_network(self.args.network)
+        self.default_lang: str = self.__get_default_lang(self.args.lang)
         self.jaff_config_file: Path | None = None
         self.jaff_config_dir: Path | None = None
 
@@ -73,7 +77,7 @@ class JaffGen:
         self.__read_jaff_config()
 
         # Create a new network instance
-        self.net: Network = Network(**self.net_kwargs)
+        self.net: Network = Network(**self.net_kwargs, logger=self.logger)
         self.__process_files()
 
     def __process_files(self):

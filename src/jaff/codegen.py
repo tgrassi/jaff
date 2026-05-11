@@ -1304,11 +1304,12 @@ class Codegen:
 
             # Build separate CSE blocks for RHS and Jacobian
             replacements = self.__prune_cse(replacements, reduced_exprs)
+            replacements_dict = {str(k): v for k, v in replacements}
 
             # Generate Jacobian code with only the needed CSE assignments
             pattern = re.compile(r"(\d+)")
             for var, expr in replacements:
-                expr = self.__convert_unknown_derivatives(expr, replacements)
+                expr = self.__convert_unknown_derivatives(expr, replacements_dict)
                 match = pattern.search(str(var))
                 idx: int = int(match.group(0)) if match is not None else 0
                 expr_str = self.code_gen(expr, strict=False, allow_unknown_functions=True)
@@ -1335,7 +1336,7 @@ class Codegen:
                 continue
 
             expr = self.__convert_unknown_derivatives(
-                expr, replacements if use_cse else None
+                expr, replacements_dict if use_cse else None
             )
             expr_str = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             expr_str = dpattern.sub(lambda m: replace_y(m, "nden"), expr_str)
@@ -1435,8 +1436,8 @@ class Codegen:
         return jac_code
 
     @staticmethod
-    def __convert_unknown_derivatives(expr: sp.Expr, cse_defs: dict | list | None = None):
-        cse_dict = {str(k): v for k, v in dict(cse_defs).items()} if cse_defs else {}
+    def __convert_unknown_derivatives(expr: sp.Expr, cse_defs: dict | None = None):
+        cse_dict = cse_defs or {}
         replacement_dict = {}
 
         def resolve_dexpr(dexpr: sp.Basic) -> sp.Basic:
@@ -1504,7 +1505,7 @@ class Codegen:
 
     @staticmethod
     def __prune_cse(
-        replacements: List[Tuple[sp.Symbol, sp.Expr]], expressions: List[sp.Expr]
+        replacements: dict[sp.Symbol, sp.Expr], expressions: List[sp.Expr]
     ) -> List[Tuple[sp.Symbol, sp.Expr]]:
         """
         Prune unused CSE (common subexpression elimination) temporaries.

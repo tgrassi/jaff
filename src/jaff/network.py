@@ -72,6 +72,7 @@ class Network:
         rad_powerlaw_index: int | float = 0,
         rad_energy_density: bool = False,
         c: float = constants.cgs.c,  # Speed of light in cgs unit
+        logger: logging.Logger | None = None,
     ):
         if isinstance(fname, str):
             fname = Path(fname)
@@ -90,7 +91,7 @@ class Network:
 
         self.file_name: Path = jaff_props.get("file_name", fname)
         self.label = jaff_props.get("label", label or self.file_name.stem)
-        self.logger: logging.Logger = JaffLogger().get_logger()
+        self.logger: logging.Logger = logger or JaffLogger().get_logger()
         self.motd()
 
         self.mass_dict: dict[str, ElementProps] = {}
@@ -129,9 +130,8 @@ class Network:
         self.generate_reactions_dict()
         self.generate_reaction_matrices()
 
-        print("\nAll done!\n")
+        self.logger.info("Network loaded successfully!")
 
-    # ****************
     @staticmethod
     def motd():
         try:
