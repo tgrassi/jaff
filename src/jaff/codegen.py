@@ -46,6 +46,8 @@ from typing import Any, List, Set, Tuple, TypedDict, cast
 import sympy as sp
 from sympy.core.backend import Symbol
 
+from jaff.core.logger import jaff_progress
+
 from .jaff_types import IndexedList, IndexedValue
 from .network import Network
 
@@ -851,7 +853,9 @@ class Codegen:
             ode_symbols = reduced_exprs
 
         # Generate ODE code without CSE
-        for i, expr in enumerate(ode_symbols):
+        for i, expr in enumerate(
+            jaff_progress.track(ode_symbols, description="Generating ODEs")
+        ):
             expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             ir["expressions"].append(IndexedValue([i], expr))
 
@@ -989,7 +993,9 @@ class Codegen:
 
             rhs_symbols = reduced_exprs
 
-        for i, expr in enumerate(rhs_symbols):
+        for i, expr in enumerate(
+            jaff_progress.track(rhs_symbols, description="Generating RHS")
+        ):
             expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             ir["expressions"].append(IndexedValue([i], expr))
 
