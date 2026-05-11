@@ -1,8 +1,11 @@
+from __future__ import annotations
+
+import logging
 import re
 import sys
 from pathlib import Path
 from textwrap import dedent
-from typing import TYPE_CHECKING, NotRequired, TypedDict
+from typing import NotRequired, TypedDict
 
 import numpy as np
 from sympy import (
@@ -32,9 +35,6 @@ from .physics.equations import get_sfluxes, get_sodes, get_sradodes
 from .physics.radiation import Radiation
 from .reaction import Reaction
 from .species import Species
-
-if TYPE_CHECKING:
-    import logging
 
 NetworkProps = TypedDict(
     "NetworkProps",
