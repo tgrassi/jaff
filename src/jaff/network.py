@@ -111,7 +111,7 @@ class Network:
         )
 
         self.logger.info(f"Loading network from {fname}")
-        self.logger.info(f"Network label: {self.label}")
+        self.logger.info(f"Network label: [yellow]{self.label}[/]")
 
         self.mass_dict = load_mass_dict()
         self.photochemistry = Photochemistry()
@@ -130,7 +130,7 @@ class Network:
         self.generate_reactions_dict()
         self.generate_reaction_matrices()
 
-        self.logger.info("Network loaded successfully!")
+        self.logger.info("[green]Network loaded successfully![/]")
 
     @staticmethod
     def motd():
@@ -282,7 +282,7 @@ class Network:
             self.__detect_undefined_functions(self.dEdt_other, undef_funcs, interp_funcs)
 
         self.logger.info(
-            f"Variables found: {', '.join(sorted(str(s) for s in free_symbols))}"
+            f"Variables found: {', '.join(sorted(f'[cyan]{s}[/]' for s in free_symbols))}"
         )
         self.logger.info(f"Loaded {len(self.reactions)} reactions")
         self.logger.info(f"Loaded {n_photo} photo-chemistry reactions")
@@ -290,10 +290,12 @@ class Network:
         # Issue warning message if undefined functions remain
         if interp_funcs:
             self.logger.info(
-                f"Found the following interpolation functions: {', '.join(interp_funcs)}"
+                f"Found the following interpolation functions: {', '.join([f'[cyan]{func}[/]' for func in interp_funcs])}"
             )
         if undef_funcs:
-            self.logger.warning(f"Found undefined functions {', '.join(undef_funcs)}")
+            self.logger.warning(
+                f"Found undefined functions {', '.join([f'[red]{func}[/]' for func in undef_funcs])}"
+            )
 
     def __load_network_from_jaff_file(self, jaff_props: JaffProps):
         self.species = jaff_props["species"]

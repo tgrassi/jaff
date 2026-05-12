@@ -94,9 +94,9 @@ class JaffGen:
             with open(outfile, "w") as f:
                 f.write(lines)
 
-            self.logger.info(f"{file.name} created at {self.outdir}")
+            self.logger.info(f"[cyan]{file.name}[/] created at {self.outdir}")
 
-        self.logger.info("Successfully generated files")
+        self.logger.info("[green]Successfully generated files[/]")
         self.logger.info(f"Generated files can be found at {self.outdir}")
 
     def __read_jaff_config(self) -> None:

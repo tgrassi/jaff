@@ -63,6 +63,8 @@ jaff_progress = JaffProgress(
     TimeElapsedColumn(),
     console=jaff_console,
     expand=True,
+    redirect_stdout=False,
+    redirect_stderr=False,
 )
 
 jaff_progress.start()
