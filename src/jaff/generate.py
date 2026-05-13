@@ -170,7 +170,7 @@ class JaffGen:
         is_predefined_network = str(netfile) in networks
 
         if not netfile.exists() and not is_predefined_network:
-            raise FileNotFoundError(f"Unable to find network file: {netfile}")
+            raise FileNotFoundError(netfile)
 
         if is_predefined_network:
             netfile = self.network_dir / netfile.name
@@ -188,7 +188,7 @@ class JaffGen:
             infile: Path = Path(file).resolve()
 
             if not infile.exists():
-                raise FileNotFoundError(f"Invalid file path {file}")
+                raise FileNotFoundError(file)
 
             if not infile.is_file():
                 raise FileNotFoundError(f"{file} is not a file")

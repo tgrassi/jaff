@@ -617,7 +617,7 @@ class HDF5Dict(dict):
         if isinstance(h5obj, (str, Path)):
             h5path = Path(h5obj)
             if not h5path.exists():
-                raise FileNotFoundError(f"Invalid file path supplied: {h5path}")
+                raise FileNotFoundError(h5path)
 
         cm = nullcontext(h5obj) if isinstance(h5obj, h5py.File) else h5py.File(h5obj, "r")
         result = {}

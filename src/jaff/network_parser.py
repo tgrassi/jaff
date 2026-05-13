@@ -77,7 +77,7 @@ class NetworkParser:
 
         file = file.resolve()
         if not file.exists():
-            raise FileNotFoundError(f"Network file not found in file system: {file}")
+            raise FileNotFoundError(file)
 
         self.__file: Path = file
         self.__logger: logging.Logger = logger or JaffLogger().get_logger()

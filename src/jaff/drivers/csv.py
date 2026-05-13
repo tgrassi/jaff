@@ -9,7 +9,7 @@ from ..common.helper import HDF_EXTENSIONS
 
 def csv_to_df(file: Path, *args, **kwargs) -> pd.DataFrame:
     if not file.exists():
-        raise FileNotFoundError(f"Invalid file path: {file}")
+        raise FileNotFoundError(file)
 
     return pd.read_csv(file, *args, **kwargs)
 
@@ -37,7 +37,7 @@ def csv_to_hdf5(
         hdf5_key = file.stem
 
     if not file.exists():
-        raise FileNotFoundError(f"Invalid file path: {file}")
+        raise FileNotFoundError(file)
 
     outfile = Path(outfile) if isinstance(outfile, str) else outfile
     if outfile.suffix.lower() not in HDF_EXTENSIONS:

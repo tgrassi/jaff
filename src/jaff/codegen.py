@@ -44,7 +44,6 @@ from itertools import product
 from typing import TYPE_CHECKING, Any, List, Set, Tuple, TypedDict, cast
 
 import sympy as sp
-from sympy.core.backend import Symbol
 
 from .core.logger import JaffLogger, jaff_progress
 from .jaff_types import IndexedList, IndexedValue
@@ -1592,7 +1591,7 @@ class Codegen:
             for sym in cast(Set[sp.Symbol], expr.free_symbols & cse_syms):
                 dfs(sym)
 
-        return [(var, dep_map[var]) for var, _ in replacements if var in used]
+        return [(var, dep_map[var]) for var, _ in replacements.items() if var in used]
 
     @staticmethod
     @cache

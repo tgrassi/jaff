@@ -5,7 +5,6 @@ from typing import Iterable, Optional, Sequence
 
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.pretty import pprint
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -16,6 +15,7 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
+from rich.traceback import install
 
 
 class JaffProgress(Progress):
@@ -36,15 +36,17 @@ class JaffProgress(Progress):
         sequence: Sequence[ProgressType] | Iterable[ProgressType],
         total: Optional[float] = None,
         task_id: Optional[TaskID] = None,
+        *args,
         description: str = "Working...",
         update_period: float = 0.1,
+        **kwargs,
     ) -> Iterable[ProgressType]:
         for task in list(self.tasks):
             if task.finished:
                 self.remove_task(task.id)
 
         if total is None and hasattr(sequence, "__len__"):
-            total = len(sequence)
+            total = len(sequence)  # type: ignore
         task_id = self.add_task(description, total=total)
         _finished = False
         try:
@@ -68,6 +70,7 @@ class JaffProgress(Progress):
 
 
 jaff_console = Console()
+install(console=jaff_console, show_locals=False)
 
 jaff_progress = JaffProgress(
     SpinnerColumn(),

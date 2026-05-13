@@ -32,7 +32,7 @@ class AuxilaryFunctionParser:
 
         file = file.resolve()
         if not file.exists():
-            raise FileNotFoundError(f"File cannot be read: {file}")
+            raise FileNotFoundError(file)
 
         self.file: Path = file
         self.og_line: str = ""

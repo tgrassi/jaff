@@ -74,15 +74,14 @@ class Network:
         c: float = constants.cgs.c,  # Speed of light in cgs unit
         logger: logging.Logger | None = None,
     ):
+        self.logger: logging.Logger = logger or JaffLogger().get_logger()
+
         if isinstance(fname, str):
             fname = Path(fname)
 
         fname = fname.resolve()
         if not fname.exists():
-            raise FileNotFoundError(
-                f"Invalid network file supplied: {fname}\n"
-                "File not found in local file system"
-            )
+            raise FileNotFoundError(fname)
 
         jaff_props: JaffProps = {}
         loaded_from_jaff_file = is_jaff_file(fname)
@@ -91,7 +90,6 @@ class Network:
 
         self.file_name: Path = jaff_props.get("file_name", fname)
         self.label = jaff_props.get("label", label or self.file_name.stem)
-        self.logger: logging.Logger = logger or JaffLogger().get_logger()
         self.motd()
 
         self.mass_dict: dict[str, ElementProps] = {}
@@ -439,7 +437,7 @@ class Network:
             funcfile = Path(funcfile)
 
         if not funcfile.exists():
-            raise FileNotFoundError(f"Auxilary functions file not found: {funcfile}")
+            raise FileNotFoundError(funcfile)
 
         with AuxilaryFunctionParser(funcfile) as afp:
             func_dict: FunctionsDict = afp.get_dict()
@@ -598,7 +596,9 @@ class Network:
         for i, sp1 in enumerate(self.species):
             for sp2 in self.species[i + 1 :]:
                 if sp1.exploded == sp2.exploded:
-                    self.logger.warning(f"Isomer detected: {sp1.name} {sp2.name}")
+                    self.logger.warning(
+                        f"Isomer detected: [cyan]{sp1.name} {sp2.name}[/]"
+                    )
                     has_errors = True
 
         if has_errors and errors:
@@ -618,7 +618,7 @@ class Network:
                     if rea1.guess_type() != rea2.guess_type():
                         continue
                     self.logger.warning(
-                        f"Duplicate reaction found: {rea1.get_verbatim()}"
+                        f"Duplicate reaction found: [cyan]{rea1.get_verbatim()}[/]"
                     )
                     has_duplicates = True
 

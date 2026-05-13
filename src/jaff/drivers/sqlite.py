@@ -22,7 +22,7 @@ class Db:
             db_path = Path(db_path)
 
         if not db_path.exists():
-            raise FileNotFoundError(f"No database exists at {db_path}")
+            raise FileNotFoundError(db_path)
 
         self.db_path = db_path
 

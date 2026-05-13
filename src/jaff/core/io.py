@@ -182,10 +182,7 @@ def from_jaff_file(filename: str | Path, errors=False):
         filename = Path(filename)
 
     if not filename.exists():
-        raise FileNotFoundError(
-            f"Invalid network file supplied: {filename}\n"
-            "File not found in local file system"
-        )
+        raise FileNotFoundError(filename)
 
     if not is_jaff_file(filename):
         raise NotJaffFileError("Supplied file is not a jaff network file", filename)
