@@ -1542,7 +1542,7 @@ class Codegen:
 
     @staticmethod
     def __prune_cse(
-        replacements: dict[sp.Symbol, sp.Expr], expressions: List[sp.Expr]
+        replacements: list[tuple[sp.Symbol, sp.Expr]], expressions: List[sp.Expr]
     ) -> List[Tuple[sp.Symbol, sp.Expr]]:
         """
         Prune unused CSE (common subexpression elimination) temporaries.
@@ -1591,7 +1591,7 @@ class Codegen:
             for sym in cast(Set[sp.Symbol], expr.free_symbols & cse_syms):
                 dfs(sym)
 
-        return [(var, dep_map[var]) for var, _ in replacements.items() if var in used]
+        return [(var, dep_map[var]) for var, _ in replacements if var in used]
 
     @staticmethod
     @cache
