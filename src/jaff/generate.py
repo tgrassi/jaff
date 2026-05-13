@@ -29,7 +29,7 @@ import pandas as pd
 
 from .codegen import Codegen as cg
 from .config_table_parser import ConfigTable
-from .core.logger import JaffLogger
+from .core.logger import JaffLogger, jaff_progress
 from .drivers.hdf5 import HDF5
 from .drivers.toml import Toml
 from .file_parser import Fileparser
@@ -82,7 +82,7 @@ class JaffGen:
 
     def __process_files(self):
         # Process each template file
-        for file in self.files:
+        for file in jaff_progress.track(self.files, description="Processing files"):
             # Initialize file parser for this template
             fparser: Fileparser = Fileparser(self.net, file, self.default_lang)
 

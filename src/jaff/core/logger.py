@@ -1,9 +1,11 @@
 import atexit
 import logging
+from contextlib import contextmanager
 from typing import Iterable, Optional, Sequence
 
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.pretty import pprint
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -17,6 +19,18 @@ from rich.progress import (
 
 
 class JaffProgress(Progress):
+    @contextmanager
+    def indeterminate(self, description: str):
+        task_id = self.add_task(
+            description,
+            total=None,
+        )
+
+        try:
+            yield task_id
+        finally:
+            self.remove_task(task_id)
+
     def track(
         self,
         sequence: Sequence[ProgressType] | Iterable[ProgressType],
@@ -65,6 +79,7 @@ jaff_progress = JaffProgress(
     expand=True,
     redirect_stdout=False,
     redirect_stderr=False,
+    transient=True,
 )
 
 jaff_progress.start()

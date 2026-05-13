@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 from sympy import Basic, Expr, Float, Idx, MatrixSymbol
 
+from jaff.core.logger import jaff_progress
+
 if TYPE_CHECKING:
     from .. import Reaction
     from .radiation import Radiation
@@ -77,7 +79,9 @@ def get_sradodes(
         [Float(0.0)] * radiation.nbands,
     )
 
-    for group in rad_groups:
+    for group in jaff_progress.track(
+        rad_groups, description="Generating radiation equations"
+    ):
         group_rate: Basic = Float(0.0)
         group_dRad_dt_extra = Float(0.0)
         for reaction, props in group.props.items():
