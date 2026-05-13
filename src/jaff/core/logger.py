@@ -1,5 +1,6 @@
 import atexit
 import logging
+import sys
 from contextlib import contextmanager
 from typing import Iterable, Optional, Sequence
 
@@ -15,21 +16,60 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
+from rich.text import Text
 from rich.traceback import install
+
+
+def _is_jupyter() -> bool:
+    try:
+        shell = get_ipython().__class__.__name__  # type: ignore
+        return shell == "ZMQInteractiveShell"
+    except NameError:
+        return False
+
+
+IN_JUPYTER = _is_jupyter()
+
+_PROGRESS_KWARGS = dict(
+    expand=True,
+    redirect_stdout=False,
+    redirect_stderr=False,
+    transient=True,
+)
+
+
+def _make_progress_columns():
+    return (
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(bar_width=None),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+    )
+
+
+def _make_progress(console: Console, auto_refresh: bool = True) -> Progress:
+    return Progress(
+        *_make_progress_columns(),
+        console=console,
+        auto_refresh=auto_refresh,
+        **_PROGRESS_KWARGS,
+    )
 
 
 class JaffProgress(Progress):
     @contextmanager
     def indeterminate(self, description: str):
-        task_id = self.add_task(
-            description,
-            total=None,
-        )
-
-        try:
-            yield task_id
-        finally:
-            self.remove_task(task_id)
+        if IN_JUPYTER:
+            with _make_progress(self.console) as p:
+                task_id = p.add_task(description, total=None)
+                yield task_id
+        else:
+            task_id = self.add_task(description, total=None)
+            try:
+                yield task_id
+            finally:
+                self.remove_task(task_id)
 
     def track(
         self,
@@ -41,6 +81,24 @@ class JaffProgress(Progress):
         update_period: float = 0.1,
         **kwargs,
     ) -> Iterable[ProgressType]:
+        if IN_JUPYTER:
+            with _make_progress(self.console, auto_refresh=False) as p:
+                if total is None and hasattr(sequence, "__len__"):
+                    total = len(sequence)  # type: ignore
+                task_id = p.add_task(description, total=total)
+                _get_time = p.get_time
+                last_time = _get_time()
+                for value in sequence:
+                    yield value
+                    p.advance(task_id, 1)
+                    current_time = _get_time()
+                    if (current_time - last_time) > update_period:
+                        p.refresh()
+                        last_time = current_time
+                p.update(task_id, completed=total)
+                p.refresh()
+            return
+
         for task in list(self.tasks):
             if task.finished:
                 self.remove_task(task.id)
@@ -69,24 +127,28 @@ class JaffProgress(Progress):
                 self.remove_task(task_id)
 
 
-jaff_console = Console()
+jaff_console = Console(force_jupyter=IN_JUPYTER)
 install(console=jaff_console, show_locals=False)
 
 jaff_progress = JaffProgress(
-    SpinnerColumn(),
-    TextColumn("[progress.description]{task.description}"),
-    BarColumn(bar_width=None),
-    MofNCompleteColumn(),
-    TimeElapsedColumn(),
-    console=jaff_console,
-    expand=True,
-    redirect_stdout=False,
-    redirect_stderr=False,
-    transient=True,
+    *_make_progress_columns(), console=jaff_console, **_PROGRESS_KWARGS
 )
 
-jaff_progress.start()
-atexit.register(jaff_progress.stop)
+if not IN_JUPYTER:
+    jaff_progress.start()
+    atexit.register(jaff_progress.stop)
+
+
+class _StripMarkupFormatter(logging.Formatter):
+    """Strip Rich markup tags from log messages for plain-text output."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        original_msg, original_args = record.msg, record.args
+        record.msg = Text.from_markup(record.getMessage()).plain
+        record.args = None
+        result = super().format(record)
+        record.msg, record.args = original_msg, original_args
+        return result
 
 
 class JaffLogger:
@@ -94,13 +156,17 @@ class JaffLogger:
         self.logger = logging.getLogger(name)
 
         if not self.logger.handlers:
-            handler = RichHandler(
-                console=jaff_console,
-                rich_tracebacks=True,
-                markup=True,
-                show_time=False,
-            )
-            handler.setFormatter(logging.Formatter("%(message)s"))
+            if IN_JUPYTER:
+                handler: logging.Handler = logging.StreamHandler(sys.stdout)
+                handler.setFormatter(_StripMarkupFormatter("%(levelname)-8s %(message)s"))
+            else:
+                handler = RichHandler(
+                    console=jaff_console,
+                    rich_tracebacks=True,
+                    markup=True,
+                    show_time=False,
+                )
+                handler.setFormatter(logging.Formatter("%(message)s"))
             self.logger.addHandler(handler)
 
         self.logger.setLevel(level)
