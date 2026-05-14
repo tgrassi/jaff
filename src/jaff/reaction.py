@@ -96,6 +96,7 @@ class Reaction:
     def serialize_exploded(self):
         sr = "_".join(sorted([x.serialized for x in self.reactants]))
         sp = "_".join(sorted([x.serialized for x in self.products]))
+
         return sr + "__" + sp
 
     # ****************
@@ -104,6 +105,7 @@ class Reaction:
         # serialize the reaction in the form R__P_P
         sr = "_".join(sorted([x.name for x in self.reactants]))
         sp = "_".join(sorted([x.name for x in self.products]))
+
         return sr + "__" + sp
 
     def check(self, errors):

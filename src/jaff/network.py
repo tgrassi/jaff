@@ -451,42 +451,37 @@ class Network:
     def free_symbols(expr: Basic) -> set[Basic]:
         return {fs for fs in expr.free_symbols if "nden" not in str(fs)}
 
-    # ****************
-    def compare_reactions(self, other, verbosity=1):
-        print(f'Comparing networks "{self.label}" and "{other.label}"...')
+    def compare_reactions(self, other: Network, verbosity: int = 1):
+        self.logger.info(f'Comparing networks "{self.label}" and "{other.label}"...')
 
-        net1 = [x.serialized for x in self.reactions]
-        net2 = [x.serialized for x in other.reactions]
+        self_reacts = {x.serialized for x in self.reactions}
+        other_reacts = {x.serialized for x in other.reactions}
 
-        nsame = 0
-        nmissing1 = 0
-        nmissing2 = 0
-        for ref in np.unique(net1 + net2):
-            if ref in net1 and ref not in net2:
-                rea = self.get_reaction_by_serialized(ref)
-                nmissing2 += 1
-                if verbosity > 0:
-                    print(
-                        f'Found in "{self.label}" but not in "{other.label}": {rea.get_verbatim()}'
-                    )
+        common = self_reacts & other_reacts
+        not_in_self = other_reacts - common
+        not_in_other = self_reacts - common
 
-            elif ref in net2 and ref not in net1:
-                rea = other.get_reaction_by_serialized(ref)
-                nmissing1 += 1
-                if verbosity > 0:
-                    print(
-                        f'Found in "{other.label}" but not in "{self.label}": {rea.get_verbatim()}'
-                    )
-            else:
-                if verbosity > 1:
-                    print(f"Found in both networks: {ref}")
-                nsame += 1
+        if verbosity == 1:
+            self.logger.info(f"Reactions not present in {self.label}:")
+            print(
+                "\n".join(
+                    [str(other.get_reaction_by_serialized(rea)) for rea in not_in_self]
+                ),
+                "\n",
+            )
 
-        print(f"Found {nsame} reactions in common")
-        print(f'{nmissing1} reactions missing in "{self.label}"')
-        print(f'{nmissing2} reactions missing in "{other.label}"')
+            self.logger.info(f"Reactions not present in {other.label}:")
+            print(
+                "\n".join(
+                    [str(self.get_reaction_by_serialized(rea)) for rea in not_in_other]
+                ),
+                "\n",
+            )
 
-    # ****************
+        self.logger.info(f"{len(common)} are common in both networks")
+        self.logger.info(f'{len(not_in_self)} reactions are missing in "{self.label}"')
+        self.logger.info(f'{len(not_in_other)} reactions are missing in "{other.label}"')
+
     def compare_species(self, other, verbosity=1):
         print(f'Comparing species in networks "{self.label}" and "{other.label}"...')
 
@@ -605,7 +600,6 @@ class Network:
             self.logger.error("ERROR: isomer errors found")
             sys.exit(1)
 
-    # ****************
     def check_unique_reactions(self, errors):
         has_duplicates = False
         for i, rea1 in enumerate(self.reactions):
@@ -626,13 +620,11 @@ class Network:
             self.logger.error("Duplicate reactions found")
             sys.exit(1)
 
-    # ****************
     def generate_reactions_dict(self):
-        self.reactions_dict = {
-            rea.get_verbatim(): i for i, rea in enumerate(self.reactions)
-        }
+        for i, rea in enumerate(self.reactions):
+            self.reactions_dict[rea.verbatim] = i
+            self.reactions_dict[rea.serialized] = i
 
-    # ****************
     def generate_reaction_matrices(self):
         """Generate reaction matrices (rlist and plist) for tracking reactants and products."""
         n_reactions = len(self.reactions)
@@ -782,7 +774,6 @@ class Network:
         self.logger.error(f"Species {name} latex not found")
         sys.exit(1)
 
-    # *****************
     def get_species_by_serialized(self, serialized):
         for sp in self.species:
             if sp.serialized == serialized:
@@ -790,15 +781,12 @@ class Network:
         self.logger.error(f"Species with serialized {serialized} not found")
         sys.exit(1)
 
-    # *****************
-    def get_reaction_by_serialized(self, serialized):
-        for sp in self.reactions:
-            if sp.serialized == serialized:
-                return sp
-        self.logger.error(f"Reaction with serialized {serialized} not found")
-        sys.exit(1)
+    def get_reaction_by_serialized(self, serialized: str):
+        if serialized not in self.reactions_dict:
+            raise KeyError(f"Invalid serealized reaction: {serialized}")
 
-    # *****************
+        return self.reactions[self.reactions_dict[serialized]]
+
     def get_reaction_by_verbatim(self, verbatim, rtype=None):
         for rea in self.reactions:
             if rea.get_verbatim() == verbatim:
