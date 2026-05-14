@@ -10,77 +10,10 @@
     --jaff-grid: rgba(255, 255, 255, 0.1);
 }
 
-body {
-    position: relative;
-    width: 100%;
-    min-height: 100svh;
-}
-
-body::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-
-    background-image:
-        repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 19px,
-            var(--jaff-grid-primary) 19px,
-            var(--jaff-grid-primary) 20px,
-            transparent 20px,
-            transparent 39px,
-            var(--jaff-grid-primary) 39px,
-            var(--jaff-grid-primary) 40px
-        ),
-        repeating-linear-gradient(
-            90deg,
-            transparent,
-            transparent 19px,
-            var(--jaff-grid-primary) 19px,
-            var(--jaff-grid-primary) 20px,
-            transparent 20px,
-            transparent 39px,
-            var(--jaff-grid-primary) 39px,
-            var(--jaff-grid-primary) 40px
-        ),
-        radial-gradient(
-            circle at 20px 20px,
-            var(--jaff-grid-secondary) 2px,
-            transparent 2px
-        ),
-        radial-gradient(
-            circle at 40px 40px,
-            var(--jaff-grid-secondary) 2px,
-            transparent 2px
-        );
-
-    background-size:
-        40px 40px,
-        40px 40px,
-        40px 40px,
-        40px 40px;
-}
-
 .md-main__inner {
-    border-left: 1px solid var(--jaff-grid);
-    border-right: 1px solid var(--jaff-grid);
     position: relative;
     max-width: 1436px;
     background-color: var(--md-default-bg-color);
-}
-
-.md-main__inner::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    background-color: var(--jaff-grid);
-    height: 1px;
-    width: 200vw;
-    left: -50vw;
-    z-index: 100;
 }
 
 .md-content {
@@ -89,55 +22,6 @@ body::before {
     min-height: 100svh;
     border-right: 1px solid var(--jaff-grid);
     border-left: 1px solid var(--jaff-grid);
-}
-
-/* Left Masked Circuit Board - Light Pattern */
-.md-content::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-
-    background-image:
-        repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 19px,
-            var(--jaff-grid-primary) 19px,
-            var(--jaff-grid-primary) 20px,
-            transparent 20px,
-            transparent 39px,
-            var(--jaff-grid-primary) 39px,
-            var(--jaff-grid-primary) 40px
-        ),
-        repeating-linear-gradient(
-            90deg,
-            transparent,
-            transparent 19px,
-            var(--jaff-grid-primary) 19px,
-            var(--jaff-grid-primary) 20px,
-            transparent 20px,
-            transparent 39px,
-            var(--jaff-grid-primary) 39px,
-            var(--jaff-grid-primary) 40px
-        ),
-        radial-gradient(
-            circle at 20px 20px,
-            var(--jaff-grid-secondary) 2px,
-            transparent 2px
-        ),
-        radial-gradient(
-            circle at 40px 40px,
-            var(--jaff-grid-secondary) 2px,
-            transparent 2px
-        );
-
-    background-size:
-        40px 40px,
-        40px 40px,
-        40px 40px,
-        40px 40px;
 }
 
 .md-tabs,
@@ -154,9 +38,4 @@ table {
 table,
 .grid.cards > ul > li {
     border-radius: 0.5rem !important;
-}
-
-.jaff-logo {
-    border: 1px solid #e88502;
-    border-radius: 0.5rem;
 }
