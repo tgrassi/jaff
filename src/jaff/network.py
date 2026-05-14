@@ -563,7 +563,7 @@ class Network:
             if "e-" in reactant_names:
                 for r in rea.reactants:
                     if r.name != "e-":
-                        electron_recomb_species.add(r)
+                        electron_recomb_species.add(r.name)
 
         has_errors = False
 
@@ -571,7 +571,7 @@ class Network:
             if sp.charge <= 0:
                 continue
 
-            if sp not in electron_recomb_species:
+            if sp.name not in electron_recomb_species:
                 has_errors = True
                 self.logger.warning(
                     f"Electron recombination not found for [cyan]{sp.name}[/]"

@@ -192,7 +192,8 @@ class TestNetworkValidation:
             recomb_warnings = [
                 call
                 for call in mock_logger.warning.call_args_list
-                if "Electron recombination not found for C+" in str(call)
+                if "Electron recombination not found for [cyan]C+[/]" in str(call)
+                or "Electron recombination not found for C+" in str(call)
             ]
             assert len(recomb_warnings) > 0
         finally:
