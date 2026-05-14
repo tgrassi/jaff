@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
+from functools import cache
 from pathlib import Path
 from textwrap import dedent
 from typing import NotRequired, TypedDict
@@ -125,7 +126,7 @@ class Network:
         self.check_isomers(errors)
         self.check_unique_reactions(errors)
 
-        self.generate_reactions_dict()
+        self.__generate_reactions_dict()
         self.generate_reaction_matrices()
 
         self.logger.info("[green]Network loaded successfully![/]")
@@ -278,7 +279,7 @@ class Network:
         # Add chemical and non-chemical heating and cooling rates
         if "heatingcoolingrate" in aux_funcs:
             self.dEdt_other = aux_funcs["heatingcoolingrate"]["def"]
-            self.dEdt_other = self.standardize_symbols(self.dEdt_other, replace_nH)
+            self.dEdt_other = self.__standardize_symbols(self.dEdt_other, replace_nH)
             free_symbols |= self.free_symbols(self.dEdt_other)
             self.__detect_undefined_functions(self.dEdt_other, undef_funcs, interp_funcs)
 
@@ -328,14 +329,14 @@ class Network:
         # appearing in rates with terms involving known species
         nden = MatrixSymbol("nden", len(self.species), 1)
         for r in self.reactions:
-            r.rate = self.standardize_symbols(r.rate, replace_nH)
+            r.rate = self.__standardize_symbols(r.rate, replace_nH)
             dE_dt = r.dE * r.rate
             for s in r.reactants:
                 dE_dt *= nden[self.species_dict[s.name]]
             self.dEdt_chem += dE_dt
             self.dRad_dt_extra += r.dRad_dt
-        self.dEdt_chem = self.standardize_symbols(self.dEdt_chem, replace_nH)
-        self.dRad_dt_extra = self.standardize_symbols(self.dRad_dt_extra, replace_nH)
+        self.dEdt_chem = self.__standardize_symbols(self.dEdt_chem, replace_nH)
+        self.dRad_dt_extra = self.__standardize_symbols(self.dRad_dt_extra, replace_nH)
 
     @staticmethod
     def __parse_rate(
@@ -491,7 +492,7 @@ class Network:
         self.logger.info(f'{len(not_in_self)} reactions are missing in "{self.label}"')
         self.logger.info(f'{len(not_in_other)} reactions are missing in "{other.label}"')
 
-    def compare_species(self, other: Network, verbosity: int = 1):
+    def compare_species(self, other: Network, verbosity: int = 1) -> None:
         self.logger.info(
             f'Comparing species in networks "{self.label}" and "{other.label}"...'
         )
@@ -530,7 +531,7 @@ class Network:
         self.logger.info(f'{len(not_in_self)} species are missing in "{self.label}"')
         self.logger.info(f'{len(not_in_other)} species are missing in "{other.label}"')
 
-    def check_sink_sources(self, errors: bool):
+    def check_sink_sources(self, errors: bool) -> None:
         produced = {p.name for rea in self.reactions for p in rea.products}
         consumed = {r.name for rea in self.reactions for r in rea.reactants}
         species_names = {s.name for s in self.species if s.name != "dummy"}
@@ -554,7 +555,7 @@ class Network:
             self.logger.error("Exiting since errors are enabled")
             sys.exit()
 
-    def check_recombinations(self, errors: bool):
+    def check_recombinations(self, errors: bool) -> None:
         electron_recomb_species = set()
 
         for rea in self.reactions:
@@ -581,7 +582,7 @@ class Network:
             self.logger.error("Recombination errors found")
             sys.exit(1)
 
-    def check_isomers(self, errors: bool):
+    def check_isomers(self, errors: bool) -> None:
         groups = {}
 
         for sp in self.species:
@@ -619,12 +620,12 @@ class Network:
             self.logger.error("Duplicate reactions found")
             sys.exit(1)
 
-    def generate_reactions_dict(self):
+    def __generate_reactions_dict(self) -> None:
         for i, rea in enumerate(self.reactions):
             self.reactions_dict[rea.verbatim] = i
             self.reactions_dict[rea.serialized] = i
 
-    def generate_reaction_matrices(self):
+    def generate_reaction_matrices(self) -> None:
         """Generate reaction matrices (rlist and plist) for tracking reactants and products."""
         n_reactions = len(self.reactions)
         n_species = len(self.species)
@@ -645,10 +646,10 @@ class Network:
                 species_idx = product.index
                 self.plist[i, species_idx] += 1
 
-    def get_reaction_verbatim(self, idx):
-        return self.reactions[idx].get_verbatim()
+    def get_reaction_verbatim(self, idx: int) -> str:
+        return self.reactions[idx].verbatim
 
-    def standardize_symbols(self, expr: Basic, replace_nH: bool):
+    def __standardize_symbols(self, expr: Basic, replace_nH: bool) -> Basic:
         """
         This routine applies a set of standard substitution rules to
         standardize symbols.
@@ -744,53 +745,46 @@ class Network:
 
         return expr.xreplace(reps)
 
-    # *****************
-    def get_number_of_species(self):
+    def get_number_of_species(self) -> int:
         return len(self.species)
 
-    # *****************
-    def get_species_index(self, name):
+    def get_species_index(self, name: str) -> int:
         return self.species_dict[name]
 
-    # *****************
-    def get_species_object(self, name):
+    def get_species_object(self, name) -> Species:
         return self.species[self.species_dict[name]]
 
-    # *****************
-    def get_reaction_index(self, name):
+    def get_reaction_index(self, name) -> int:
         return self.reactions_dict[name]
 
-    # *****************
-    def get_latex(self, name, dollars=True):
-        for sp in self.species:
-            if sp.name == name:
-                if dollars:
-                    return f"${sp.latex}$"
-                else:
-                    return sp.latex
+    def get_latex(self, name: str, dollars: bool = True) -> str:
+        if name not in self.species_dict:
+            raise KeyError(f"Invalid specie name: {name}")
 
-        self.logger.error(f"Species {name} latex not found")
-        sys.exit(1)
+        sp = self.species[self.species_dict[name]]
+        return f"${sp.latex}$" if dollars else sp.latex
 
-    def get_species_by_serialized(self, serialized: str):
+    def get_species_by_serialized(self, serialized: str) -> Species:
         if serialized not in self.species_dict:
             raise KeyError(f"Invalid serealized specie: {serialized}")
 
         return self.species[self.species_dict[serialized]]
 
-    def get_reaction_by_serialized(self, serialized: str):
+    def get_reaction_by_serialized(self, serialized: str) -> Reaction:
         if serialized not in self.reactions_dict:
             raise KeyError(f"Invalid serealized reaction: {serialized}")
 
         return self.reactions[self.reactions_dict[serialized]]
 
-    def get_reaction_by_verbatim(self, verbatim, rtype=None):
-        for rea in self.reactions:
-            if rea.get_verbatim() == verbatim:
-                if rtype is None or rea.guess_type() == rtype:
-                    return rea
-        self.logger.error(f"Reaction with verbatim '{verbatim}' not found")
-        sys.exit(1)
+    def get_reaction_by_verbatim(
+        self, verbatim: str, rtype: str | None = None
+    ) -> Reaction | None:
+        if verbatim not in self.reactions_dict:
+            raise KeyError(f"Invalid verbatim reaction: {verbatim}")
+
+        rea = self.reactions[self.reactions_dict[verbatim]]
+        if rtype is None or rea.guess_type() == rtype:
+            return rea
 
     def sfluxes(self) -> list[Expr]:
         return get_sfluxes(self.reactions, self.species_dict)
@@ -814,7 +808,7 @@ class Network:
         fast_log=False,
         include_all=False,
         verbose=False,
-    ):
+    ) -> None:
         if isinstance(fname, str):
             fname = Path(fname)
 
@@ -851,7 +845,7 @@ class Network:
         fast_log=False,
         include_all=False,
         verbose=False,
-    ):
+    ) -> None:
         if isinstance(fname, str):
             fname = Path(fname)
 
@@ -889,7 +883,7 @@ class Network:
         format="auto",
         include_all=False,
         verbose=False,
-    ):
+    ) -> None:
 
         write_data_table(
             reactions=self.reactions,

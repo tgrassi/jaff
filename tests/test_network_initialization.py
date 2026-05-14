@@ -85,7 +85,9 @@ class TestNetworkInitialization:
                                     Network, "check_unique_reactions", MagicMock()
                                 ):
                                     with patch.object(
-                                        Network, "generate_reactions_dict", MagicMock()
+                                        Network,
+                                        "_Network__generate_reactions_dict",
+                                        MagicMock(),
                                     ):
                                         with patch.object(
                                             Network,
@@ -139,7 +141,7 @@ class TestNetworkInitialization:
                                 Network, "check_unique_reactions"
                             ) as mock_unique:
                                 with patch.object(
-                                    Network, "generate_reactions_dict"
+                                    Network, "_Network__generate_reactions_dict"
                                 ) as mock_dict:
                                     with patch.object(
                                         Network, "generate_reaction_matrices"

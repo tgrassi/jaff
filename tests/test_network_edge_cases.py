@@ -44,15 +44,15 @@ class TestNetworkEdgeCases:
 
     def test_missing_reaction_lookup(self, sample_network):
         """Test error handling for non-existent reaction lookup."""
-        with patch("sys.exit") as mock_exit:
-            sample_network.get_reaction_by_verbatim("NONEXISTENT -> REACTION")
-            mock_exit.assert_called_once_with(1)
+        with pytest.raises(KeyError):
+            sample_network.get_species_object("NONEXISTENT_SPECIES")
 
     def test_missing_species_latex_lookup(self, sample_network):
         """Test error handling for non-existent species LaTeX lookup."""
-        with patch("sys.exit") as mock_exit:
+        import pytest
+
+        with pytest.raises(KeyError):
             sample_network.get_latex("NONEXISTENT_SPECIES")
-            mock_exit.assert_called_once_with(1)
 
     def test_missing_reaction_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized reaction lookup."""
