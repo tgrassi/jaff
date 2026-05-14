@@ -530,32 +530,28 @@ class Network:
         self.logger.info(f'{len(not_in_self)} species are missing in "{self.label}"')
         self.logger.info(f'{len(not_in_other)} species are missing in "{other.label}"')
 
-    def check_sink_sources(self, errors):
-        pps = []
-        rrs = []
-        for rea in self.reactions:
-            for p in rea.products:
-                pps.append(p.name)
-            for r in rea.reactants:
-                rrs.append(r.name)
+    def check_sink_sources(self, errors: bool):
+        produced = {p.name for rea in self.reactions for p in rea.products}
+        consumed = {r.name for rea in self.reactions for r in rea.reactants}
+        species_names = {s.name for s in self.species if s.name != "dummy"}
 
-        has_sink = has_source = False
-        for s in self.species:
-            if s.name == "dummy":
-                continue
-            if s.name not in pps:
-                self.logger.info(f"Sink: {s.name}")
-                has_sink = True
-            if s.name not in rrs:
-                self.logger.info(f"Source: {s.name}")
-                has_source = True
+        sinks = species_names - produced
+        sources = species_names - consumed
 
-        if has_sink:
+        for name in sinks:
+            self.logger.info(f"Sink: {name}")
+
+        for name in sources:
+            self.logger.info(f"Source: {name}")
+
+        if sinks:
             self.logger.warning("Sink detected")
-        if has_source:
+
+        if sources:
             self.logger.warning("Source detected")
 
-        if (has_sink or has_source) and errors:
+        if (sinks or sources) and errors:
+            self.logger.error("Exiting since errors are enabled")
             sys.exit()
 
     def check_recombinations(self, errors):
