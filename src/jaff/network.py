@@ -539,10 +539,10 @@ class Network:
         sources = species_names - consumed
 
         for name in sinks:
-            self.logger.info(f"Sink: {name}")
+            self.logger.info(f"Sink: [cyan]{name}[/]")
 
         for name in sources:
-            self.logger.info(f"Source: {name}")
+            self.logger.info(f"Source: [cyan]{name}[/]")
 
         if sinks:
             self.logger.warning("Sink detected")
@@ -573,24 +573,30 @@ class Network:
 
             if sp not in electron_recomb_species:
                 has_errors = True
-                self.logger.warning(f"Electron recombination not found for {sp.name}")
+                self.logger.warning(
+                    f"Electron recombination not found for [cyan]{sp.name}[/]"
+                )
 
         if has_errors and errors:
             self.logger.error("Recombination errors found")
             sys.exit(1)
 
-    def check_isomers(self, errors):
+    def check_isomers(self, errors: bool):
+        groups = {}
+
+        for sp in self.species:
+            key = tuple(sp.exploded)
+            groups.setdefault(key, []).append(f"[cyan]{sp.name}[/]")
+
         has_errors = False
-        for i, sp1 in enumerate(self.species):
-            for sp2 in self.species[i + 1 :]:
-                if sp1.exploded == sp2.exploded:
-                    self.logger.warning(
-                        f"Isomer detected: [cyan]{sp1.name} {sp2.name}[/]"
-                    )
-                    has_errors = True
+
+        for exploded, names in groups.items():
+            if len(names) > 1:
+                has_errors = True
+                self.logger.warning(f"Isomers detected: {', '.join(names)}")
 
         if has_errors and errors:
-            self.logger.error("ERROR: isomer errors found")
+            self.logger.error("Isomer errors found")
             sys.exit(1)
 
     def check_unique_reactions(self, errors):
