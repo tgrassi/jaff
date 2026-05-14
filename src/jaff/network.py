@@ -4,7 +4,6 @@ import logging
 import re
 import sys
 from pathlib import Path
-from textwrap import dedent
 from typing import NotRequired, TypedDict
 
 import numpy as np
@@ -25,6 +24,7 @@ from sympy.core.function import AppliedUndef, UndefinedFunction
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
 from .common import is_jaff_file
 from .common.helper import load_mass_dict, resolve_dependencies
+from .common.welcome import motd
 from .core.io import JaffProps, from_jaff_file, to_jaff_file, write_data_table
 from .core.logger import JaffLogger, jaff_progress
 from .errors import ParserError
@@ -48,6 +48,7 @@ NetworkProps = TypedDict(
         "rad_powerlaw_index": NotRequired[int | float],
         "rad_energy_density": NotRequired[bool],
         "c": NotRequired[float],
+        "_from_cli": NotRequired[bool],
     },
 )
 
@@ -72,9 +73,9 @@ class Network:
         rad_powerlaw_index: int | float = 0,
         rad_energy_density: bool = False,
         c: float = constants.cgs.c,  # Speed of light in cgs unit
-        logger: logging.Logger | None = None,
+        _from_cli: bool = False,
     ):
-        self.logger: logging.Logger = logger or JaffLogger().get_logger()
+        self.logger: logging.Logger = JaffLogger().get_logger()
 
         if isinstance(fname, str):
             fname = Path(fname)
@@ -90,7 +91,8 @@ class Network:
 
         self.file_name: Path = jaff_props.get("file_name", fname)
         self.label = jaff_props.get("label", label or self.file_name.stem)
-        self.motd()
+        if not _from_cli:
+            print(motd())
 
         self.mass_dict: dict[str, ElementProps] = {}
         self.species: list[Species] = []
@@ -129,27 +131,6 @@ class Network:
         self.generate_reaction_matrices()
 
         self.logger.info("[green]Network loaded successfully![/]")
-
-    @staticmethod
-    def motd():
-        try:
-            with open("assets/words.dat", "r") as f:
-                words = f.readlines()
-            words = [
-                x.strip()
-                for x in words
-                if x.lower().startswith("f") and x.strip().isalpha()
-            ]
-            fword = np.random.choice(words)
-        except (FileNotFoundError, PermissionError, OSError, ValueError):
-            fword = "Fancy"
-        welcome_text = dedent("""
-        Welcome to\n
-        ░░█ ▄▀█ █▀▀ █▀▀
-        █▄█ █▀█ █▀░ █▀░
-        """)
-        print(welcome_text)
-        print(f"Just Another {fword.title()} Format!\n")
 
     def __load_network(
         self,

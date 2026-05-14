@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from .codegen import Codegen as cg
+from .common.welcome import motd
 from .config_table_parser import ConfigTable
 from .core.logger import JaffLogger, jaff_progress
 from .drivers.hdf5 import HDF5
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
 
 class JaffGen:
     def __init__(self):
+        print(motd("jaffgen"))
         self.parser: argparse.ArgumentParser = self.__get_parser()
         self.__set_parser_props()
 
@@ -73,11 +75,11 @@ class JaffGen:
         if not self.files:
             raise RuntimeError("No valid input file/folder/template have been supplied")
 
-        self.net_kwargs: NetworkProps = {"fname": str(self.netfile)}
+        self.net_kwargs: NetworkProps = {"fname": str(self.netfile), "_from_cli": True}
         self.__read_jaff_config()
 
         # Create a new network instance
-        self.net: Network = Network(**self.net_kwargs, logger=self.logger)
+        self.net: Network = Network(**self.net_kwargs)
         self.__process_files()
 
     def __process_files(self):
@@ -224,7 +226,7 @@ class JaffGen:
 
     def __get_parser(self) -> argparse.ArgumentParser:
         return argparse.ArgumentParser(
-            prog="jaff.generate",
+            prog="jaffgen",
             description="Generate code for chemical reaction networks in multiple programming languages.",
             epilog="""
             Examples:
@@ -243,7 +245,7 @@ class JaffGen:
             Supported Languages:
               c, cxx (c++, cpp), fortran (f90), python (py), rust (rs), julia (jl), r
 
-            For more information, visit: https://jaff-chemistry.github.io/jaff/
+            For more information, visit: https://jaff-chemistry.github.io/jaff/f
                     """,
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
