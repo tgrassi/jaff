@@ -554,35 +554,31 @@ class Network:
             self.logger.error("Exiting since errors are enabled")
             sys.exit()
 
-    def check_recombinations(self, errors):
+    def check_recombinations(self, errors: bool):
+        electron_recomb_species = set()
+
+        for rea in self.reactions:
+            reactant_names = {r.name for r in rea.reactants}
+
+            if "e-" in reactant_names:
+                for r in rea.reactants:
+                    if r.name != "e-":
+                        electron_recomb_species.add(r)
+
         has_errors = False
+
         for sp in self.species:
-            if sp.charge == 0:
+            if sp.charge <= 0:
                 continue
 
-            if sp.charge > 0:
-                electron_recombination_found = False
-                # grain_recombination_found = False
-                for rea in self.reactions:
-                    if sp in rea.reactants and "e-" in [x.name for x in rea.reactants]:
-                        electron_recombination_found = True
-                    # if sp in rea.reactants and "GRAIN-" in [x.name for x in rea.reactants]:
-                    #     grain_recombination_found = True
-
-                    if electron_recombination_found:  # and grain_recombination_found:
-                        break
-
-                if not electron_recombination_found:
-                    has_errors = True
-                    self.logger.warning(f"Electron recombination not found for {sp.name}")
-                # if not grain_recombination_found:
-                #     print("WARNING: grain recombination not found for %s" % sp.name)
+            if sp not in electron_recomb_species:
+                has_errors = True
+                self.logger.warning(f"Electron recombination not found for {sp.name}")
 
         if has_errors and errors:
             self.logger.error("Recombination errors found")
             sys.exit(1)
 
-    # ****************
     def check_isomers(self, errors):
         has_errors = False
         for i, sp1 in enumerate(self.species):
