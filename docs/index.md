@@ -124,23 +124,23 @@ Generate efficient ODE solvers for modeling chemical evolution in:
 
     ***
 
-    Install JAFF and run your first network analysis
+    Install JAFF in your system and run your required network analysis
 
     [:octicons-arrow-right-24: Installation Guide](getting-started/installation.md)
 
-- :material-book-open-variant:{ .lg .middle } **User Guide**
+- :lucide-book-open:{ .lg .middle } **User Guide**
 
     ***
 
     Learn how to work with networks, species, and reactions
 
-    [:lucide-book-open: User Guide](user-guide/loading-networks.md)
+    [:octicons-arrow-right-24: User Guide](user-guide/loading-networks.md)
 
 - :lucide-braces:{ .lg .middle } **Code Generation**
 
     ***
 
-    Generate optimized code for your simulations
+    Generate optimized code for simulations
 
     [:octicons-arrow-right-24: Code Generation Guide](user-guide/code-generation.md)
 

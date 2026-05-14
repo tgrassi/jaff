@@ -1,13 +1,90 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
 :root {
     --jaff-grid-primary: rgba(75, 85, 99, 0.04);
     --jaff-grid-secondary: rgba(55, 65, 81, 0.05);
     --jaff-grid: rgba(75, 85, 99, 0.1);
+
+    /* Slightly lighter text for the main body */
+    --md-text-color: #374151;
+    --md-heading-color: #111827;
+
+    /* Solid black for card headings in light mode */
+    --jaff-card-heading: #000000;
 }
 
 [data-md-color-scheme="slate"] {
     --jaff-grid-primary: rgba(255, 255, 255, 0.05);
     --jaff-grid-secondary: rgba(255, 255, 255, 0.05);
     --jaff-grid: rgba(255, 255, 255, 0.1);
+
+    /* Dimmer body text and brighter headings for dark mode */
+    --md-text-color: #d1d5db;
+    --md-heading-color: #f9fafb;
+
+    /* Solid white for card headings in dark mode */
+    --jaff-card-heading: #ffffff;
+}
+
+/* Apply Space Grotesk to headings and set specific colors */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+    font-family: "Space Grotesk", sans-serif;
+    color: var(--md-heading-color);
+}
+
+/* Apply distinct color and Space Grotesk to the main body text */
+body,
+.md-typeset {
+    font-family: "Space Grotesk", sans-serif;
+    color: var(--md-text-color);
+    font-size: 0.825rem; /* Slightly increased font size for better readability */
+    line-height: 1.6;
+}
+
+/* Accent color for headings inside grid cards */
+.md-typeset .grid.cards > ul > li h1,
+.md-typeset .grid.cards > ul > li h1 *,
+.md-typeset .grid.cards > ul > li h2,
+.md-typeset .grid.cards > ul > li h2 *,
+.md-typeset .grid.cards > ul > li h3,
+.md-typeset .grid.cards > ul > li h3 *,
+.md-typeset .grid.cards > ul > li h4,
+.md-typeset .grid.cards > ul > li h4 *,
+.md-typeset .grid.cards > ul > li h5,
+.md-typeset .grid.cards > ul > li h5 *,
+.md-typeset .grid.cards > ul > li h6,
+.md-typeset .grid.cards > ul > li h6 *,
+.md-typeset .grid.cards > ul > li > p:first-child > strong,
+.md-typeset .grid.cards > ul > li > strong:first-child {
+    color: var(--jaff-card-heading) !important;
+}
+
+/* Ensure icons/SVGs in card headings also get the same color and have a gap */
+.md-typeset .grid.cards > ul > li h1 svg,
+.md-typeset .grid.cards > ul > li h2 svg,
+.md-typeset .grid.cards > ul > li h3 svg,
+.md-typeset .grid.cards > ul > li h4 svg,
+.md-typeset .grid.cards > ul > li h5 svg,
+.md-typeset .grid.cards > ul > li h6 svg,
+.md-typeset .grid.cards > ul > li > p:first-child svg,
+.md-typeset .grid.cards > ul > li > strong:first-child svg,
+.md-typeset .grid.cards > ul > li > p:first-child .twemoji,
+.md-typeset .grid.cards > ul > li > strong:first-child .twemoji,
+.md-typeset .grid.cards > ul > li > p:first-child .twemoji svg,
+.md-typeset .grid.cards > ul > li > strong:first-child .twemoji svg {
+    color: var(--jaff-card-heading) !important;
+    margin-right: 0.25em;
+}
+
+.md-typeset .grid.cards > ul > li > p:not(:first-child),
+.md-typeset .grid.cards > ul > li > p:nth-of-type(2) {
+    font-size: 0.9em; /* Adjust to your preferred readable size */
+    opacity: 0.85; /* Slightly fade the description text */
 }
 
 .md-main__inner {
@@ -38,4 +115,18 @@ table {
 table,
 .grid.cards > ul > li {
     border-radius: 0.5rem !important;
+}
+
+/* Slightly tint the background of the grid cards */
+.md-typeset .grid.cards > ul > li {
+    background-color: var(--jaff-grid-primary);
+    border: 1px solid var(--jaff-grid);
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+/* Optional: Make it slightly brighter on hover */
+.md-typeset .grid.cards > ul > li:hover {
+    background-color: var(--jaff-grid-secondary);
 }

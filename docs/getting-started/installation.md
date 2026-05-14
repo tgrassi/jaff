@@ -225,12 +225,14 @@ uv pip install --upgrade jaff
 
 To remove JAFF from your system:
 
-```bash
-pip uninstall jaff
-```
+=== "pip"
 
-Or with uv:
+    ```bash
+    pip uninstall jaff
+    ```
 
-```bash
-uv pip uninstall jaff
-```
+=== "uv"
+
+    ```bash
+    uv pip uninstall jaff
+    ```
