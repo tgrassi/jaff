@@ -29,22 +29,22 @@ if TYPE_CHECKING:
 class Reaction:
     def __init__(
         self,
-        reactants,
-        products,
-        rate,
-        tmin,
-        tmax,
-        dE,
-        dRad_dt,
-        original_string,
-        errors=False,
+        reactants: list[Species],
+        products: list[Species],
+        rate: Basic,
+        tmin: float | None,
+        tmax: float | None,
+        dE: Basic,
+        dRad_dt: Basic,
+        original_string: str,
+        errors: bool = False,
     ):
         self.logger = JaffLogger().get_logger()
         self.reactants: list[Species] = reactants
         self.products: list[Species] = products
         self.rate: Basic = rate
-        self.tmin: float = tmin
-        self.tmax: float = tmax
+        self.tmin: float | None = tmin
+        self.tmax: float | None = tmax
         self.dE: Basic = dE
         self.dRad_dt: Basic = dRad_dt
         self.custom_rad_rate: bool = False

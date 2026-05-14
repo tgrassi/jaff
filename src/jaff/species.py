@@ -1,23 +1,32 @@
-import itertools
+from __future__ import annotations
+
 import sys
+from itertools import product
+from typing import TYPE_CHECKING
+
+from .core.logger import JaffLogger
+
+if TYPE_CHECKING:
+    import logging
 
 
 class Species:
-    # ********************
-    def __init__(self, name, mass_dict, index):
+    def __init__(self, name: str, mass_dict: dict, index: int):
+        self.logger: logging.Logger = JaffLogger().get_logger()
         if name.lower() in ["e", "eletron", "electrons", "el", "els"] or name in [
             "E",
             "E-",
         ]:
-            sys.exit("ERROR: electrons found with name: " + name + ". Use e- instead.")
+            self.logger.error(f"Electrons found with name: {name}. Use e- instead")
+            sys.exit(1)
 
-        self.name = name
-        self.mass = None
-        self.exploded = []
-        self.latex = ""
+        self.name: str = name
+        self.mass: float | None = None
+        self.exploded: list[str] = []
+        self.latex: str = ""
         self.charge: int = 0
-        self.index = index
-        self.fidx = self.get_fidx()
+        self.index: int = index
+        self.fidx: str = self.get_fidx()
         self.serialized: str = ""
 
         self.parse(mass_dict)
@@ -29,29 +38,29 @@ class Species:
     def __str__(self):
         return self.name
 
-    # ********************
-    def get_fidx(self):
-        if self.name == "e-":
-            return "idx_e"
-        return "idx_" + self.name.replace("+", "j").replace("-", "k").strip().lower()
+    def get_fidx(self) -> str:
+        return (
+            "idx_e"
+            if self.name == "e-"
+            else f"idx_{self.name.replace('+', 'j').replace('-', 'k').strip().lower()}"
+        )
 
-    # ********************
-    def serialize(self):
+    def serialize(self) -> str:
         self.serialized = "/".join(sorted(self.exploded))
+
         return self.serialized
 
-    # ********************
-    def parse(self, mass_dict):
+    def parse(self, mass_dict: dict) -> None:
         atoms = sorted(mass_dict.keys(), key=lambda x: len(x), reverse=True)
-        ps = ["".join(x) for x in itertools.product("qzxj", repeat=4)][: len(atoms)]
+        ps = ["".join(x) for x in product("qzxj", repeat=4)][: len(atoms)]
         proxy = {a: p for a, p in zip(atoms, ps)}
         proxy_rev = {p: a for a, p in proxy.items()}
 
         pname = self.name.strip()
         for a in atoms:
-            pname = pname.replace(a, "$" + proxy[a] + "$")
+            pname = pname.replace(a, f"${proxy[a]}$")
 
-        def is_number(s):
+        def is_number(s: str) -> bool:
             if s == "x":
                 return True
             try:
@@ -90,19 +99,20 @@ class Species:
 
         latex = latex.replace("GRAIN", "g")
 
-        self.latex = "{\\rm " + latex + "}"
+        self.latex = f"{{\\rm {latex}}}"
 
         # charge
         if self.name == "e-":
             self.charge = -1
-        else:
-            self.charge = 0
-            name = self.name
-            # charge symbol only at the end of the name
-            while name.endswith("+") or name.endswith("-"):
-                if name.endswith("+"):
-                    self.charge += 1
-                elif name.endswith("-"):
-                    self.charge -= 1
-                name = name[:-1]
-            # self.charge = self.name.count("+") - self.name.count("-")
+            return
+
+        self.charge = 0
+        name = self.name
+        # charge symbol only at the end of the name
+        while name.endswith("+") or name.endswith("-"):
+            if name.endswith("+"):
+                self.charge += 1
+            elif name.endswith("-"):
+                self.charge -= 1
+            name = name[:-1]
+        # self.charge = self.name.count("+") - self.name.count("-")
