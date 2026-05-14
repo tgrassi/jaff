@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def get_sfluxes(reactions: list["Reaction"], species_dict: dict[str, int]) -> list[Expr]:
-    nspec = len(species_dict)
+    nspec = max(species_dict.values()) + 1 if species_dict else 0
     nreact = len(reactions)
     fluxes: list[Expr] = [Float(0.0) for _ in range(nreact)]
     nden_matrix = MatrixSymbol("nden", nspec, 1)
@@ -28,7 +28,7 @@ def get_sfluxes(reactions: list["Reaction"], species_dict: dict[str, int]) -> li
 
 
 def get_sodes(reactions: list["Reaction"], species_dict: dict[str, int]) -> list[Basic]:
-    nspec = len(species_dict)
+    nspec = max(species_dict.values()) + 1 if species_dict else 0
     fluxes = get_sfluxes(reactions, species_dict)
     sodes: list[Basic] = [Float(0.0) for _ in range(nspec)]
 
@@ -65,7 +65,8 @@ def get_sradodes(
         raise ValueError("Invalid order: Supported orders are 0, 1, 2, 3")
 
     rad_groups = radiation.groups
-    nden = MatrixSymbol("nden", len(species_dict), 1)
+    nspec = max(species_dict.values()) + 1 if species_dict else 0
+    nden = MatrixSymbol("nden", nspec, 1)
 
     den = MatrixSymbol(
         "radeden" if radiation.energy_density else "photden",
