@@ -58,13 +58,11 @@ class TestNetworkEdgeCases:
         """Test error handling for non-existent serialized reaction lookup."""
         with pytest.raises(KeyError, match="Invalid serealized reaction"):
             sample_network.get_reaction_by_serialized("NONEXISTENT_SERIALIZED")
-            mock_exit.assert_called_once_with(1)
 
     def test_missing_species_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized species lookup."""
-        with patch("sys.exit") as mock_exit:
+        with pytest.raises(KeyError, match="Invalid serealized specie"):
             sample_network.get_species_by_serialized("NONEXISTENT_SERIALIZED")
-            mock_exit.assert_called_once_with(1)
 
     def test_empty_reaction_list(self):
         """Test behavior with empty reaction lists."""
