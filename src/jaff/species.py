@@ -18,7 +18,7 @@ class Species:
         self.charge: int = 0
         self.index = index
         self.fidx = self.get_fidx()
-        self.serialized = None
+        self.serialized: str = ""
 
         self.parse(mass_dict)
         self.serialize()

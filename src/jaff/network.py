@@ -203,6 +203,9 @@ class Network:
                     specie_names.add(s)
                     self.species.append(Species(s, self.mass_dict, len(specie_names) - 1))
                     self.species_dict[s] = self.species[-1].index
+                    self.species_dict[self.species[-1].serialized] = self.species[
+                        -1
+                    ].index
 
             rr = [self.species[self.species_dict[r]] for r in reactants]
             pp = [self.species[self.species_dict[p]] for p in products]
@@ -454,8 +457,8 @@ class Network:
     def compare_reactions(self, other: Network, verbosity: int = 1):
         self.logger.info(f'Comparing networks "{self.label}" and "{other.label}"...')
 
-        self_reacts = {x.serialized for x in self.reactions}
-        other_reacts = {x.serialized for x in other.reactions}
+        self_reacts = {rea.serialized for rea in self.reactions}
+        other_reacts = {rea.serialized for rea in other.reactions}
 
         common = self_reacts & other_reacts
         not_in_self = other_reacts - common
@@ -478,56 +481,55 @@ class Network:
                 "\n",
             )
 
-        self.logger.info(f"{len(common)} are common in both networks")
+            self.logger.info(f"Reactions present in both {self.label} and {other.label}:")
+            print(
+                "\n".join([str(self.get_reaction_by_serialized(rea)) for rea in common]),
+                "\n",
+            )
+
+        self.logger.info(f"{len(common)} reactions are common in both networks")
         self.logger.info(f'{len(not_in_self)} reactions are missing in "{self.label}"')
         self.logger.info(f'{len(not_in_other)} reactions are missing in "{other.label}"')
 
-    def compare_species(self, other, verbosity=1):
-        print(f'Comparing species in networks "{self.label}" and "{other.label}"...')
-
-        net1 = [x.serialized for x in self.species]
-        net2 = [x.serialized for x in other.species]
-
-        same_species = []
-        only_in_self = []
-        only_in_other = []
-        nmissing1 = 0
-        nmissing2 = 0
-        for ref in np.unique(np.array(net1 + net2)):
-            if ref in net1 and ref not in net2:
-                sp = self.get_species_by_serialized(ref)
-                nmissing2 += 1
-                if verbosity > 1:
-                    print(
-                        f'Found in "{self.label}" but not in "{other.label}": {sp.name}'
-                    )
-                only_in_self.append(sp)
-
-            elif ref in net2 and ref not in net1:
-                sp = other.get_species_object(ref)
-                nmissing1 += 1
-                if verbosity > 1:
-                    print(
-                        f'Found in "{other.label}" but not in "{self.label}": {sp.name}'
-                    )
-                only_in_other.append(sp)
-            else:
-                sp = self.get_species_by_serialized(ref)
-                if verbosity > 1:
-                    print(f"Found in both networks: {ref}")
-                same_species.append(sp)
-
-        print(
-            f"Found {len(same_species)} species in common: {sorted([x.name for x in same_species])}"
-        )
-        print(
-            f'Found {len(only_in_self)} species in "{self.label}" but not in "{other.label}": {sorted([x.name for x in only_in_self])}'
-        )
-        print(
-            f'Found {len(only_in_other)} species in "{other.label}" but not in "{self.label}": {sorted([x.name for x in only_in_other])}'
+    def compare_species(self, other: Network, verbosity: int = 1):
+        self.logger.info(
+            f'Comparing species in networks "{self.label}" and "{other.label}"...'
         )
 
-    # ****************
+        self_species = {sp.serialized for sp in self.species}
+        other_species = {sp.serialized for sp in other.species}
+
+        common = self_species & other_species
+        not_in_self = other_species - common
+        not_in_other = self_species - common
+
+        if verbosity == 1:
+            self.logger.info(f"Species not present in {self.label}:")
+            print(
+                ", ".join(
+                    [str(other.get_species_by_serialized(sp)) for sp in not_in_self]
+                ),
+                "\n",
+            )
+
+            self.logger.info(f"Species not present in {other.label}:")
+            print(
+                ", ".join(
+                    [str(self.get_species_by_serialized(sp)) for sp in not_in_other]
+                ),
+                "\n",
+            )
+
+            self.logger.info(f"Species present in both {self.label} and {other.label}:")
+            print(
+                ", ".join([str(self.get_species_by_serialized(sp)) for sp in common]),
+                "\n",
+            )
+
+        self.logger.info(f"{len(common)} species are common in both networks")
+        self.logger.info(f'{len(not_in_self)} species are missing in "{self.label}"')
+        self.logger.info(f'{len(not_in_other)} species are missing in "{other.label}"')
+
     def check_sink_sources(self, errors):
         pps = []
         rrs = []
@@ -556,7 +558,6 @@ class Network:
         if (has_sink or has_source) and errors:
             sys.exit()
 
-    # ****************
     def check_recombinations(self, errors):
         has_errors = False
         for sp in self.species:
@@ -646,7 +647,6 @@ class Network:
                 species_idx = product.index
                 self.plist[i, species_idx] += 1
 
-    # ****************
     def get_reaction_verbatim(self, idx):
         return self.reactions[idx].get_verbatim()
 
@@ -774,12 +774,11 @@ class Network:
         self.logger.error(f"Species {name} latex not found")
         sys.exit(1)
 
-    def get_species_by_serialized(self, serialized):
-        for sp in self.species:
-            if sp.serialized == serialized:
-                return sp
-        self.logger.error(f"Species with serialized {serialized} not found")
-        sys.exit(1)
+    def get_species_by_serialized(self, serialized: str):
+        if serialized not in self.species_dict:
+            raise KeyError(f"Invalid serealized specie: {serialized}")
+
+        return self.species[self.species_dict[serialized]]
 
     def get_reaction_by_serialized(self, serialized: str):
         if serialized not in self.reactions_dict:
