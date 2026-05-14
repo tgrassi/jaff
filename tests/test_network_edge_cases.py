@@ -56,7 +56,7 @@ class TestNetworkEdgeCases:
 
     def test_missing_reaction_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized reaction lookup."""
-        with patch("sys.exit") as mock_exit:
+        with pytest.raises(KeyError, match="Invalid serealized reaction"):
             sample_network.get_reaction_by_serialized("NONEXISTENT_SERIALIZED")
             mock_exit.assert_called_once_with(1)
 
