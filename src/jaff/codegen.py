@@ -377,7 +377,7 @@ class Codegen:
             "extras": {"cse": IndexedList()},
             "expressions": IndexedList(),
         }
-        cse_dict: dict[int, sp.Expr | str] = {}
+        cse_dict: dict[int, sp.Basic | str] = {}
         if use_cse:
             # Collect all rate expressions as SymPy objects, excluding strings and photorates
             for i, rea in enumerate(self.net.reactions):
