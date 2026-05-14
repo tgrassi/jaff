@@ -1,25 +1,35 @@
-import os
+from __future__ import annotations
+
 import sys
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+from .core.logger import JaffLogger
+from .physics import constants
+
+if TYPE_CHECKING:
+    import logging
+
+    from . import Reaction
+
 
 class Photochemistry:
-    # ****************
     def __init__(self):
-        self.xsecs = {}
+        self.logger: logging.Logger = JaffLogger().get_logger()
+        self.xsecs: dict = {}
+        self.xsecs_folder: Path = Path(__file__).parent / "data" / "xsecs"
 
         self.load_xsecs_leiden()
 
-    # ****************
-    def load_xsecs_leiden(self):
-        from glob import glob
+    def load_xsecs_leiden(self) -> None:
+        for file in self.xsecs_folder.iterdir():
+            if not file.suffix.lower() == ".dat" or "__" not in file.stem:
+                continue
 
-        folder = os.path.join(os.path.dirname(__file__), "data", "xsecs")
-
-        for fname in glob(folder + "/*.dat"):
             # take last commented line as header, remove #, and split by spaces
-            with open(fname) as f:
+            with open(file) as f:
                 header = (
                     [x for x in f.readlines() if x.startswith("#")][-1]
                     .lower()
@@ -30,22 +40,18 @@ class Photochemistry:
             header = [x for x in header if x != ""]
 
             # get the name of the file without path and extension, i.e. the reaction name in the form R__P_P
-            frea = os.path.basename(fname).split(".")[0]
 
-            rrs = frea.split("__")[0].split("_")
-            pps = frea.split("__")[1].split("_")
+            rrs = file.stem.split("__")[0].split("_")
+            pps = file.stem.split("__")[1].split("_")
 
-            rea_serialized = "_".join(sorted(rrs)) + "__" + "_".join(sorted(pps))
+            rea_serialized = f"{'_'.join(sorted(rrs))}__{'_'.join(sorted(pps))}"
 
             # count the charges in the reactants and products
             rcharge = np.sum([x.count("+") for x in rrs])
             pcharge = np.sum([x.count("+") for x in pps])
 
             # determine if the reaction is dissociation or ionization
-            if pcharge > rcharge:
-                mode = "ion"
-            else:
-                mode = "dis"
+            mode = "ion" if pcharge > rcharge else "dis"
 
             # determine the index of the read and wave columns
             iread = iwave = None
@@ -56,29 +62,29 @@ class Photochemistry:
                     iwave = i
 
             if iread is None or iwave is None:
-                print("ERROR: could not find read or wave in header of %s" % fname)
+                self.logger.error(f"Could not find read or wave in header of {file}")
                 sys.exit(1)
 
-            data = np.loadtxt(fname, comments="#").T
+            data = np.loadtxt(file, comments="#").T
 
-            clight = 2.99792458e10  # cm/s
-            hplanck = 6.62607015e-27  # erg s
+            clight = constants.cgs.c  # cm/s
+            hplanck = constants.cgs.h  # erg s
 
             energy = clight * hplanck / (data[iwave].astype(float) * 1e-7)  # nm -> erg
             xs = data[iread].astype(float)  # cm^2
 
             self.xsecs[rea_serialized] = {"energy": energy, "xsecs": xs}
 
-    # ****************
     # returns a dictionary with keys "energy" and "xsecs"
     # energy in erg, xsecs in cm^2
-    def get_xsec(self, reaction):
+    def get_xsec(self, reaction: Reaction) -> dict:
         if reaction.serialized not in self.xsecs:
-            print(
-                "ERROR: reaction %s not found in photochemistry data."
-                % reaction.serialized
+            self.logger.error(
+                f"Reaction {reaction.serialized} not found in photochemistry data"
             )
-            print("Add the file to the data/xsecs folder as %s.dat" % reaction.serialized)
+            self.logger.error(
+                f"Add the file to {self.xsecs_folder} as {reaction.serialized}"
+            )
             sys.exit(1)
 
         return self.xsecs[reaction.serialized]

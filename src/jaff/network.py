@@ -329,14 +329,12 @@ class Network:
         nden = MatrixSymbol("nden", len(self.species), 1)
         for r in self.reactions:
             r.rate = self.__standardize_symbols(r.rate, replace_nH)
-            assert isinstance(r.rate, Expr)
-            assert isinstance(r.dRad_dt, Expr)
 
-            dE_dt = r.dE * r.rate
+            dE_dt = r.dE * r.rate  # type: ignore
             for s in r.reactants:
                 dE_dt *= nden[self.species_dict[s.name]]
             self.dEdt_chem += dE_dt
-            self.dRad_dt_extra += r.dRad_dt
+            self.dRad_dt_extra += r.dRad_dt  # type: ignore
         self.dEdt_chem = self.__standardize_symbols(self.dEdt_chem, replace_nH)
         self.dRad_dt_extra = self.__standardize_symbols(self.dRad_dt_extra, replace_nH)
 

@@ -229,21 +229,21 @@ class JaffGen:
             epilog="""
             Examples:
               # Generate from a template directory
-              python -m jaff.generate --network networks/react_COthin --indir templates/ --outdir output/
+              jaffgen --network networks/react_COthin --indir templates/ --outdir output/
 
               # Use a predefined template collection
-              python -m jaff.generate --network networks/react_COthin --template chemistry_solver --outdir output/
+              jaffgen --network networks/react_COthin --template chemistry_solver --outdir output/
 
               # Process specific files with Rust
-              python -m jaff.generate --network networks/test.dat --files rates.txt odes.txt --lang rust --outdir output/
+              jaffgen --network networks/test.dat --files rates.txt odes.txt --lang rust --outdir output/
 
               # Combine template and custom files
-              python -m jaff.generate --network networks/test.dat --template base --files custom.cpp --outdir output/
+              jaffgen --network networks/test.dat --template base --files custom.cpp --outdir output/
 
             Supported Languages:
               c, cxx (c++, cpp), fortran (f90), python (py), rust (rs), julia (jl), r
 
-            For more information, visit: https://github.com/tgrassi/jaff
+            For more information, visit: https://jaff-chemistry.github.io/jaff/
                     """,
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
