@@ -39,7 +39,7 @@ from .species import Species
 NetworkProps = TypedDict(
     "NetworkProps",
     {
-        "fname": str,
+        "fname": str | Path,
         "errors": NotRequired[bool],
         "label": NotRequired[str],
         "funcfile": NotRequired[str],
@@ -153,7 +153,7 @@ class Network:
 
         # Read the auxiliary function file to get the list of functions
         # to substitute
-        aux_funcs = self.read_aux_funcs(funcfile)
+        aux_funcs = self.__read_aux_funcs(funcfile)
 
         global_vars = {
             var: resolve_dependencies(expr, {}, aux_funcs)
@@ -370,8 +370,7 @@ class Network:
                 continue
             undef_funcs |= {f.func.__name__}
 
-    # ****************
-    def read_aux_funcs(self, funcfile: str | Path | None) -> dict:
+    def __read_aux_funcs(self, funcfile: str | Path | None) -> dict:
         """
         Read the auxiliary function file
 
@@ -728,6 +727,9 @@ class Network:
 
     def get_number_of_species(self) -> int:
         return len(self.species)
+
+    def get_number_of_reactions(self) -> int:
+        return len(self.reactions)
 
     def get_species_index(self, name: str) -> int:
         return self.species_dict[name]

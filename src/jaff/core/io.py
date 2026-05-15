@@ -6,7 +6,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, NotRequired, TypedDict
 
-import h5py
 import numpy as np
 from sympy import Basic, Symbol, __version__, expand_log, lambdify, log, srepr, symbols
 from sympy.core.function import AppliedUndef
@@ -588,7 +587,7 @@ def write_data_table(
             adaptive error tolerance is not applied to rates below
             rate_min
         rate_max : float
-            rataes above rate_max are clipped to rate_max to prevent
+            rates above rate_max are clipped to rate_max to prevent
             overflow
         fast_log : bool
             if True, sample points are equally spaced in fast_log2(T)

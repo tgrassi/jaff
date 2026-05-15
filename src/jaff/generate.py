@@ -75,7 +75,7 @@ class JaffGen:
         if not self.files:
             raise RuntimeError("No valid input file/folder/template have been supplied")
 
-        self.net_kwargs: NetworkProps = {"fname": str(self.netfile), "_from_cli": True}
+        self.net_kwargs: NetworkProps = {"fname": self.netfile, "_from_cli": True}
         self.__read_jaff_config()
 
         # Create a new network instance
@@ -245,7 +245,7 @@ class JaffGen:
             Supported Languages:
               c, cxx (c++, cpp), fortran (f90), python (py), rust (rs), julia (jl), r
 
-            For more information, visit: https://jaff-chemistry.github.io/jaff/f
+            For more information, visit: https://jaff-chemistry.github.io/jaff/
                     """,
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
