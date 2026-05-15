@@ -17,7 +17,9 @@ from ..common import fast_log2, inverse_fast_log2, is_jaff_file, load_mass_dict
 from ..common import from_jsonable as sympy_from_jsonable
 from ..common import to_jsonable as sympy_to_jsonable
 from ..core.logger import JaffLogger
+from ..drivers.hdf5 import HDF5
 from ..errors import NotJaffFileError
+from ..jaff_types import HDF5Dict
 
 if TYPE_CHECKING:
     from .. import Network, Reaction, Species
@@ -730,41 +732,41 @@ def write_data_table(
                 fp.write("\n")
 
     def to_hdf5():
-        # HDF5 output
-        with h5py.File(fname, mode="w") as fp:
-            # Create a group to contain the data
-            grp = fp.create_group("reaction_coeff")
+        output_names = []
+        output_units = []
+        for i, rt, r, p in zip(range(len(rtype)), rtype, reactants, products):
+            output_names.append(f"{rt} rate coefficient: {r} --> {p}")
+            output_units.append("cm^3 s^-1")
 
-            # Store metadata in the attributes
-            grp.attrs["input_names"] = ["temperature"]
-            grp.attrs["input_units"] = ["K"]
-            grp.attrs["xlo"] = np.array([temp[0]])
-            grp.attrs["xhi"] = np.array([temp[-1]])
-            if fast_log:  # Spacing type
-                grp.attrs["spacing"] = ["fast_log"]
-            else:
-                grp.attrs["spacing"] = ["log"]
+        hdfdict = HDF5Dict(
+            {
+                "reaction_coeff": {
+                    "_attrs": {
+                        "input_names": ["temperature"],
+                        "input_units": ["K"],
+                        "xlo": np.array([temp[0]]),
+                        "xhi": np.array([temp[-1]]),
+                        "spacing": ["fast_log"] if fast_log else ["log"],
+                    },
+                    "output_names": {
+                        "_data": output_names,
+                        "_dtype": "s",
+                        "_kind": "linear",
+                    },
+                    "output_units": {
+                        "_data": output_units,
+                        "_dtype": "s",
+                        "_kind": "linear",
+                    },
+                    "data": {
+                        "_data": coef,
+                        "_kind": "linear",
+                    },
+                }
+            }
+        )
 
-            # Store information on which reactions / rate coefficients
-            # are included; note that we store these as data sets
-            # instead of attributes to avoid problems in the case where
-            # the number of reactions is very large, and thus resulting
-            # size of the output reaction list exceeds the HDF5 limit
-            # on the sizes of attributes
-            output_names = []
-            output_units = []
-            for i, rt, r, p in zip(range(len(rtype)), rtype, reactants, products):
-                output_names.append(f"{rt} rate coefficient: {r} --> {p}")
-                output_units.append("cm^3 s^-1")
-            grp.create_dataset(
-                "output_names", data=output_names, dtype=h5py.string_dtype()
-            )
-            grp.create_dataset(
-                "output_units", data=output_units, dtype=h5py.string_dtype()
-            )
-
-            # Create data set holding the coefficient table
-            grp.create_dataset("data", data=coef)
+        HDF5().from_dict(fname, hdfdict)
 
     # Write output in appropriate format
     if out_type == "txt":
