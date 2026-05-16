@@ -11,6 +11,7 @@
 
     /* Solid black for card headings in light mode */
     --jaff-card-heading: #000000;
+    --jaff-code-titlebar: rgba(0, 0, 0, 0.03);
 }
 
 [data-md-color-scheme="slate"] {
@@ -24,6 +25,7 @@
 
     /* Solid white for card headings in dark mode */
     --jaff-card-heading: #ffffff;
+    --jaff-code-titlebar: rgba(0, 0, 0, 0.18);
 }
 
 /* Apply Space Grotesk to headings and set specific colors */
@@ -53,6 +55,13 @@
     letter-spacing: -0.01em;
 }
 
+.md-content .md-typeset h1 { opacity: 1.0; }
+.md-content .md-typeset h2 { opacity: 0.92; }
+.md-content .md-typeset h3 { opacity: 0.82; }
+.md-content .md-typeset h4 { opacity: 0.72; }
+.md-content .md-typeset h5 { opacity: 0.62; }
+.md-content .md-typeset h6 { opacity: 0.52; }
+
 /* Apply distinct color and Space Grotesk to the main body text */
 body,
 .md-typeset {
@@ -68,10 +77,23 @@ body,
     margin-bottom: 1.1em;
 }
 
-/* Code block content padding — theme applies padding to pre>code, not the wrapper */
+.md-content .md-typeset p {
+    opacity: 0.78;
+}
+
+/* macOS-style window chrome */
+.md-typeset pre {
+    border-radius: 0.65rem;
+    overflow: hidden;
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.07),
+        0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Push code content below the title bar */
 .md-typeset pre > code {
     padding: 1.25em 1.5em !important;
-    border-radius: 0.5rem !important;
+    border-radius: 0 !important;
 }
 
 /* Inline code: tinted background + slightly smaller to not loom over prose */
@@ -134,7 +156,6 @@ body,
     position: relative;
     width: 100%;
     min-height: 100svh;
-    border-right: 1px solid var(--jaff-grid);
     border-left: 1px solid var(--jaff-grid);
     transition: border-color 0.2s ease;
 }
@@ -159,7 +180,9 @@ table,
 .md-typeset .grid.cards > ul > li {
     background-color: var(--jaff-grid-primary);
     border: 1px solid var(--jaff-grid);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.07),
+        0 1px 4px rgba(0, 0, 0, 0.05);
     transition:
         background-color 0.2s ease,
         border-color 0.2s ease,
@@ -174,6 +197,105 @@ table,
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+/* Animated nav indicator (JS-driven, single element slides between active links) */
+.jaff-nav-track {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    pointer-events: none;
+    z-index: 100;
+    overflow: visible;
+}
+
+.jaff-nav-track path {
+    fill: none;
+    stroke: var(--jaff-grid);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.jaff-nav-indicator {
+    position: absolute;
+    left: 0;
+    width: 3.5px;
+    background-color: var(--md-accent-fg-color);
+    border-radius: 9999px;
+    pointer-events: none;
+    z-index: 101 !important;
+    transition:
+        top 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        left 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.15s ease;
+}
+
+.md-sidebar--primary,
+.md-sidebar--secondary {
+    z-index: 200;
+}
+
+/* Left sidebar: suppress theme's static active background */
+.md-sidebar--primary .md-nav__link--active {
+    background: transparent !important;
+}
+
+/* TOC sidebar: active link matches accent color with fade-in */
+.md-sidebar--secondary .md-nav__link,
+.md-sidebar--secondary .md-nav__link * {
+    transition: color 0.3s ease;
+}
+
+.md-sidebar--secondary .md-nav__link--active,
+.md-sidebar--secondary .md-nav__link--active * {
+    color: var(--md-accent-fg-color) !important;
+}
+
+/* Hide track/indicator on tablet and mobile where TOC collapses */
+@media screen and (max-width: 59.984375em) {
+    .jaff-nav-track,
+    .jaff-nav-indicator {
+        display: none !important;
+    }
+}
+
+/* TOC sidebar: nested links progressively smaller + lighter */
+.md-nav--secondary .md-nav__link .md-typeset {
+    font-size: 0.73rem !important;
+    font-weight: 450 !important;
+}
+
+.md-nav--secondary .md-nav .md-nav__link .md-typeset {
+    font-size: 0.73rem !important;
+    font-weight: 400 !important;
+}
+
+.md-nav--secondary .md-nav .md-nav__link {
+    padding-top: 0.075rem !important;
+    padding-bottom: 0.075rem !important;
+}
+
+.md-nav--secondary .md-nav .md-nav__link:not(.md-nav__link--active) .md-typeset {
+    opacity: 0.65;
+    transition: opacity 0.2s ease;
+}
+
+.md-nav--secondary .md-nav .md-nav__link:not(.md-nav__link--active):hover .md-typeset {
+    opacity: 0.9;
+}
+
+/* Left sidebar nav icon flip on hover */
+.md-sidebar--primary .md-nav__link svg,
+.md-sidebar--primary .md-nav__link .md-icon {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.md-sidebar--primary .md-nav__link:hover svg,
+.md-sidebar--primary .md-nav__link:hover .md-icon {
+    transform: rotateY(180deg);
+}
+
 /* Links: semibold + clean underline so they pop from body text */
 .md-typeset a {
     text-underline-offset: 3px;
@@ -184,4 +306,35 @@ table,
 .md-typeset a:hover {
     opacity: 0.75;
     text-decoration-thickness: 2px;
+}
+
+/* Page transitions */
+@view-transition {
+    navigation: auto;
+}
+
+::view-transition-old(root) {
+    animation: 500ms ease both jaff-fade-out;
+}
+
+::view-transition-new(root) {
+    animation: 600ms ease both jaff-fade-in;
+}
+
+@keyframes jaff-fade-out {
+    to { opacity: 0; transform: translateY(-6px); }
+}
+
+@keyframes jaff-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+}
+
+/* JS fallback entrance animation */
+@keyframes jaff-page-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.jaff-page-enter {
+    animation: jaff-page-enter 0.85s cubic-bezier(0.4, 0, 0.2, 1) both;
 }

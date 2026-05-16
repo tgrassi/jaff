@@ -13,13 +13,13 @@ JAFF supports multiple file formats used in astrochemistry. Each format has its 
 
 **Supported Formats:**
 
-| Format  | Origin         | Auto-detect        |
-| ------- | -------------- | ------------------ |
-| KROME   | KROME code     | `@format:` line    |
-| KIDA    | KIDA database  | Colon separators   |
-| UDFA    | UMIST database | Colon format       |
-| PRIZMO  | PRIZMO code    | `VARIABLES{` block |
-| UCLCHEM | UCL_CHEM       | `,NAN,` markers    |
+| Format    | Origin         | Auto-detect        |
+| --------- | -------------- | ------------------ |
+| `KROME`   | KROME code     | `@format:` line    |
+| `KIDA`    | KIDA database  | Colon separators   |
+| `UDFA`    | UMIST database | Colon format       |
+| `PRIZMO`  | PRIZMO code    | `VARIABLES{` block |
+| `UCLCHEM` | UCL_CHEM       | `,NAN,` markers    |
 
 JAFF supports SymPy expressions with these variables:
 

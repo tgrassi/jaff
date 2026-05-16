@@ -13,7 +13,9 @@ repo_name = "tgrassi/jaff"
 repo = "fontawesome/brands/git-alt"
 extra_javascript = [
   "javascripts/mathjax.js",
-  "https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"
+  "https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js",
+  "javascripts/nav-indicator.js",
+  "javascripts/page-transition.js"
 ]
 nav = [
   { "Home" = ["index.md"] },
@@ -64,7 +66,7 @@ logo = "assets/logo.webp"
 icon.repo = "fontawesome/brands/github"
 favicon = "assets/favicon.ico"
 font.text = "Inter"
-font.conde = "JetBrains Mono"
+font.code = "JetBrains Mono"
 
 [project.theme.features]
 "navigation.tabs" = true
