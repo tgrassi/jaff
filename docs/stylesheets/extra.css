@@ -37,13 +37,50 @@
     color: var(--md-heading-color);
 }
 
+/* Heading size hierarchy + tight tracking for editorial feel */
+.md-typeset h1 {
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+}
+
+.md-typeset h2 {
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+}
+
+.md-typeset h3 {
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+}
+
 /* Apply distinct color and Space Grotesk to the main body text */
 body,
 .md-typeset {
     font-family: "Space Grotesk", sans-serif;
     color: var(--md-text-color);
-    font-size: 0.825rem; /* Slightly increased font size for better readability */
+    font-size: 0.825rem;
     line-height: 1.6;
+    font-weight: 400;
+}
+
+/* Paragraph breathing room */
+.md-typeset p {
+    margin-bottom: 1.1em;
+}
+
+/* Code block content padding — theme applies padding to pre>code, not the wrapper */
+.md-typeset pre > code {
+    padding: 1.25em 1.5em !important;
+    border-radius: 0.5rem !important;
+}
+
+/* Inline code: tinted background + slightly smaller to not loom over prose */
+.md-typeset code:not(.md-code) {
+    font-size: 0.85em;
+    background-color: var(--jaff-grid-primary);
+    border: 1px solid var(--jaff-grid);
+    border-radius: 0.25em;
+    padding: 0.2em 0.55em;
 }
 
 /* Accent color for headings inside grid cards */
@@ -99,6 +136,7 @@ body,
     min-height: 100svh;
     border-right: 1px solid var(--jaff-grid);
     border-left: 1px solid var(--jaff-grid);
+    transition: border-color 0.2s ease;
 }
 
 .md-tabs,
@@ -121,12 +159,29 @@ table,
 .md-typeset .grid.cards > ul > li {
     background-color: var(--jaff-grid-primary);
     border: 1px solid var(--jaff-grid);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     transition:
         background-color 0.2s ease,
-        border-color 0.2s ease;
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
 }
 
 /* Optional: Make it slightly brighter on hover */
 .md-typeset .grid.cards > ul > li:hover {
     background-color: var(--jaff-grid-secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Links: semibold + clean underline so they pop from body text */
+.md-typeset a {
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+    transition: opacity 0.15s ease;
+}
+
+.md-typeset a:hover {
+    opacity: 0.75;
+    text-decoration-thickness: 2px;
 }
