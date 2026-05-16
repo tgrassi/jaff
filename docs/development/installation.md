@@ -92,11 +92,11 @@ The `-e` flag installs the package in "editable" mode, meaning changes you make 
 
 These are automatically installed with JAFF:
 
-- **numpy** (≥2.0.0) - Numerical computations
-- **scipy** (≥1.13.0) - Scientific computing
-- **sympy** (≥1.14.0) - Symbolic mathematics
-- **rich** (≥15.0.0) - Progress bars
-- **h5py** (≥3.9.0) - HDF5 file support
+- `numpy (≥2.0.0)`- Numerical computations
+- `scipy (≥1.13.0)` - Scientific computing
+- `sympy (≥1.14.0)` - Symbolic mathematics
+- `rich (≥15.0.0)` - Progress bars
+- `h5py (≥3.9.0) `- HDF5 file support
 
 ### Development Dependencies
 
@@ -104,24 +104,24 @@ When installing with `[dev]`, the following additional packages are installed:
 
 #### Testing Tools
 
-- **pytest** (≥7.0) - Testing framework
-- **pytest-cov** - Code coverage reporting
-- **ruff** - Fast Python linter and formatter
-- **check-jsonschema** - JSON schema validation
+- `pytest (≥7.0)` - Testing framework
+- `pytest-cov` - Code coverage reporting
+- `ruff` - Fast Python linter and formatter
+- `check-jsonschema` - JSON schema validation
 
 #### Documentation Tools
 
-- **mkdocs** (≥1.5.3) - Documentation generator
-- **mkdocs-material** (≥9.5.0) - Material theme for MkDocs
-- **mkdocstrings[python]** (≥0.24.0) - API documentation from docstrings
-- **mkdocstrings-python** (≥1.7.0) - Python handler for mkdocstrings
-- **mkdocs-git-revision-date-localized-plugin** (≥1.2.0) - Git revision dates in docs
-- **mkdocs-git-authors-plugin** (≥0.7.0) - Git authors information
-- **mkdocs-minify-plugin** (≥0.7.0) - Minification for HTML/CSS/JS
-- **pymdown-extensions** (≥10.5) - Advanced Markdown extensions
-- **markdown** (≥3.5.0) - Markdown parser
-- **pillow** (≥10.0.0) - Image processing for docs
-- **cairosvg** (≥2.7.0) - SVG processing for docs
+- `mkdocs (≥1.5.3)` - Documentation generator
+- `mkdocs-material (≥9.5.0)` - Material theme for MkDocs
+- `mkdocstrings[python] (≥0.24.0)` - API documentation from docstrings
+- `mkdocstrings-python (≥1.7.0)` - Python handler for mkdocstrings
+- `mkdocs-git-revision-date-localized-plugin (≥1.2.0)` - Git revision dates in docs
+- `mkdocs-git-authors-plugin (≥0.7.0)` - Git authors information
+- `mkdocs-minify-plugin (≥0.7.0)` - Minification for HTML/CSS/JS
+- `pymdown-extensions (≥10.5)` - Advanced Markdown extensions
+- `markdown (≥3.5.0)` - Markdown parser
+- `pillow (≥10.0.0)` - Image processing for docs
+- `cairosvg (≥2.7.0)` - SVG processing for docs
 
 ## Verifying Your Development Setup
 

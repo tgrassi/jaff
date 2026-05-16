@@ -123,9 +123,9 @@ Type definition for language-specific code generation modifiers and settings.
     - C/C++: `"//"`
     - Fortran: `"!!"`
     - Python: `"#"`
-- `types` (dict[str, str]): Language-specific type declarations
+- `types` (dict\[str, str\]): Language-specific type declarations
     - Example: `{"double": "double", "int": "int"}` for C++
-- `extras` (dict[str, Any]): Additional language-specific attributes
+- `extras` (dict\[str, Any\]): Additional language-specific attributes
     - Qualifiers, specifiers, and other language features
 
 **Usage**:
@@ -224,8 +224,8 @@ cg_c = Codegen(network=net, lang="c", matrix_format="[,]")
 | --------------- | ---------------- | ---------------------------------------------------------------------------- |
 | `net`           | `Network`        | Chemical reaction network object                                             |
 | `lang`          | `str`            | Internal language identifier ('cxx', 'c', 'f90', 'py', 'rust', 'julia', 'r') |
-| `lb`            | `str`            | Left bracket for 1D arrays (e.g., '[', '(')                                  |
-| `rb`            | `str`            | Right bracket for 1D arrays (e.g., ']', ')')                                 |
+| `lb`            | `str`            | Left bracket for 1D arrays (e.g., '\[', '(')                                 |
+| `rb`            | `str`            | Right bracket for 1D arrays (e.g., '\]', ')')                                |
 | `mlb`           | `str`            | Left bracket for 2D arrays                                                   |
 | `mrb`           | `str`            | Right bracket for 2D arrays                                                  |
 | `matrix_sep`    | `str`            | Separator for 2D indices (e.g., '][', ', ')                                  |
@@ -375,7 +375,7 @@ None
 
 **Returns:**
 
-- `IndexedList`: List of IndexedValue([reaction_idx], flux_expression) objects
+- `IndexedList`: List of IndexedValue(\[reaction_idx\], flux_expression) objects
     - Each flux expression contains the template placeholder `$IDX$` for the reaction index
     - Uses language-specific bracket formats
 
@@ -456,7 +456,7 @@ None
 
 **Returns:**
 
-- `IndexedList`: List of IndexedValue([species_idx], ode_expression) objects
+- `IndexedList`: List of IndexedValue(\[species_idx\], ode_expression) objects
     - Each ODE expression is the sum of flux contributions for that species
     - Uses language-specific bracket formats
 

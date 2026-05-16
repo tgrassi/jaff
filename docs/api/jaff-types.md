@@ -56,7 +56,7 @@ Create a new IndexedValue.
 
 **Parameters:**
 
-- `indices` (list[int]): List of integer indices for array access (e.g., `[0]`, `[2, 3]`)
+- `indices` (list\[int\]): List of integer indices for array access (e.g., `[0]`, `[2, 3]`)
 - `value` (Any): The value/expression to associate with these indices
 
 **Returns:**
@@ -278,7 +278,7 @@ Extend the list with multiple IndexedValue objects.
 
 **Parameters:**
 
-- `items` (Iterable[IndexedValue]): Iterable of IndexedValue objects
+- `items` (Iterable\[IndexedValue\]): Iterable of IndexedValue objects
 
 **Raises:**
 

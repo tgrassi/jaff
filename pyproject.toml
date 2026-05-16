@@ -35,8 +35,8 @@ dependencies = [
 "Homepage" = "https://github.com/tgrassi/jaff"
 
 [project.scripts]
-jaff = "jaff.cli:main"
 jaffgen = "jaff.generate:main"
+jaffx = "jaff.cli.jaffx:main"
 
 [project.optional-dependencies]
 dev = [

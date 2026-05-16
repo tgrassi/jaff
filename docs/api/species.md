@@ -47,16 +47,16 @@ class Species:
 
 ## Attributes
 
-| Attribute    | Type      | Description                                       |
-| ------------ | --------- | ------------------------------------------------- |
-| `name`       | str       | The raw name of the species (e.g., "HCO+")        |
-| `index`      | int       | The unique network index assigned to this species |
-| `mass`       | float     | Total mass calculated from atomic composition     |
-| `charge`     | int       | Electrical charge (e.g., +1, 0, -1)               |
-| `exploded`   | list[str] | List of atoms constituting the species            |
-| `latex`      | str       | LaTeX formatted string for display                |
-| `fidx`       | str       | Variable name for code generation (e.g., "idx_h") |
-| `serialized` | str       | Canonical string representation of composition    |
+| Attribute    | Type        | Description                                       |
+| ------------ | ----------- | ------------------------------------------------- |
+| `name`       | str         | The raw name of the species (e.g., "HCO+")        |
+| `index`      | int         | The unique network index assigned to this species |
+| `mass`       | float       | Total mass calculated from atomic composition     |
+| `charge`     | int         | Electrical charge (e.g., +1, 0, -1)               |
+| `exploded`   | list\[str\] | List of atoms constituting the species            |
+| `latex`      | str         | LaTeX formatted string for display                |
+| `fidx`       | str         | Variable name for code generation (e.g., "idx_h") |
+| `serialized` | str         | Canonical string representation of composition    |
 
 ## String Representations
 

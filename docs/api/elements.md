@@ -28,11 +28,11 @@ The main class for extracting and managing chemical elements from a reaction net
 
 #### Attributes
 
-| Attribute  | Type      | Description                              |
-| ---------- | --------- | ---------------------------------------- |
-| `net`      | Network   | The chemical reaction network to analyze |
-| `elements` | list[str] | Sorted list of unique element symbols    |
-| `nelems`   | int       | Total number of unique elements          |
+| Attribute  | Type        | Description                              |
+| ---------- | ----------- | ---------------------------------------- |
+| `net`      | Network     | The chemical reaction network to analyze |
+| `elements` | list\[str\] | Sorted list of unique element symbols    |
+| `nelems`   | int         | Total number of unique elements          |
 
 #### Constructor
 
