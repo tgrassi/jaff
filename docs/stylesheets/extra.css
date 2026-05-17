@@ -55,12 +55,24 @@
     letter-spacing: -0.01em;
 }
 
-.md-content .md-typeset h1 { opacity: 1.0; }
-.md-content .md-typeset h2 { opacity: 0.92; }
-.md-content .md-typeset h3 { opacity: 0.82; }
-.md-content .md-typeset h4 { opacity: 0.72; }
-.md-content .md-typeset h5 { opacity: 0.62; }
-.md-content .md-typeset h6 { opacity: 0.52; }
+.md-content .md-typeset h1 {
+    opacity: 1;
+}
+.md-content .md-typeset h2 {
+    opacity: 0.92;
+}
+.md-content .md-typeset h3 {
+    opacity: 0.82;
+}
+.md-content .md-typeset h4 {
+    opacity: 0.72;
+}
+.md-content .md-typeset h5 {
+    opacity: 0.62;
+}
+.md-content .md-typeset h6 {
+    opacity: 0.52;
+}
 
 /* Apply distinct color and Space Grotesk to the main body text */
 body,
@@ -322,17 +334,29 @@ table,
 }
 
 @keyframes jaff-fade-out {
-    to { opacity: 0; transform: translateY(-6px); }
+    to {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
 }
 
 @keyframes jaff-fade-in {
-    from { opacity: 0; transform: translateY(6px); }
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
 }
 
 /* JS fallback entrance animation */
 @keyframes jaff-page-enter {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .jaff-page-enter {
