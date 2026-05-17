@@ -1,5 +1,6 @@
 import atexit
 import logging
+import os
 import sys
 from contextlib import contextmanager
 from typing import Iterable, Optional, Sequence
@@ -29,6 +30,9 @@ def _is_jupyter() -> bool:
 
 
 IN_JUPYTER = _is_jupyter()
+# True when running inside a Jupyter kernel OR as a subprocess launched from one.
+# Jupyter kernels export JPY_PARENT_PID; child processes inherit it.
+_IN_JUPYTER_ENV = IN_JUPYTER or "JPY_PARENT_PID" in os.environ
 
 _PROGRESS_KWARGS = dict(
     expand=True,
@@ -64,6 +68,8 @@ class JaffProgress(Progress):
             with _make_progress(self.console) as p:
                 task_id = p.add_task(description, total=None)
                 yield task_id
+        elif _IN_JUPYTER_ENV:
+            yield None
         else:
             task_id = self.add_task(description, total=None)
             try:
@@ -97,6 +103,11 @@ class JaffProgress(Progress):
                         last_time = current_time
                 p.update(task_id, completed=total)
                 p.refresh()
+            return
+
+        if _IN_JUPYTER_ENV:
+            for value in sequence:
+                yield value
             return
 
         for task in list(self.tasks):
@@ -134,7 +145,7 @@ jaff_progress = JaffProgress(
     *_make_progress_columns(), console=jaff_console, **_PROGRESS_KWARGS
 )
 
-if not IN_JUPYTER:
+if not _IN_JUPYTER_ENV:
     jaff_progress.start()
     atexit.register(jaff_progress.stop)
 
@@ -156,7 +167,7 @@ class JaffLogger:
         self.logger = logging.getLogger(name)
 
         if not self.logger.handlers:
-            if IN_JUPYTER:
+            if _IN_JUPYTER_ENV:
                 handler: logging.Handler = logging.StreamHandler(sys.stdout)
                 handler.setFormatter(_StripMarkupFormatter("%(levelname)-8s %(message)s"))
             else:
