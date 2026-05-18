@@ -655,7 +655,7 @@ class NetworkParser:
 
         rates_dict = {
             1: f"{ka:.2e} * crate",
-            2: f"{ka:.2e} * exp(-{kc:.2e}*av)",
+            2: f"{ka:.2e} * chi * exp(-{kc:.2e} * av)",
             3: f"{ka:.2e}"
             + (f" * (tgas / 300) ** ({kb:.2e})" if kb != 0.0 else "")
             + (f" * exp(-{kc:.2f} / tgas)" if kc != 0.0 else ""),
