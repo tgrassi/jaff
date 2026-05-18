@@ -103,7 +103,13 @@ def test_network_json_roundtrip_sample_kida_valid():
                 symbols = sorted(diff.free_symbols, key=lambda s: s.name)
                 if not symbols:
                     diff_val = abs(float(diff.evalf()))
-                    ref_val = abs(float(sympy.N(r1.rate)))
+                    r1_symbols = getattr(r1.rate, "free_symbols", set())
+                    if r1_symbols:
+                        ref_val = abs(
+                            float(sympy.N(r1.rate.subs({s: 1.0 for s in r1_symbols})))
+                        )
+                    else:
+                        ref_val = abs(float(sympy.N(r1.rate)))
                     assert diff_val <= 1e-15 * max(1.0, ref_val)
                 else:
                     for offset in (1.1, 10.1):
