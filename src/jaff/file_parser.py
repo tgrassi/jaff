@@ -1293,7 +1293,7 @@ class Fileparser:
                     },
                     # Returns: list[str] - element symbols
                     "elements": {
-                        "func": lambda: [e.symbol for e in self.net.elements.list],
+                        "func": lambda: [e.symbol for e in self.net.elements],
                         "vars": ["idx", "element"],
                     },
                     # Returns: list[float] - mass of each species
@@ -1689,7 +1689,7 @@ class Fileparser:
                 "func": self.__get,
                 "props": {
                     # Returns: int - index of element
-                    "element_idx": {"func": lambda e: self.net.elements.index[e]},
+                    "element_idx": {"func": lambda e: self.net.elements[e].index},
                     # Returns: int - index of species
                     "specie_idx": {"func": lambda s: self.net.species[s].index},
                     # Returns: int - index of reaction
@@ -1719,7 +1719,7 @@ class Fileparser:
                     # Returns: int - 1 if reaction exists, 0 otherwise
                     "reaction": {"func": lambda r: int(r in self.net.reactions)},
                     # Returns: int - 1 if element exists, 0 otherwise
-                    "element": {"func": lambda e: int(e in self.net.elements.index)},
+                    "element": {"func": lambda e: int(e in self.net.elements)},
                 },
             },
             # END command: stop parsing and reset state

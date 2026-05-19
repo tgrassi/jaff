@@ -135,8 +135,6 @@ class Species(Catalogue[Specie]):
         super().__init__(species, _by_name)
         self._by_serialized = _by_serialized
 
-        self.count: int = len(self._list)
-
     def add(self, specie: Specie) -> None:
         if not isinstance(specie, Specie):
             raise ValueError(f"'{specie}' must be an instance of 'Specie'")

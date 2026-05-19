@@ -344,8 +344,6 @@ class Reactions(Catalogue[Reaction]):
         super().__init__(reactions, _by_name)
         self._by_serialized = _by_serialized
 
-        self.count: int = len(self._list)
-
     def add(self, reaction: Reaction) -> None:
         if not isinstance(reaction, Reaction):
             raise ValueError(f"'{reaction}' must be an instance of 'Reaction'")

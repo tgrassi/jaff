@@ -17,6 +17,7 @@ class Catalogue(Generic[T]):
         self._by_name: dict[str, T] = {} if items_dict is None else items_dict
         self._list: list[T] = [] if items is None else items
         self._by_serialized: dict[str, T] = {}  # Items must be manually added
+        self.count: int = len(self._list)
 
     @overload
     def __getitem__(self, key: str) -> T: ...
@@ -25,7 +26,7 @@ class Catalogue(Generic[T]):
     def __getitem__(self, key: slice) -> list[T]: ...
 
     @overload
-    def __geitem__(self, key: SupportsIndex) -> T: ...  # type: ignore
+    def __getitem__(self, key: SupportsIndex) -> T: ...
 
     def __getitem__(self, key: str | SupportsIndex | slice) -> T | list[T]:
         if isinstance(key, str):

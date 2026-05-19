@@ -11,6 +11,8 @@ from __future__ import annotations
 from functools import cache
 from typing import TYPE_CHECKING
 
+from .types import Catalogue
+
 if TYPE_CHECKING:
     from . import Specie
     from .common.helper import ElementProps
@@ -19,7 +21,7 @@ if TYPE_CHECKING:
 class Element:
     _register: dict = {}
 
-    def __new__(cls, symbol: str, mass_dict: dict[str, ElementProps]):
+    def __new__(cls, symbol: str, mass_dict: dict[str, ElementProps], index: int):
         if symbol in cls._register:
             return cls._register[symbol]
 
@@ -28,8 +30,8 @@ class Element:
 
         return instance
 
-    def __init__(self, symbol: str, mass_dict: dict[str, ElementProps]):
-        if getattr(self, "_initialized", False):
+    def __init__(self, symbol: str, mass_dict: dict[str, ElementProps], index: int):
+        if getattr(self, "__initialized", False):
             return
 
         if symbol not in mass_dict:
@@ -42,7 +44,8 @@ class Element:
         self.protons: int = mass_dict[symbol]["protons"]
         self.neutrons: int = mass_dict[symbol]["neutrons"]
         self.electrons: int = mass_dict[symbol]["electrons"]
-        self._initialized = True
+        self.index: int = index
+        self.__initialized = True
 
     def __repr__(self) -> str:
         return f"Element(symbol={self.symbol!r}, name={self.name!r}"
@@ -78,7 +81,7 @@ class Element:
         return hash(self.symbol)
 
 
-class Elements:
+class Elements(Catalogue):
     """
     Extracts and manages chemical elements from a reaction network.
 
@@ -92,6 +95,21 @@ class Elements:
         count: Total number of unique elements in the network.
     """
 
+    _register: dict = {}
+
+    def __new__(cls, species: Specie | list[Specie], mass_dict: dict[str, ElementProps]):
+        _species: list[Specie] = (
+            list[species] if not isinstance(species, list) else species
+        )  # type: ignore
+        _serialized: str = "_".join(sorted(str(s) for s in _species))
+        if _serialized in cls._register:
+            return cls._register[_serialized]
+
+        instance = super().__new__(cls)
+        cls._register[_serialized] = instance
+
+        return instance
+
     def __init__(
         self, species: Specie | list[Specie], mass_dict: dict[str, ElementProps]
     ) -> None:
@@ -101,15 +119,16 @@ class Elements:
         Args:
             network: Chemical reaction network containing species to analyze.
         """
+        if getattr(self, "__initialized", False):
+            return
+
         self._mass_dict = mass_dict
-        self.list: list[Element] = []
-        self.index: dict[str, int] = {}
         self.species: list[Specie] = species if isinstance(species, list) else [species]  # type: ignore
-        self.count: int = 0
 
-        self._set_elements()
+        self.__set_elements()
+        self.__initalized = True
 
-    def _set_elements(self) -> None:
+    def __set_elements(self) -> None:
         """
         Extract unique chemical elements from all species in the network.
 
@@ -124,14 +143,21 @@ class Elements:
             elements |= set(specie.exploded)  # type: ignore[arg-type]
 
         # Filter to only alphabetic characters (element symbols) and convert to list
-        self.list = sorted(
-            list({Element(e, self._mass_dict) for e in elements if e.isalpha()})
+        _list = sorted(
+            list(
+                {
+                    Element(e, self._mass_dict, i)
+                    for i, e in enumerate(elements)
+                    if e.isalpha()
+                }
+            )
         )
-        for i, e in enumerate(self.list):
-            self.index[e.name] = i
-            self.index[e.symbol] = i
 
-        self.count = len(self.list)
+        _by_name = {e.name: e for e in _list}
+        _by_symbol = {e.symbol: e for e in _list}
+
+        super().__init__(_list, _by_symbol)
+        self._by_serialized = _by_name
 
     @cache
     def truth_matrix(self) -> list[list[int]]:
@@ -158,7 +184,7 @@ class Elements:
         ]
 
         # Populate matrix: 1 if element is in species, 0 otherwise
-        for i, element in enumerate(self.list):
+        for i, element in enumerate(self._list):
             for j, specie in enumerate(self.species):
                 element_truth_matrix[i][j] = int(element in specie.exploded)
 
@@ -188,7 +214,7 @@ class Elements:
         ]
 
         # Populate matrix with element counts for each species
-        for i, element in enumerate(self.list):
+        for i, element in enumerate(self._list):
             for j, specie in enumerate(self.species):
                 # Count occurrences of this element in this species
                 element_density_matrix[i][j] = specie.exploded.count(element.symbol)
