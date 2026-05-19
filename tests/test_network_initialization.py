@@ -38,8 +38,8 @@ class TestNetworkInitialization:
         assert network.label == "sample_kida"
         assert isinstance(network.species, list)
         assert isinstance(network.reactions, list)
-        assert isinstance(network.species_dict, dict)
-        assert isinstance(network.reactions_dict, dict)
+        assert isinstance(network.specie_index, dict)
+        assert isinstance(network.reaction_index, dict)
         assert isinstance(network.mass_dict, dict)
 
         # Check that some reactions were loaded
@@ -176,9 +176,9 @@ class TestNetworkInitialization:
 
         # Check data structure types and initial states
         assert isinstance(network.species, list)
-        assert isinstance(network.species_dict, dict)
+        assert isinstance(network.specie_index, dict)
         assert isinstance(network.reactions, list)
-        assert isinstance(network.reactions_dict, dict)
+        assert isinstance(network.reaction_index, dict)
         assert isinstance(network.mass_dict, dict)
 
         # Check that rlist and plist are generated

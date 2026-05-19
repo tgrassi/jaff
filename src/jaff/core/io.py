@@ -50,7 +50,7 @@ JaffProps = TypedDict(
         "file_name": NotRequired[Path],
         "label": NotRequired[str],
         "species": NotRequired[list["Species"]],
-        "species_dict": NotRequired[dict[str, int]],
+        "specie_index": NotRequired[dict[str, int]],
         "reactions": NotRequired[list[ReactionProps]],
     },
 )
@@ -210,7 +210,7 @@ def from_jaff_file(filename: str | Path, errors=False):
         "file_name": Path(payload.get("file_name")),
         "label": payload.get("label"),
         "species": [],
-        "species_dict": {},
+        "specie_index": {},
         "reactions": [],
     }
 
@@ -233,18 +233,18 @@ def from_jaff_file(filename: str | Path, errors=False):
 
     species_by_index = {}
     species_list = []
-    species_dict = {}
+    specie_index = {}
     mass_dict = load_mass_dict()
 
     for idx in sorted(by_index.keys()):
         name = by_index[idx]
         sp_obj = Species(name, mass_dict, idx)
         species_list.append(sp_obj)
-        species_dict[name] = idx
+        specie_index[name] = idx
         species_by_index[idx] = sp_obj
 
     net_data["species"] = species_list
-    net_data["species_dict"] = species_dict
+    net_data["specie_index"] = specie_index
 
     rate_symbols_payload = payload.get("rate_symbols") or []
     rate_symbol_assumptions = {}

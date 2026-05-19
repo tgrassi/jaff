@@ -11,8 +11,8 @@ if TYPE_CHECKING:
     from .radiation import Radiation
 
 
-def get_sfluxes(reactions: list["Reaction"], species_dict: dict[str, int]) -> list[Expr]:
-    nspec = max(species_dict.values()) + 1 if species_dict else 0
+def get_sfluxes(reactions: list["Reaction"], specie_index: dict[str, int]) -> list[Expr]:
+    nspec = max(specie_index.values()) + 1 if specie_index else 0
     nreact = len(reactions)
     fluxes: list[Expr] = [Float(0.0) for _ in range(nreact)]
     nden_matrix = MatrixSymbol("nden", nspec, 1)
@@ -20,16 +20,16 @@ def get_sfluxes(reactions: list["Reaction"], species_dict: dict[str, int]) -> li
     for i, reaction in enumerate(reactions):
         flux = reaction.rate
         for reactant in reaction.reactants:
-            flux *= nden_matrix[species_dict[str(reactant)]]
+            flux *= nden_matrix[specie_index[str(reactant)]]
 
         fluxes[i] = flux
 
     return fluxes
 
 
-def get_sodes(reactions: list["Reaction"], species_dict: dict[str, int]) -> list[Basic]:
-    nspec = max(species_dict.values()) + 1 if species_dict else 0
-    fluxes = get_sfluxes(reactions, species_dict)
+def get_sodes(reactions: list["Reaction"], specie_index: dict[str, int]) -> list[Basic]:
+    nspec = max(specie_index.values()) + 1 if specie_index else 0
+    fluxes = get_sfluxes(reactions, specie_index)
     sodes: list[Basic] = [Float(0.0) for _ in range(nspec)]
 
     for i, reaction in enumerate(reactions):
@@ -54,7 +54,7 @@ def get_sodes(reactions: list["Reaction"], species_dict: dict[str, int]) -> list
 
 
 def get_sradodes(
-    radiation: "Radiation" | None, species_dict: dict[str, int], order: int = 0
+    radiation: "Radiation" | None, specie_index: dict[str, int], order: int = 0
 ) -> list[Expr]:
     # Check if radiation is enabled
     if radiation is None:
@@ -65,7 +65,7 @@ def get_sradodes(
         raise ValueError("Invalid order: Supported orders are 0, 1, 2, 3")
 
     rad_groups = radiation.groups
-    nspec = max(species_dict.values()) + 1 if species_dict else 0
+    nspec = max(specie_index.values()) + 1 if specie_index else 0
     nden = MatrixSymbol("nden", nspec, 1)
 
     den = MatrixSymbol(
@@ -89,7 +89,7 @@ def get_sradodes(
             rrate = props["k"]
             group_dRad_dt_extra += props["delta_rad"]
             for reactant in reaction.reactants:
-                rrate *= nden[Idx(species_dict[str(reactant)])]
+                rrate *= nden[Idx(specie_index[str(reactant)])]
 
             group_rate -= rrate
 

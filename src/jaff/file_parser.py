@@ -1228,7 +1228,7 @@ class Fileparser:
                     # Returns: str - language specific internal energy equation code
                     "dedt": {"func": cg.get_dedt},
                     # Returns: int - electron index in species array
-                    "e_idx": {"func": lambda: self.net.species_dict["e-"]},
+                    "e_idx": {"func": lambda: self.net.specie_index["e-"]},
                 },
             },
             # REPEAT command: iterate over network components or generate expressions
@@ -1694,39 +1694,39 @@ class Fileparser:
                     # Returns: int - index of element
                     "element_idx": {"func": lambda e: self.elems.elements.index(e)},
                     # Returns: int - index of species
-                    "specie_idx": {"func": lambda s: self.net.species_dict[s]},
+                    "specie_idx": {"func": lambda s: self.net.specie_index[s]},
                     # Returns: int - index of reaction
-                    "reaction_idx": {"func": lambda r: self.net.reactions_dict[r]},
+                    "reaction_idx": {"func": lambda r: self.net.reaction_index[r]},
                     # Returns: float - mass of specified species
                     "specie_mass": {
-                        "func": lambda s: self.net.species[self.net.species_dict[s]].mass
+                        "func": lambda s: self.net.species[self.net.specie_index[s]].mass
                     },
                     # Returns: int - charge of specified species
                     "specie_charge": {
                         "func": lambda s: (
-                            self.net.species[self.net.species_dict[s]].charge
+                            self.net.species[self.net.specie_index[s]].charge
                         )
                     },
                     # Returns: str - LaTeX representation of specified species
                     "specie_latex": {
-                        "func": lambda s: self.net.species[self.net.species_dict[s]].latex
+                        "func": lambda s: self.net.species[self.net.specie_index[s]].latex
                     },
                     # Returns: float - minimum temperature for specified reaction
                     "reaction_tmin": {
                         "func": lambda r: (
-                            self.net.reactions[self.net.reactions_dict[r]].tmin
+                            self.net.reactions[self.net.reaction_index[r]].tmin
                         )
                     },
                     # Returns: float - maximum temperature for specified reaction
                     "reaction_tmax": {
                         "func": lambda r: (
-                            self.net.reactions[self.net.reactions_dict[r]].tmax
+                            self.net.reactions[self.net.reaction_index[r]].tmax
                         )
                     },
                     # Returns: str - verbatim string representation of specified reaction
                     "reaction_verbatim": {
                         "func": lambda r: (
-                            self.net.reactions[self.net.reactions_dict[r]].verbatim
+                            self.net.reactions[self.net.reaction_index[r]].verbatim
                         )
                     },
                 },
@@ -1736,9 +1736,9 @@ class Fileparser:
                 "func": self.__has,
                 "props": {
                     # Returns: int - 1 if species exists, 0 otherwise
-                    "specie": {"func": lambda s: int(s in self.net.species_dict)},
+                    "specie": {"func": lambda s: int(s in self.net.specie_index)},
                     # Returns: int - 1 if reaction exists, 0 otherwise
-                    "reaction": {"func": lambda r: int(r in self.net.reactions_dict)},
+                    "reaction": {"func": lambda r: int(r in self.net.reaction_index)},
                     # Returns: int - 1 if element exists, 0 otherwise
                     "element": {"func": lambda e: int(e in self.elems.elements)},
                 },

@@ -78,7 +78,7 @@ class TestNetworkEdgeCases:
 
             # Check basic properties with empty network
             assert len(network.reactions) == 0
-            assert len(network.reactions_dict) == 0
+            assert len(network.reaction_index) == 0
             assert network.rlist is not None
             assert network.plist is not None
             assert network.rlist.shape[0] == 0  # No reactions
@@ -305,7 +305,7 @@ class TestNetworkEdgeCases:
             # Should create network with no reactions
             assert len(network.reactions) == 0
             assert isinstance(network.species, list)
-            assert isinstance(network.reactions_dict, dict)
+            assert isinstance(network.reaction_index, dict)
         finally:
             os.unlink(temp_file)
 

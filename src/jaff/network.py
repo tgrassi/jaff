@@ -96,9 +96,9 @@ class Network:
 
         self.mass_dict: dict[str, ElementProps] = {}
         self.species: list[Species] = []
-        self.species_dict: dict[str, int] = {}
+        self.specie_index: dict[str, int] = {}
         self.reactions: list[Reaction] = []
-        self.reactions_dict: dict[str, int] = {}
+        self.reaction_index: dict[str, int] = {}
         self.rlist: np.ndarray | None = None
         self.plist: np.ndarray | None = None
         self.dEdt_chem: Basic = Float(0.0)
@@ -183,13 +183,13 @@ class Network:
                 if s not in specie_names:
                     specie_names.add(s)
                     self.species.append(Species(s, self.mass_dict, len(specie_names) - 1))
-                    self.species_dict[s] = self.species[-1].index
-                    self.species_dict[self.species[-1].serialized] = self.species[
+                    self.specie_index[s] = self.species[-1].index
+                    self.specie_index[self.species[-1].serialized] = self.species[
                         -1
                     ].index
 
-            rr = [self.species[self.species_dict[r]] for r in reactants]
-            pp = [self.species[self.species_dict[p]] for p in products]
+            rr = [self.species[self.specie_index[r]] for r in reactants]
+            pp = [self.species[self.specie_index[p]] for p in products]
 
             local_subs_dict = {**subs_dict}
 
@@ -281,7 +281,7 @@ class Network:
 
     def __load_network_from_jaff_file(self, jaff_props: JaffProps):
         self.species = jaff_props["species"]
-        self.species_dict = jaff_props["species_dict"]
+        self.specie_index = jaff_props["specie_index"]
         for reaction in jaff_props["reactions"]:
             rea = Reaction(
                 reactants=reaction["reactants"],
@@ -313,7 +313,7 @@ class Network:
 
             dE_dt = r.dE * r.rate  # type: ignore
             for s in r.reactants:
-                dE_dt *= nden[self.species_dict[s.name]]
+                dE_dt *= nden[self.specie_index[s.name]]
             self.dEdt_chem += dE_dt
             self.dRad_dt_extra += r.dRad_dt  # type: ignore
         self.dEdt_chem = self.__standardize_symbols(self.dEdt_chem, replace_nH)
@@ -602,8 +602,8 @@ class Network:
 
     def __generate_reactions_dict(self) -> None:
         for i, rea in enumerate(self.reactions):
-            self.reactions_dict[rea.verbatim] = i
-            self.reactions_dict[rea.serialized] = i
+            self.reaction_index[rea.verbatim] = i
+            self.reaction_index[rea.serialized] = i
 
     def generate_reaction_matrices(self) -> None:
         """Generate reaction matrices (rlist and plist) for tracking reactants and products."""
@@ -695,7 +695,7 @@ class Network:
             # Handle simple aliases (nh0, ne, etc)
             elif low_name in simple_map:
                 spec_name = simple_map[low_name]
-                repl = nden[Idx(self.species_dict[spec_name])]
+                repl = nden[Idx(self.specie_index[spec_name])]
 
             # Handle "n_" prefixed symbols
             elif low_name.startswith("n_"):
@@ -716,8 +716,8 @@ class Network:
                     elif core[-1] in n_suffixes:
                         core = core[:-1] + n_suffixes[core[-1]]
 
-                    if core in self.species_dict:
-                        repl = nden[Idx(self.species_dict[core])]
+                    if core in self.specie_index:
+                        repl = nden[Idx(self.specie_index[core])]
 
             # Add valid replacemnts ro the dictionary
             if repl is not None:
@@ -732,51 +732,51 @@ class Network:
         return len(self.reactions)
 
     def get_species_index(self, name: str) -> int:
-        return self.species_dict[name]
+        return self.specie_index[name]
 
     def get_species_object(self, name) -> Species:
-        return self.species[self.species_dict[name]]
+        return self.species[self.specie_index[name]]
 
     def get_reaction_index(self, name) -> int:
-        return self.reactions_dict[name]
+        return self.reaction_index[name]
 
     def get_latex(self, name: str, dollars: bool = True) -> str:
-        if name not in self.species_dict:
+        if name not in self.specie_index:
             raise KeyError(f"Invalid specie name: {name}")
 
-        sp = self.species[self.species_dict[name]]
+        sp = self.species[self.specie_index[name]]
         return f"${sp.latex}$" if dollars else sp.latex
 
     def get_species_by_serialized(self, serialized: str) -> Species:
-        if serialized not in self.species_dict:
+        if serialized not in self.specie_index:
             raise KeyError(f"Invalid serealized specie: {serialized}")
 
-        return self.species[self.species_dict[serialized]]
+        return self.species[self.specie_index[serialized]]
 
     def get_reaction_by_serialized(self, serialized: str) -> Reaction:
-        if serialized not in self.reactions_dict:
+        if serialized not in self.reaction_index:
             raise KeyError(f"Invalid serealized reaction: {serialized}")
 
-        return self.reactions[self.reactions_dict[serialized]]
+        return self.reactions[self.reaction_index[serialized]]
 
     def get_reaction_by_verbatim(
         self, verbatim: str, rtype: str | None = None
     ) -> Reaction | None:
-        if verbatim not in self.reactions_dict:
+        if verbatim not in self.reaction_index:
             raise KeyError(f"Invalid verbatim reaction: {verbatim}")
 
-        rea = self.reactions[self.reactions_dict[verbatim]]
+        rea = self.reactions[self.reaction_index[verbatim]]
         if rtype is None or rea.guess_type() == rtype:
             return rea
 
     def sfluxes(self) -> list[Expr]:
-        return get_sfluxes(self.reactions, self.species_dict)
+        return get_sfluxes(self.reactions, self.specie_index)
 
     def sodes(self) -> list[Basic]:
-        return get_sodes(self.reactions, self.species_dict)
+        return get_sodes(self.reactions, self.specie_index)
 
     def sradodes(self, order: int = 0) -> list[Expr]:
-        return get_sradodes(self.radiation, self.species_dict, order)
+        return get_sradodes(self.radiation, self.specie_index, order)
 
     def to_hdf5(
         self,
