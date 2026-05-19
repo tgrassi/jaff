@@ -319,11 +319,9 @@ class Codegen:
             )
 
         scommons += (
-            f"{definition_prefix}nspecs {assign_op} {len(self.net.species)}{lend}\n"
+            f"{definition_prefix}nspecs {assign_op} {self.net.species.count}{lend}\n"
         )
-        scommons += (
-            f"{definition_prefix}nreactions {assign_op} {len(self.net.reactions)}{lend}\n"
-        )
+        scommons += f"{definition_prefix}nreactions {assign_op} {self.net.reactions.count}{lend}\n"
 
         return scommons
 
@@ -633,12 +631,10 @@ class Codegen:
             for i, rea in enumerate(self.net.reactions):
                 # Subtract flux for each reactant
                 for rr in rea.reactants:
-                    rrfidx = self.net.specie_index[str(rr)]
-                    ode[rrfidx] += f" - flux{self.lb}{i + self.ioff}{self.rb}"
+                    ode[rr.index] += f" - flux{self.lb}{i + self.ioff}{self.rb}"
                 # Add flux for each product
                 for pp in rea.products:
-                    ppfidx = self.net.specie_index[str(pp)]
-                    ode[ppfidx] += f" + flux{self.lb}{i + self.ioff}{self.rb}"
+                    ode[pp.index] += f" + flux{self.lb}{i + self.ioff}{self.rb}"
 
             out = IndexedList()
             for idx, expr in ode.items():
@@ -736,7 +732,7 @@ class Codegen:
         norm = 0, nden is specie number density
         norm = 1, nden is specie density
         """
-        nspec = len(self.net.species)
+        nspec = self.net.species.count
         nden_matrix = sp.MatrixSymbol("nden", nspec, 1)
 
         # Precompute specific internal energy equation if requested
@@ -1222,7 +1218,7 @@ class Codegen:
             # Create symbolic variakbles representing species concentrations for Jacobian
             # We use temporary scalar symbols y_i for robust SymPy manipulation, then
             # remap names to `nden[i]` at codegen time to match templates.
-            n_species = len(self.net.species)
+            n_species = self.net.species.count
             n_rad_eqns = (
                 2 * self.net.radiation.nbands if radiation and self.net.radiation else 0
             )

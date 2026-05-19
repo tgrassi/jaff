@@ -58,13 +58,13 @@ class TestNetworkEdgeCases:
 
     def test_missing_reaction_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized reaction lookup."""
-        with pytest.raises(KeyError, match="Invalid serialized reaction"):
+        with pytest.raises(KeyError):
             sample_network.get_reaction_by_serialized("NONEXISTENT_SERIALIZED")
 
     def test_missing_species_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized species lookup."""
-        with pytest.raises(KeyError, match="Invalid serialized specie"):
-            sample_network.get_species_by_serialized("NONEXISTENT_SERIALIZED")
+        with pytest.raises(KeyError):
+            sample_network.species.from_serialized("NONEXISTENT_SERIALIZED")
 
     def test_empty_reaction_list(self):
         """Test behavior with empty reaction lists."""
@@ -80,7 +80,6 @@ class TestNetworkEdgeCases:
 
             # Check basic properties with empty network
             assert len(network.reactions) == 0
-            assert len(network.reaction_index) == 0
             assert network.rlist is not None
             assert network.plist is not None
             assert network.rlist.shape[0] == 0  # No reactions
@@ -307,7 +306,7 @@ class TestNetworkEdgeCases:
             # Should create network with no reactions
             assert len(network.reactions) == 0
             assert isinstance(network.species, Species)
-            assert isinstance(network.reaction_index, dict)
+
         finally:
             os.unlink(temp_file)
 

@@ -19,8 +19,9 @@ from sympy import (
     sympify,
 )
 
-from jaff.core.logger import JaffLogger
-from jaff.physics import constants
+from .core.logger import JaffLogger
+from .physics import constants
+from .types import Catalogue
 
 if TYPE_CHECKING:
     from .species import Specie
@@ -37,6 +38,7 @@ class Reaction:
         dE: Basic,
         dRad_dt: Basic,
         original_string: str,
+        index: int,
         errors: bool = False,
     ):
         self.logger = JaffLogger().get_logger()
@@ -54,6 +56,7 @@ class Reaction:
         self.original_string = original_string
         # Add verbatim property for backward compatibility
         self.verbatim: str = self.get_verbatim()
+        self.index: int = index
 
         self.check(errors)
         self.serialized_exploded: str = self.serialize_exploded()
@@ -327,3 +330,38 @@ class Reaction:
 
         if ax is None:
             plt.show()
+
+
+class Reactions(Catalogue[Reaction]):
+    def __init__(self, reactions: list[Reaction] | None = None):
+        _by_name: dict[str, Reaction] | None = None
+        _by_serialized: dict[str, Reaction] = {}
+
+        if reactions is not None:
+            _by_name = {r.verbatim: r for r in reactions}
+            _by_serialized = {r.serialized: r for r in reactions}
+
+        super().__init__(reactions, _by_name)
+        self._by_serialized = _by_serialized
+
+        self.count: int = len(self._list)
+
+    def add(self, reaction: Reaction) -> None:
+        if not isinstance(reaction, Reaction):
+            raise ValueError(f"'{reaction}' must be an instance of 'Reaction'")
+
+        self._by_name[reaction.verbatim] = reaction
+        self._by_serialized[reaction.serialized] = reaction
+        self._list.append(reaction)
+        self.count = len(self._list)
+
+    def from_serialized(self, serialized: str) -> Reaction:
+        return self._by_serialized[serialized]
+
+    def from_verbatim(self, verbatim: str, rtype: str | None = None) -> Reaction | None:
+        rea = self._by_name[verbatim]
+        if rtype is None or rea.guess_type() == rtype:
+            return rea
+
+    def get_list(self):
+        return self._list

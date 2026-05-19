@@ -1,4 +1,4 @@
-from typing import Generic, Iterator, TypeVar
+from typing import Generic, Iterator, SupportsIndex, TypeVar, overload
 
 T = TypeVar("T")
 
@@ -18,7 +18,16 @@ class Catalogue(Generic[T]):
         self._list: list[T] = [] if items is None else items
         self._by_serialized: dict[str, T] = {}  # Items must be manually added
 
-    def __getitem__(self, key: str | int) -> T:
+    @overload
+    def __getitem__(self, key: str) -> T: ...
+
+    @overload
+    def __getitem__(self, key: slice) -> list[T]: ...
+
+    @overload
+    def __geitem__(self, key: SupportsIndex) -> T: ...  # type: ignore
+
+    def __getitem__(self, key: str | SupportsIndex | slice) -> T | list[T]:
         if isinstance(key, str):
             if key not in self._by_name and key not in self._by_serialized:
                 raise KeyError(f"{key}' not found in catalogue")
@@ -29,10 +38,12 @@ class Catalogue(Generic[T]):
             if key in self._by_serialized:
                 return self._by_serialized[key]
 
-        elif isinstance(key, (int, slice)):
+            raise KeyError(f"{key!r} not found in catalogue")
+
+        elif isinstance(key, slice):
             return self._list[key]
 
-        raise TypeError("Catalogue key must be a string or integer")
+        return self._list[int(key)]
 
     def __iter__(self) -> Iterator[T]:
         return iter(self._list)

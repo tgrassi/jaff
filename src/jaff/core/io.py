@@ -19,6 +19,7 @@ from ..core.logger import JaffLogger
 from ..drivers.hdf5 import HDF5
 from ..errors import NotJaffFileError
 from ..jaff_types import HDF5Dict
+from ..reaction import Reactions
 
 if TYPE_CHECKING:
     from .. import Network, Reaction, Specie, Species
@@ -331,7 +332,7 @@ def from_jaff_file(filename: str | Path, errors=False):
 
 
 def get_table(
-    reactions: list[Reaction],
+    reactions: Reactions,
     logger: logging.Logger | None,
     T_min=None,
     T_max=None,
@@ -542,7 +543,7 @@ def get_table(
 
 
 def write_data_table(
-    reactions: list[Reaction],
+    reactions: Reactions,
     logger: logging.Logger | None,
     fname: str | Path,
     label: str | None = None,

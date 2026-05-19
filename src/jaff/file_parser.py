@@ -1209,7 +1209,7 @@ class Fileparser:
                     # Returns: int - number of elements
                     "nelem": {"func": lambda: self.net.elements.count},
                     # Returns: int - number of reactions
-                    "nreact": {"func": lambda: len(self.net.reactions)},
+                    "nreact": {"func": lambda: self.net.reactions.count},
                     # Returns: int - number of reactions
                     "nbands": {
                         "func": lambda: (
@@ -1693,7 +1693,7 @@ class Fileparser:
                     # Returns: int - index of species
                     "specie_idx": {"func": lambda s: self.net.species[s].index},
                     # Returns: int - index of reaction
-                    "reaction_idx": {"func": lambda r: self.net.reaction_index[r]},
+                    "reaction_idx": {"func": lambda r: self.net.reactions[r].index},
                     # Returns: float - mass of specified species
                     "specie_mass": {"func": lambda s: self.net.species[s].mass},
                     # Returns: int - charge of specified species
@@ -1701,22 +1701,12 @@ class Fileparser:
                     # Returns: str - LaTeX representation of specified species
                     "specie_latex": {"func": lambda s: self.net.species[s].latex},
                     # Returns: float - minimum temperature for specified reaction
-                    "reaction_tmin": {
-                        "func": lambda r: (
-                            self.net.reactions[self.net.reaction_index[r]].tmin
-                        )
-                    },
+                    "reaction_tmin": {"func": lambda r: self.net.reactions[r].tmin},
                     # Returns: float - maximum temperature for specified reaction
-                    "reaction_tmax": {
-                        "func": lambda r: (
-                            self.net.reactions[self.net.reaction_index[r]].tmax
-                        )
-                    },
+                    "reaction_tmax": {"func": lambda r: self.net.reactions[r].tmax},
                     # Returns: str - verbatim string representation of specified reaction
                     "reaction_verbatim": {
-                        "func": lambda r: (
-                            self.net.reactions[self.net.reaction_index[r]].verbatim
-                        )
+                        "func": lambda r: self.net.reactions[r].verbatim
                     },
                 },
             },
@@ -1727,7 +1717,7 @@ class Fileparser:
                     # Returns: int - 1 if species exists, 0 otherwise
                     "specie": {"func": lambda s: int(s in self.net.species)},
                     # Returns: int - 1 if reaction exists, 0 otherwise
-                    "reaction": {"func": lambda r: int(r in self.net.reaction_index)},
+                    "reaction": {"func": lambda r: int(r in self.net.reactions)},
                     # Returns: int - 1 if element exists, 0 otherwise
                     "element": {"func": lambda e: int(e in self.net.elements.index)},
                 },

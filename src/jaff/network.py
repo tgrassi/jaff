@@ -35,7 +35,7 @@ from .photochemistry import Photochemistry
 from .physics import constants
 from .physics.equations import get_sfluxes, get_sodes, get_sradodes
 from .physics.radiation import Radiation
-from .reaction import Reaction
+from .reaction import Reaction, Reactions
 from .species import Specie, Species
 
 NetworkProps = TypedDict(
@@ -90,8 +90,7 @@ class Network:
 
         self.mass_dict: dict[str, ElementProps] = {}
         self.species: Species = Species()
-        self.reactions: list[Reaction] = []
-        self.reaction_index: dict[str, int] = {}
+        self.reactions: Reactions = Reactions()
         self.rlist: np.ndarray | None = None
         self.plist: np.ndarray | None = None
         self.dEdt_chem: Basic = Float(0.0)
@@ -120,7 +119,6 @@ class Network:
         self.check_isomers(errors)
         self.check_unique_reactions(errors)
 
-        self.__generate_reactions_dict()
         self.generate_reaction_matrices()
 
         self.elements: Elements = Elements(self.species.get_list(), self.mass_dict)
@@ -225,10 +223,10 @@ class Network:
 
             # Handle reaction
             rea = Reaction(
-                rr, pp, rate_expr, tmin, tmax, deltaE, deltaRad, reaction["string"]
+                rr, pp, rate_expr, tmin, tmax, deltaE, deltaRad, reaction["string"], i
             )
             # Save to reaction list
-            self.reactions.append(rea)
+            self.reactions.add(rea)
 
             if is_photoreaction and self.radiation is not None:
                 if aux_chem_rate not in aux_funcs:
@@ -257,7 +255,7 @@ class Network:
         self.logger.info(
             f"Variables found: {', '.join(sorted(f'[cyan]{s}[/]' for s in free_symbols))}"
         )
-        self.logger.info(f"Loaded {len(self.reactions)} reactions")
+        self.logger.info(f"Loaded {self.reactions.count} reactions")
         self.logger.info(f"Loaded {n_photo} photo-chemistry reactions")
 
         # Issue warning message if undefined functions remain
@@ -272,7 +270,7 @@ class Network:
 
     def __load_network_from_jaff_file(self, jaff_props: JaffProps):
         self.species = jaff_props["species"]
-        for reaction in jaff_props["reactions"]:
+        for i, reaction in enumerate(jaff_props["reactions"]):
             rea = Reaction(
                 reactants=reaction["reactants"],
                 products=reaction["products"],
@@ -282,10 +280,11 @@ class Network:
                 tmin=reaction["tmin"],
                 tmax=reaction["tmax"],
                 original_string=reaction["original_string"],
+                index=i,
             )
             rea.xsecs_dict = reaction["xsecs_dict"]
             rea.custom_rad_rate = reaction["custom_rad_rate"]
-            self.reactions.append(rea)
+            self.reactions.add(rea)
 
             if rea.guess_type() == "photo" and self.radiation is not None:
                 if rea.custom_rad_rate:
@@ -590,14 +589,9 @@ class Network:
             self.logger.error("Duplicate reactions found")
             sys.exit(1)
 
-    def __generate_reactions_dict(self) -> None:
-        for i, rea in enumerate(self.reactions):
-            self.reaction_index[rea.verbatim] = i
-            self.reaction_index[rea.serialized] = i
-
     def generate_reaction_matrices(self) -> None:
         """Generate reaction matrices (rlist and plist) for tracking reactants and products."""
-        n_reactions = len(self.reactions)
+        n_reactions = self.reactions.count
         n_species = self.species.count
 
         # Initialize matrices
@@ -730,7 +724,7 @@ class Network:
         return self.species[name]
 
     def get_reaction_index(self, name) -> int:
-        return self.reaction_index[name]
+        return self.reactions[name].index
 
     def get_latex(self, name: str, dollars: bool = True) -> str:
         if name not in self.species:
@@ -740,24 +734,15 @@ class Network:
         return f"${sp.latex}$" if dollars else sp.latex
 
     def get_species_by_serialized(self, serialized: str) -> Specie:
-        if serialized not in self.species:
-            raise KeyError(f"Invalid serialized specie: {serialized}")
-
         return self.species[serialized]
 
     def get_reaction_by_serialized(self, serialized: str) -> Reaction:
-        if serialized not in self.reaction_index:
-            raise KeyError(f"Invalid serialized reaction: {serialized}")
-
-        return self.reactions[self.reaction_index[serialized]]
+        return self.reactions[serialized]
 
     def get_reaction_by_verbatim(
         self, verbatim: str, rtype: str | None = None
     ) -> Reaction | None:
-        if verbatim not in self.reaction_index:
-            raise KeyError(f"Invalid verbatim reaction: {verbatim}")
-
-        rea = self.reactions[self.reaction_index[verbatim]]
+        rea = self.reactions[verbatim]
         if rtype is None or rea.guess_type() == rtype:
             return rea
 

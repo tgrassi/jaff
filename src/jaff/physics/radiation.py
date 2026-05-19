@@ -1,10 +1,14 @@
-from typing import TypedDict, cast
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import sympy as sp
 
 from ..common.integrators import smart_integrate
 from ..drivers.sqlite import JaffDb
-from ..reaction import Reaction
+
+if TYPE_CHECKING:
+    from ..reaction import Reaction
 
 RadiationGroupReactionProps = TypedDict(
     "RadiationGroupReactionProps",

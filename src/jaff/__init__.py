@@ -12,7 +12,16 @@ from .builder import Builder
 from .codegen import Codegen
 from .network import Network
 from .preprocessor import Preprocessor
-from .reaction import Reaction
-from .species import Specie
+from .reaction import Reaction, Reactions
+from .species import Specie, Species
 
-__all__ = ["Builder", "Network", "Reaction", "Specie", "Codegen", "Preprocessor"]
+__all__ = [
+    "Builder",
+    "Network",
+    "Reaction",
+    "Reactions",
+    "Specie",
+    "Species",
+    "Codegen",
+    "Preprocessor",
+]

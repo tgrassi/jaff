@@ -7,11 +7,11 @@ from sympy import Basic, Expr, Float, Idx, MatrixSymbol
 from ..core.logger import jaff_progress
 
 if TYPE_CHECKING:
-    from .. import Reaction, Species
+    from .. import Reactions, Species
     from .radiation import Radiation
 
 
-def get_sfluxes(reactions: list["Reaction"], species: Species) -> list[Expr]:
+def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
     nreact = len(reactions)
     fluxes: list[Expr] = [Float(0.0) for _ in range(nreact)]
     nden_matrix = MatrixSymbol("nden", species.count, 1)
@@ -26,7 +26,7 @@ def get_sfluxes(reactions: list["Reaction"], species: Species) -> list[Expr]:
     return fluxes
 
 
-def get_sodes(reactions: list["Reaction"], species: Species) -> list[Basic]:
+def get_sodes(reactions: "Reactions", species: Species) -> list[Basic]:
     fluxes = get_sfluxes(reactions, species)
     sodes: list[Basic] = [Float(0.0) for _ in range(species.count)]
 
