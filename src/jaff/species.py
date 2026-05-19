@@ -11,7 +11,21 @@ if TYPE_CHECKING:
 
 
 class Species:
+    _registry = {}  # Stores already initialzed species
+
+    def __new__(cls, name: str, mass_dict: dict, index: int):
+        if name in cls._registry:
+            return cls._registry[name]
+
+        instance = super().__new__(cls)
+        cls._registry[name] = instance
+
+        return instance
+
     def __init__(self, name: str, mass_dict: dict, index: int):
+        if getattr(self, "_initialized", False):
+            return
+
         self.logger: logging.Logger = JaffLogger().get_logger()
         if name.lower() in ["e", "eletron", "electrons", "el", "els"] or name in [
             "E",
