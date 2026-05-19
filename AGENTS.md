@@ -99,7 +99,7 @@ def compute_rates(network: Network, temperature: float) -> np.ndarray:
 try:
     net = Network(filename)
 except FileNotFoundError:
-    raise FileNotFoundError(f"Network file not found: {filename}")
+    raise FileNotFoundError(filename)
 except ValueError as e:
     raise ValueError(f"Invalid network format: {e}")
 ```

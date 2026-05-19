@@ -121,5 +121,8 @@ class Vector(list, Generic[T]):
     def __invert__(self) -> "Vector[T]":
         return Vector(~a for a in self)
 
-    def string(self) -> "Vector[T]":
+    def as_string(self) -> "Vector[str]":
         return Vector(str(a) for a in self)
+
+    def as_bool(self) -> "Vector[bool]":
+        return Vector(bool(a) for a in self)

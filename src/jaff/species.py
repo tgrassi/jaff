@@ -43,6 +43,25 @@ class Specie:
     def __str__(self):
         return self.name
 
+    def __eq__(self, other):
+        if not isinstance(other, Specie):
+            raise TypeError(
+                f"'==' not supported between instances of 'Specie' and '{other}'"
+            )
+
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __lt__(self, other):
+        if not isinstance(other, Specie):
+            raise TypeError(
+                f"'<' not supported between instances of 'Specie' and '{other}'"
+            )
+
+        return self.name < other.name
+
     def get_fidx(self) -> str:
         return (
             "idx_e"

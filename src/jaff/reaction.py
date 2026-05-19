@@ -74,6 +74,25 @@ class Reaction:
     def __str__(self):
         return self.verbatim
 
+    def __eq__(self, other):
+        if not isinstance(other, Reaction):
+            raise TypeError(
+                f"'==' not supported between instances of 'Reaction' and '{other}'"
+            )
+
+        return self.serialized == other.serialized
+
+    def __hash__(self):
+        return hash(self.serialized)
+
+    def __lt__(self, other):
+        if not isinstance(other, Reaction):
+            raise TypeError(
+                f"'<' not supported between instances of 'Reaction' and '{other}'"
+            )
+
+        return self.serialized < other.serialized
+
     def guess_type(self) -> str:
         rtype = "unknown"
 
@@ -97,9 +116,6 @@ class Reaction:
         self.metadata["type"] = rtype
 
         return rtype
-
-    def is_same(self, other: "Reaction") -> bool:
-        return self.serialized == other.serialized
 
     def is_isomer_version(self, other: "Reaction") -> bool:
         # compare serialized forms (ignore isomers)

@@ -573,7 +573,7 @@ class Network:
         has_duplicates = False
         for i, rea1 in enumerate(self.reactions):
             for rea2 in self.reactions[i + 1 :]:
-                if rea1.is_same(rea2):
+                if rea1 == rea2:
                     if rea1.tmin != rea2.tmin or rea1.tmax != rea2.tmax:
                         continue
                     if rea1.is_isomer_version(rea2):

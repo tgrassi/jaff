@@ -1308,7 +1308,7 @@ class Fileparser:
                     },
                     # Returns: list[str] - photo reactions only
                     "photo_reactions": {
-                        "func": self.net.reactions.photo_reactions().string,
+                        "func": self.net.reactions.photo_reactions().as_string,
                         "vars": ["idx", "photo_reaction"],
                     },
                     # Returns: list[int] - 1 if photo reaction, 0 otherwise

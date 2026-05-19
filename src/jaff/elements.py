@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class Element:
     _register: dict = {}
 
-    def __new__(cls, symbol: str, mass_dict: dict[str, ElementProps], index: int):
+    def __new__(cls, symbol: str, mass_dict: dict[str, ElementProps]):
         if symbol in cls._register:
             return cls._register[symbol]
 
@@ -30,7 +30,7 @@ class Element:
 
         return instance
 
-    def __init__(self, symbol: str, mass_dict: dict[str, ElementProps], index: int):
+    def __init__(self, symbol: str, mass_dict: dict[str, ElementProps]):
         if getattr(self, "__initialized", False):
             return
 
@@ -44,7 +44,6 @@ class Element:
         self.protons: int = mass_dict[symbol]["protons"]
         self.neutrons: int = mass_dict[symbol]["neutrons"]
         self.electrons: int = mass_dict[symbol]["electrons"]
-        self.index: int = index
         self.__initialized = True
 
     def __repr__(self) -> str:
@@ -68,14 +67,6 @@ class Element:
             )
 
         return self.symbol < other.symbol
-
-    def __rt__(self, other) -> bool:
-        if not isinstance(other, Element):
-            raise TypeError(
-                f"'>' not supported between instances of 'Element' and '{other}'"
-            )
-
-        return self.symbol > other.symbol
 
     def __hash__(self):
         return hash(self.symbol)
@@ -144,13 +135,7 @@ class Elements(Catalogue):
 
         # Filter to only alphabetic characters (element symbols) and convert to list
         _list = sorted(
-            list(
-                {
-                    Element(e, self._mass_dict, i)
-                    for i, e in enumerate(elements)
-                    if e.isalpha()
-                }
-            )
+            list({Element(e, self._mass_dict) for e in elements if e.isalpha()})
         )
 
         _by_name = {e.name: e for e in _list}
