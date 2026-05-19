@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from jaff import Species
+
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -56,12 +58,12 @@ class TestNetworkEdgeCases:
 
     def test_missing_reaction_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized reaction lookup."""
-        with pytest.raises(KeyError, match="Invalid serealized reaction"):
+        with pytest.raises(KeyError, match="Invalid serialized reaction"):
             sample_network.get_reaction_by_serialized("NONEXISTENT_SERIALIZED")
 
     def test_missing_species_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized species lookup."""
-        with pytest.raises(KeyError, match="Invalid serealized specie"):
+        with pytest.raises(KeyError, match="Invalid serialized specie"):
             sample_network.get_species_by_serialized("NONEXISTENT_SERIALIZED")
 
     def test_empty_reaction_list(self):
@@ -304,7 +306,7 @@ class TestNetworkEdgeCases:
 
             # Should create network with no reactions
             assert len(network.reactions) == 0
-            assert isinstance(network.species, list)
+            assert isinstance(network.species, Species)
             assert isinstance(network.reaction_index, dict)
         finally:
             os.unlink(temp_file)

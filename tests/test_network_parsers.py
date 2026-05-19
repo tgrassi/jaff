@@ -301,8 +301,7 @@ class TestNetworkParsers:
 
         # Check species dictionary
         for species in network.species:
-            assert species.name in network.specie_index
-            assert network.specie_index[species.name] == species.index
+            assert species.name in network.species
 
     def test_rate_expression_parsing(self):
         """Test parsing of various rate expressions."""

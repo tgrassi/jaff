@@ -21,9 +21,10 @@ from ..errors import NotJaffFileError
 from ..jaff_types import HDF5Dict
 
 if TYPE_CHECKING:
-    from .. import Network, Reaction, Specie
+    from .. import Network, Reaction, Specie, Species
 else:
-    Species = "Specie"
+    Specie = "Specie"
+    Species = "Species"
     Reaction = "Reaction"
     Network = "Network"
 
@@ -49,8 +50,7 @@ JaffProps = TypedDict(
     {
         "file_name": NotRequired[Path],
         "label": NotRequired[str],
-        "species": NotRequired[list["Specie"]],
-        "specie_index": NotRequired[dict[str, int]],
+        "species": Species,
         "reactions": NotRequired[list[ReactionProps]],
     },
 )
@@ -177,7 +177,7 @@ def from_jaff_file(filename: str | Path, errors=False):
         errors : bool
             If True, run Network validation checks and exit on errors.
     """
-    from .. import Specie
+    from .. import Specie, Species
 
     if isinstance(filename, str):
         filename = Path(filename)
@@ -209,8 +209,7 @@ def from_jaff_file(filename: str | Path, errors=False):
     net_data: JaffProps = {
         "file_name": Path(payload.get("file_name")),
         "label": payload.get("label"),
-        "species": [],
-        "specie_index": {},
+        "species": Species(),
         "reactions": [],
     }
 
@@ -232,19 +231,16 @@ def from_jaff_file(filename: str | Path, errors=False):
         by_index[idx] = name
 
     species_by_index = {}
-    species_list = []
-    specie_index = {}
+    species_list = Species()
     mass_dict = load_mass_dict()
 
     for idx in sorted(by_index.keys()):
         name = by_index[idx]
         sp_obj = Specie(name, mass_dict, idx)
-        species_list.append(sp_obj)
-        specie_index[name] = idx
+        species_list.add(sp_obj)
         species_by_index[idx] = sp_obj
 
     net_data["species"] = species_list
-    net_data["specie_index"] = specie_index
 
     rate_symbols_payload = payload.get("rate_symbols") or []
     rate_symbol_assumptions = {}

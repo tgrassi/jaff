@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from jaff import Species
+
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -36,9 +38,8 @@ class TestNetworkInitialization:
         # Check basic attributes are initialized
         assert network.file_name == Path(sample_kida_file).resolve()
         assert network.label == "sample_kida"
-        assert isinstance(network.species, list)
+        assert isinstance(network.species, Species)
         assert isinstance(network.reactions, list)
-        assert isinstance(network.specie_index, dict)
         assert isinstance(network.reaction_index, dict)
         assert isinstance(network.mass_dict, dict)
 
@@ -167,7 +168,7 @@ class TestNetworkInitialization:
         # Should initialize but with no reactions
         assert len(network.reactions) == 0
         # May have default species or none
-        assert isinstance(network.species, list)
+        assert isinstance(network.species, Species)
 
     def test_initial_data_structures(self, sample_kida_file):
         """Test that data structures are properly initialized."""
@@ -175,8 +176,7 @@ class TestNetworkInitialization:
             network = Network(sample_kida_file)
 
         # Check data structure types and initial states
-        assert isinstance(network.species, list)
-        assert isinstance(network.specie_index, dict)
+        assert isinstance(network.species, Species)
         assert isinstance(network.reactions, list)
         assert isinstance(network.reaction_index, dict)
         assert isinstance(network.mass_dict, dict)

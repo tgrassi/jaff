@@ -36,7 +36,7 @@ from .physics import constants
 from .physics.equations import get_sfluxes, get_sodes, get_sradodes
 from .physics.radiation import Radiation
 from .reaction import Reaction
-from .species import Specie
+from .species import Specie, Species
 
 NetworkProps = TypedDict(
     "NetworkProps",
@@ -89,8 +89,7 @@ class Network:
             print(motd())
 
         self.mass_dict: dict[str, ElementProps] = {}
-        self.species: list[Specie] = []
-        self.specie_index: dict[str, int] = {}
+        self.species: Species = Species()
         self.reactions: list[Reaction] = []
         self.reaction_index: dict[str, int] = {}
         self.rlist: np.ndarray | None = None
@@ -124,7 +123,7 @@ class Network:
         self.__generate_reactions_dict()
         self.generate_reaction_matrices()
 
-        self.elements: Elements = Elements(self.species, self.mass_dict)
+        self.elements: Elements = Elements(self.species.get_list(), self.mass_dict)
 
         self.logger.info("[green]Network loaded successfully![/]")
 
@@ -178,14 +177,10 @@ class Network:
             for s in reactants + products:
                 if s not in specie_names:
                     specie_names.add(s)
-                    self.species.append(Specie(s, self.mass_dict, len(specie_names) - 1))
-                    self.specie_index[s] = self.species[-1].index
-                    self.specie_index[self.species[-1].serialized] = self.species[
-                        -1
-                    ].index
+                    self.species.add(Specie(s, self.mass_dict, len(specie_names) - 1))
 
-            rr = [self.species[self.specie_index[r]] for r in reactants]
-            pp = [self.species[self.specie_index[p]] for p in products]
+            rr = [self.species[r] for r in reactants]
+            pp = [self.species[p] for p in products]
 
             local_subs_dict = {**subs_dict}
 
@@ -277,7 +272,6 @@ class Network:
 
     def __load_network_from_jaff_file(self, jaff_props: JaffProps):
         self.species = jaff_props["species"]
-        self.specie_index = jaff_props["specie_index"]
         for reaction in jaff_props["reactions"]:
             rea = Reaction(
                 reactants=reaction["reactants"],
@@ -303,13 +297,13 @@ class Network:
     def __normalize_nework_extras(self, replace_nH):
         # Apply replacement rules to replace standard symbols
         # appearing in rates with terms involving known species
-        nden = MatrixSymbol("nden", len(self.species), 1)
+        nden = MatrixSymbol("nden", self.species.count, 1)
         for r in self.reactions:
             r.rate = self.__standardize_symbols(r.rate, replace_nH)
 
             dE_dt = r.dE * r.rate  # type: ignore
             for s in r.reactants:
-                dE_dt *= nden[self.specie_index[s.name]]
+                dE_dt *= nden[self.species[s.name].index]
             self.dEdt_chem += dE_dt
             self.dRad_dt_extra += r.dRad_dt  # type: ignore
         self.dEdt_chem = self.__standardize_symbols(self.dEdt_chem, replace_nH)
@@ -604,7 +598,7 @@ class Network:
     def generate_reaction_matrices(self) -> None:
         """Generate reaction matrices (rlist and plist) for tracking reactants and products."""
         n_reactions = len(self.reactions)
-        n_species = len(self.species)
+        n_species = self.species.count
 
         # Initialize matrices
         self.rlist = np.zeros((n_reactions, n_species), dtype=int)
@@ -646,7 +640,7 @@ class Network:
         if expr == Float(0.0):
             return expr
 
-        nden = MatrixSymbol("nden", len(self.species), 1)
+        nden = MatrixSymbol("nden", self.species.count, 1)
         reps = {}
 
         def get_element_sum(element):
@@ -682,7 +676,7 @@ class Network:
 
             # Handle special "ntot" (sum of all particles)
             if low_name == "ntot":
-                repl = sum(nden[Idx(i)] for i in range(len(self.species)))
+                repl = sum(nden[Idx(i)] for i in range(self.species.count))
 
             # Handle "nh" specifically
             elif low_name == "nh":
@@ -691,7 +685,7 @@ class Network:
             # Handle simple aliases (nh0, ne, etc)
             elif low_name in simple_map:
                 spec_name = simple_map[low_name]
-                repl = nden[Idx(self.specie_index[spec_name])]
+                repl = nden[Idx(self.species[spec_name].index)]
 
             # Handle "n_" prefixed symbols
             elif low_name.startswith("n_"):
@@ -712,8 +706,8 @@ class Network:
                     elif core[-1] in n_suffixes:
                         core = core[:-1] + n_suffixes[core[-1]]
 
-                    if core in self.specie_index:
-                        repl = nden[Idx(self.specie_index[core])]
+                    if core in self.species:
+                        repl = nden[Idx(self.species[core].index)]
 
             # Add valid replacemnts ro the dictionary
             if repl is not None:
@@ -723,37 +717,37 @@ class Network:
 
     @cached_property
     def nspec(self) -> int:
-        return len(self.species)
+        return self.species.count
 
     @cached_property
     def nreact(self) -> int:
         return len(self.reactions)
 
     def get_species_index(self, name: str) -> int:
-        return self.specie_index[name]
+        return self.species[name].index
 
     def get_species_object(self, name) -> Specie:
-        return self.species[self.specie_index[name]]
+        return self.species[name]
 
     def get_reaction_index(self, name) -> int:
         return self.reaction_index[name]
 
     def get_latex(self, name: str, dollars: bool = True) -> str:
-        if name not in self.specie_index:
+        if name not in self.species:
             raise KeyError(f"Invalid specie name: {name}")
 
-        sp = self.species[self.specie_index[name]]
+        sp = self.species[name]
         return f"${sp.latex}$" if dollars else sp.latex
 
     def get_species_by_serialized(self, serialized: str) -> Specie:
-        if serialized not in self.specie_index:
-            raise KeyError(f"Invalid serealized specie: {serialized}")
+        if serialized not in self.species:
+            raise KeyError(f"Invalid serialized specie: {serialized}")
 
-        return self.species[self.specie_index[serialized]]
+        return self.species[serialized]
 
     def get_reaction_by_serialized(self, serialized: str) -> Reaction:
         if serialized not in self.reaction_index:
-            raise KeyError(f"Invalid serealized reaction: {serialized}")
+            raise KeyError(f"Invalid serialized reaction: {serialized}")
 
         return self.reactions[self.reaction_index[serialized]]
 
@@ -768,13 +762,13 @@ class Network:
             return rea
 
     def sfluxes(self) -> list[Expr]:
-        return get_sfluxes(self.reactions, self.specie_index)
+        return get_sfluxes(self.reactions, self.species)
 
     def sodes(self) -> list[Basic]:
-        return get_sodes(self.reactions, self.specie_index)
+        return get_sodes(self.reactions, self.species)
 
     def sradodes(self, order: int = 0) -> list[Expr]:
-        return get_sradodes(self.radiation, self.specie_index, order)
+        return get_sradodes(self.radiation, self.species, order)
 
     def to_hdf5(
         self,

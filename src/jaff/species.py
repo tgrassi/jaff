@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from .common.helper import ElementProps
 from .core.logger import JaffLogger
 from .elements import Elements
+from .types import Catalogue
 
 if TYPE_CHECKING:
     import logging
@@ -120,3 +121,37 @@ class Specie:
                 self.charge -= 1
             name = name[:-1]
         # self.charge = self.name.count("+") - self.name.count("-")
+
+
+class Species(Catalogue[Specie]):
+    def __init__(self, species: list[Specie] | None = None):
+        _by_name: dict[str, Specie] | None = None
+        _by_serialized: dict[str, Specie] = {}
+
+        if species is not None:
+            _by_name = {sp.name: sp for sp in species}
+            _by_serialized = {sp.serialized: sp for sp in species}
+
+        super().__init__(species, _by_name)
+        self._by_serialized = _by_serialized
+
+        self.count: int = len(self._list)
+
+    def add(self, specie: Specie) -> None:
+        if not isinstance(specie, Specie):
+            raise ValueError(f"'{specie}' must be an instance of 'Specie'")
+
+        if specie.name not in self._by_name:
+            self._by_name[specie.name] = specie
+            self._by_serialized[specie.serialized] = specie
+            self._list.append(specie)
+            self.count = len(self._list)
+
+    def from_serialized(self, serialized: str) -> Specie:
+        return self._by_serialized[serialized]
+
+    def from_name(self, name: str) -> Specie:
+        return self._by_name[name]
+
+    def get_list(self):
+        return self._list

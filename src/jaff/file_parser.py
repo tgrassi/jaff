@@ -1205,7 +1205,7 @@ class Fileparser:
                 "func": self.__sub,
                 "props": {
                     # Returns: int - number of species
-                    "nspec": {"func": lambda: len(self.net.species)},
+                    "nspec": {"func": lambda: self.net.species.count},
                     # Returns: int - number of elements
                     "nelem": {"func": lambda: self.net.elements.count},
                     # Returns: int - number of reactions
@@ -1225,7 +1225,7 @@ class Fileparser:
                     # Returns: str - language specific internal energy equation code
                     "dedt": {"func": cg.get_dedt},
                     # Returns: int - electron index in species array
-                    "e_idx": {"func": lambda: self.net.specie_index["e-"]},
+                    "e_idx": {"func": lambda: self.net.species["e-"].index},
                 },
             },
             # REPEAT command: iterate over network components or generate expressions
@@ -1691,23 +1691,15 @@ class Fileparser:
                     # Returns: int - index of element
                     "element_idx": {"func": lambda e: self.net.elements.index[e]},
                     # Returns: int - index of species
-                    "specie_idx": {"func": lambda s: self.net.specie_index[s]},
+                    "specie_idx": {"func": lambda s: self.net.species[s].index},
                     # Returns: int - index of reaction
                     "reaction_idx": {"func": lambda r: self.net.reaction_index[r]},
                     # Returns: float - mass of specified species
-                    "specie_mass": {
-                        "func": lambda s: self.net.species[self.net.specie_index[s]].mass
-                    },
+                    "specie_mass": {"func": lambda s: self.net.species[s].mass},
                     # Returns: int - charge of specified species
-                    "specie_charge": {
-                        "func": lambda s: (
-                            self.net.species[self.net.specie_index[s]].charge
-                        )
-                    },
+                    "specie_charge": {"func": lambda s: self.net.species[s].charge},
                     # Returns: str - LaTeX representation of specified species
-                    "specie_latex": {
-                        "func": lambda s: self.net.species[self.net.specie_index[s]].latex
-                    },
+                    "specie_latex": {"func": lambda s: self.net.species[s].latex},
                     # Returns: float - minimum temperature for specified reaction
                     "reaction_tmin": {
                         "func": lambda r: (
@@ -1733,7 +1725,7 @@ class Fileparser:
                 "func": self.__has,
                 "props": {
                     # Returns: int - 1 if species exists, 0 otherwise
-                    "specie": {"func": lambda s: int(s in self.net.specie_index)},
+                    "specie": {"func": lambda s: int(s in self.net.species)},
                     # Returns: int - 1 if reaction exists, 0 otherwise
                     "reaction": {"func": lambda r: int(r in self.net.reaction_index)},
                     # Returns: int - 1 if element exists, 0 otherwise

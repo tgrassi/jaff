@@ -4,33 +4,31 @@ from typing import TYPE_CHECKING
 
 from sympy import Basic, Expr, Float, Idx, MatrixSymbol
 
-from jaff.core.logger import jaff_progress
+from ..core.logger import jaff_progress
 
 if TYPE_CHECKING:
-    from .. import Reaction
+    from .. import Reaction, Species
     from .radiation import Radiation
 
 
-def get_sfluxes(reactions: list["Reaction"], specie_index: dict[str, int]) -> list[Expr]:
-    nspec = max(specie_index.values()) + 1 if specie_index else 0
+def get_sfluxes(reactions: list["Reaction"], species: Species) -> list[Expr]:
     nreact = len(reactions)
     fluxes: list[Expr] = [Float(0.0) for _ in range(nreact)]
-    nden_matrix = MatrixSymbol("nden", nspec, 1)
+    nden_matrix = MatrixSymbol("nden", species.count, 1)
 
     for i, reaction in enumerate(reactions):
         flux = reaction.rate
         for reactant in reaction.reactants:
-            flux *= nden_matrix[specie_index[str(reactant)]]
+            flux *= nden_matrix[species[str(reactant)].index]
 
         fluxes[i] = flux
 
     return fluxes
 
 
-def get_sodes(reactions: list["Reaction"], specie_index: dict[str, int]) -> list[Basic]:
-    nspec = max(specie_index.values()) + 1 if specie_index else 0
-    fluxes = get_sfluxes(reactions, specie_index)
-    sodes: list[Basic] = [Float(0.0) for _ in range(nspec)]
+def get_sodes(reactions: list["Reaction"], species: Species) -> list[Basic]:
+    fluxes = get_sfluxes(reactions, species)
+    sodes: list[Basic] = [Float(0.0) for _ in range(species.count)]
 
     for i, reaction in enumerate(reactions):
         for rr in reaction.reactants:
@@ -54,7 +52,7 @@ def get_sodes(reactions: list["Reaction"], specie_index: dict[str, int]) -> list
 
 
 def get_sradodes(
-    radiation: "Radiation" | None, specie_index: dict[str, int], order: int = 0
+    radiation: "Radiation" | None, species: Species, order: int = 0
 ) -> list[Expr]:
     # Check if radiation is enabled
     if radiation is None:
@@ -65,8 +63,7 @@ def get_sradodes(
         raise ValueError("Invalid order: Supported orders are 0, 1, 2, 3")
 
     rad_groups = radiation.groups
-    nspec = max(specie_index.values()) + 1 if specie_index else 0
-    nden = MatrixSymbol("nden", nspec, 1)
+    nden = MatrixSymbol("nden", species.count, 1)
 
     den = MatrixSymbol(
         "radeden" if radiation.energy_density else "photden",
@@ -89,7 +86,7 @@ def get_sradodes(
             rrate = props["k"]
             group_dRad_dt_extra += props["delta_rad"]
             for reactant in reaction.reactants:
-                rrate *= nden[Idx(specie_index[str(reactant)])]
+                rrate *= nden[Idx(species[str(reactant)].index)]
 
             group_rate -= rrate
 

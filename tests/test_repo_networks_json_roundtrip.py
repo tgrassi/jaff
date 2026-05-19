@@ -1,11 +1,11 @@
 # ABOUTME: Opt-in tests for round-tripping repo-provided networks via JSON
 # ABOUTME: Runs only when JAFF_TEST_REPO_NETWORKS=1 is set (can be slow)
 
+import io
 import os
 import sys
 import tempfile
-from contextlib import redirect_stdout, redirect_stderr
-import io
+from contextlib import redirect_stderr, redirect_stdout
 
 import pytest
 import sympy
@@ -86,7 +86,7 @@ def test_repo_networks_roundtrip_json():
         os.close(fd)
         try:
             net.to_jaff_file(json_path)
-            net2 = Network.from_jaff_file(json_path)
+            net2 = Network(json_path)
         finally:
             os.unlink(json_path)
 
