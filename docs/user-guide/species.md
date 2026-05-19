@@ -52,8 +52,8 @@ for i, species in enumerate(net.species):
 
 ```python
 # Fast lookup using dictionary
-if "CO" in net.species_dict:
-    idx = net.species_dict["CO"]
+if "CO" in net.specie_index:
+    idx = net.specie_index["CO"]
     co = net.species[idx]
     print(f"CO at index {idx}, mass={co.mass}")
 else:

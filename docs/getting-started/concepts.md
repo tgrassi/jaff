@@ -64,8 +64,8 @@ print(f"Label: {net.label}")                # Network identifier
 
 - `species`: List of all chemical species
 - `reactions`: List of all reactions
-- `species_dict`: Fast lookup dictionary (name → index)
-- `reactions_dict`: Dictionary of reactions by type
+- `specie_index`: Fast lookup dictionary (name → index)
+- `reaction_index`: Dictionary of reactions by type
 - Mass information and elemental composition
 - `file_name`: The network file name
 - `label`: A label for the network

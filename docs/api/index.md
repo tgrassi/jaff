@@ -195,8 +195,8 @@ from jaff.reaction import Reaction
 | Load network        | `net = Network("file.dat")`         |
 | Get species count   | `len(net.species)`                  |
 | Get reaction count  | `len(net.reactions)`                |
-| Find species index  | `net.species_dict["CO"]`            |
-| Find reaction index | `net.reactions_dict["H + O -> OH"]` |
+| Find species index  | `net.specie_index["CO"]`            |
+| Find reaction index | `net.reaction_index["H + O -> OH"]` |
 | Access species      | `net.species[0]`                    |
 | Access reaction     | `net.reactions[0]`                  |
 

@@ -107,8 +107,8 @@ net = Network("networks/react_COthin", funcfile="aux_funcs.txt")
 | ---------------- | ---------------------------------------------- | ----------------------------------------------- |
 | `species`        | `list[Species]`                                | List of all species in the network              |
 | `reactions`      | `list[Reaction]`                               | List of all reactions in the network            |
-| `species_dict`   | `dict[str, int]`                               | Dictionary mapping species names to indices     |
-| `reactions_dict` | `dict[str, int]`                               | Dictionary mapping reaction verbatim to indices |
+| `specie_index`   | `dict[str, int]`                               | Dictionary mapping species names to indices     |
+| `reaction_index` | `dict[str, int]`                               | Dictionary mapping reaction verbatim to indices |
 | `label`          | `str`                                          | Network identifier/label                        |
 | `file_name`      | `str`                                          | Path to the original network file               |
 | `mass_dict`      | `dict[str, [dict["name": str], "mass": float]` | Atomic mass dictionary                          |

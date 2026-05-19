@@ -232,7 +232,7 @@ from jaff import Network
 net = Network("networks/react_COthin")
 
 # Get species index
-co_index = net.species_dict["CO"]
+co_index = net.specie_index["CO"]
 co = net.species[co_index]
 
 print(f"CO: index={co_index}, mass={co.mass}, charge={co.charge}")
@@ -333,7 +333,7 @@ Always check your network for errors when loading:
 !!! tip "Pro Tip: Species Lookup"
 Use the species dictionary for fast lookups:
 `python
-    idx = net.species_dict["CO"]  # Much faster than searching
+    idx = net.specie_dict["CO"]  # Much faster than searching
     `
 
 !!! tip "Pro Tip: Template Testing"
