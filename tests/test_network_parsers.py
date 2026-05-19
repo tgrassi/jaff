@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from jaff.network import Network
 from jaff.reaction import Reaction
-from jaff.species import Species
+from jaff.species import Specie
 
 
 class TestNetworkParsers:

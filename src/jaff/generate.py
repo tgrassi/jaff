@@ -186,7 +186,7 @@ class JaffGen:
         self.jaffgen_config["config_file_dir"] = config_file.parent
         self.jaffgen_config_raw = Toml(config_file)
 
-    def __process_files(self):
+    def __process_files(self) -> None:
         # Process each template file
         for file in jaff_progress.track(self.files, description="Processing files"):
             # Initialize file parser for this template
@@ -412,7 +412,7 @@ class JaffGen:
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
 
-    def __set_parser_props(self):
+    def __set_parser_props(self) -> None:
         # Required arguments
         self.parser.add_argument(
             "--config",

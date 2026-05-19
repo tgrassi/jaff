@@ -33,12 +33,12 @@ class JaffX:
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
 
-    def __set_subparsers(self):
+    def __set_subparsers(self) -> None:
         parser_funcs = [self.__set_export_comm, self.__set_get_comm]
         for parser_func in parser_funcs:
             parser_func()
 
-    def __set_export_comm(self):
+    def __set_export_comm(self) -> None:
         export_parser = self.subparsers.add_parser(
             "export",
             help="Exports the network file in specified format",
@@ -50,7 +50,7 @@ class JaffX:
 
     def __set_export_txt(
         self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"
-    ):
+    ) -> None:
         parser = esp.add_parser(
             "txt",
             help="Exports reaction rate coefficients for all reactions as a function of temperature to text format",
@@ -124,7 +124,7 @@ class JaffX:
 
     def __set_export_hdf5(
         self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"
-    ):
+    ) -> None:
         parser = esp.add_parser(
             "hdf5",
             help="Exports reaction rate coefficients for all reactions as a function of temperature to hdf5 format",
@@ -198,7 +198,7 @@ class JaffX:
 
     def __set_export_jaff(
         self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"
-    ):
+    ) -> None:
         parser = esp.add_parser(
             "jaff",
             help="Exports the network to a .jaff file (gzip-compressed JSON payload)",
@@ -215,7 +215,7 @@ class JaffX:
             help="Output file path/name",
         )
 
-    def __set_network_args(self, parser: argparse.ArgumentParser):
+    def __set_network_args(self, parser: argparse.ArgumentParser) -> None:
         network_grp = parser.add_argument_group("Network properties")
         network_grp.add_argument(
             "--network",
@@ -241,7 +241,7 @@ class JaffX:
             help="Standardize hydrogen density symbols if true",
         )
 
-    def __set_get_comm(self):
+    def __set_get_comm(self) -> None:
         export_parser = self.subparsers.add_parser(
             "get",
             help="Get network properties",
@@ -251,19 +251,23 @@ class JaffX:
         self.__set_get_nreact(esp)
         self.__set_get_latex(esp)
 
-    def __set_get_nspec(self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"):
+    def __set_get_nspec(
+        self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"
+    ) -> None:
         parser = esp.add_parser("num-species", help="Prints the number of species")
         parser.set_defaults(func=self.__get_nspec)
         self.__set_network_args(parser)
 
     def __set_get_nreact(
         self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"
-    ):
+    ) -> None:
         parser = esp.add_parser("num-reactions", help="Prints the number of species")
         parser.set_defaults(func=self.__get_nreact)
         self.__set_network_args(parser)
 
-    def __set_get_latex(self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"):
+    def __set_get_latex(
+        self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"
+    ) -> None:
         parser = esp.add_parser("latex", help="Prints latex representation of species")
         parser.set_defaults(func=self.__get_latex)
         self.__set_network_args(parser)
@@ -328,11 +332,11 @@ class JaffX:
 
     def __get_nspec(self, args) -> None:
         net = self.__get_network(args)
-        self.logger.info(f"Total number of species: {net.get_number_of_species()}")
+        self.logger.info(f"Total number of species: {net.nspec}")
 
     def __get_nreact(self, args) -> None:
         net = self.__get_network(args)
-        self.logger.info(f"Total number of reactions: {net.get_number_of_reactions()}")
+        self.logger.info(f"Total number of reactions: {net.nreact}")
 
     def __get_latex(self, args) -> None:
         mparams = signature(Network.get_latex).parameters

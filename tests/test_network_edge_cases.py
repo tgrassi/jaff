@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from jaff.network import Network
 from jaff.reaction import Reaction
-from jaff.species import Species
+from jaff.species import Specie
 
 
 class TestNetworkEdgeCases:
@@ -82,7 +82,7 @@ class TestNetworkEdgeCases:
             assert network.rlist is not None
             assert network.plist is not None
             assert network.rlist.shape[0] == 0  # No reactions
-            assert network.get_number_of_species() >= 0  # May have default species
+            assert network.nspec >= 0  # May have default species
         finally:
             os.unlink(temp_file)
 
@@ -104,7 +104,7 @@ class TestNetworkEdgeCases:
             species_names = [s.name for s in network.species]
             assert "H" in species_names
             assert "H2" in species_names
-            assert network.get_number_of_species() >= 2
+            assert network.nspec >= 2
         finally:
             os.unlink(temp_file)
 
