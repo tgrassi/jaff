@@ -12,8 +12,8 @@ if TYPE_CHECKING:
     import logging
 
 
-class Species:
-    def __init__(self, name: str, mass_dict: dict, index: int):
+class Specie:
+    def __init__(self, name: str, mass_dict: dict[str, ElementProps], index: int):
         self.logger: logging.Logger = JaffLogger().get_logger()
         if name.lower() in ["e", "eletron", "electrons", "el", "els"] or name in [
             "E",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
+from functools import cached_property
 from pathlib import Path
 from typing import NotRequired, TypedDict
 
@@ -35,7 +36,7 @@ from .physics import constants
 from .physics.equations import get_sfluxes, get_sodes, get_sradodes
 from .physics.radiation import Radiation
 from .reaction import Reaction
-from .species import Species
+from .species import Specie
 
 NetworkProps = TypedDict(
     "NetworkProps",
@@ -88,7 +89,7 @@ class Network:
             print(motd())
 
         self.mass_dict: dict[str, ElementProps] = {}
-        self.species: list[Species] = []
+        self.species: list[Specie] = []
         self.specie_index: dict[str, int] = {}
         self.reactions: list[Reaction] = []
         self.reaction_index: dict[str, int] = {}
@@ -177,7 +178,7 @@ class Network:
             for s in reactants + products:
                 if s not in specie_names:
                     specie_names.add(s)
-                    self.species.append(Species(s, self.mass_dict, len(specie_names) - 1))
+                    self.species.append(Specie(s, self.mass_dict, len(specie_names) - 1))
                     self.specie_index[s] = self.species[-1].index
                     self.specie_index[self.species[-1].serialized] = self.species[
                         -1
@@ -720,16 +721,18 @@ class Network:
 
         return expr.xreplace(reps)
 
-    def get_number_of_species(self) -> int:
+    @cached_property
+    def nspec(self) -> int:
         return len(self.species)
 
-    def get_number_of_reactions(self) -> int:
+    @cached_property
+    def nreact(self) -> int:
         return len(self.reactions)
 
     def get_species_index(self, name: str) -> int:
         return self.specie_index[name]
 
-    def get_species_object(self, name) -> Species:
+    def get_species_object(self, name) -> Specie:
         return self.species[self.specie_index[name]]
 
     def get_reaction_index(self, name) -> int:
@@ -742,7 +745,7 @@ class Network:
         sp = self.species[self.specie_index[name]]
         return f"${sp.latex}$" if dollars else sp.latex
 
-    def get_species_by_serialized(self, serialized: str) -> Species:
+    def get_species_by_serialized(self, serialized: str) -> Specie:
         if serialized not in self.specie_index:
             raise KeyError(f"Invalid serealized specie: {serialized}")
 

@@ -23,14 +23,14 @@ from jaff.core.logger import JaffLogger
 from jaff.physics import constants
 
 if TYPE_CHECKING:
-    from .species import Species
+    from .species import Specie
 
 
 class Reaction:
     def __init__(
         self,
-        reactants: list[Species],
-        products: list[Species],
+        reactants: list[Specie],
+        products: list[Specie],
         rate: Basic,
         tmin: float | None,
         tmax: float | None,
@@ -40,8 +40,8 @@ class Reaction:
         errors: bool = False,
     ):
         self.logger = JaffLogger().get_logger()
-        self.reactants: list[Species] = reactants
-        self.products: list[Species] = products
+        self.reactants: list[Specie] = reactants
+        self.products: list[Specie] = products
         self.rate: Basic = rate
         self.tmin: float | None = tmin
         self.tmax: float | None = tmax
@@ -182,36 +182,36 @@ class Reaction:
 
         return flux
 
-    def has_any_species(self, species: list[Species | str] | str | Species) -> bool:
+    def has_any_species(self, species: list[Specie | str] | str | Specie) -> bool:
         sp_list: list[str] = []
-        if isinstance(species, Species):
+        if isinstance(species, Specie):
             sp_list.append(species.name)
         elif isinstance(species, str):
             sp_list.append(species)
         elif isinstance(species, list):
-            sp_list = [sp.name if isinstance(sp, Species) else sp for sp in species]
+            sp_list = [sp.name if isinstance(sp, Specie) else sp for sp in species]
 
         return any([x.name in sp_list for x in self.reactants + self.products])
 
-    def has_reactant(self, species: list[Species | str] | str | Species) -> bool:
+    def has_reactant(self, species: list[Specie | str] | str | Specie) -> bool:
         sp_list: list[str] = []
-        if isinstance(species, Species):
+        if isinstance(species, Specie):
             sp_list.append(species.name)
         elif isinstance(species, str):
             sp_list.append(species)
         elif isinstance(species, list):
-            sp_list = [sp.name if isinstance(sp, Species) else sp for sp in species]
+            sp_list = [sp.name if isinstance(sp, Specie) else sp for sp in species]
 
         return any([x.name in sp_list for x in self.reactants])
 
-    def has_product(self, species: list[Species | str] | str | Species) -> bool:
+    def has_product(self, species: list[Specie | str] | str | Specie) -> bool:
         sp_list: list[str] = []
-        if isinstance(species, Species):
+        if isinstance(species, Specie):
             sp_list.append(species.name)
         elif isinstance(species, str):
             sp_list.append(species)
         elif isinstance(species, list):
-            sp_list = [sp.name if isinstance(sp, Species) else sp for sp in species]
+            sp_list = [sp.name if isinstance(sp, Specie) else sp for sp in species]
 
         return any([x.name in sp_list for x in self.products])
 

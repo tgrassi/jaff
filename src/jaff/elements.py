@@ -12,7 +12,7 @@ from functools import cache
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from . import Species
+    from . import Specie
     from .common.helper import ElementProps
 
 
@@ -93,7 +93,7 @@ class Elements:
     """
 
     def __init__(
-        self, species: Species | list[Species], mass_dict: dict[str, ElementProps]
+        self, species: Specie | list[Specie], mass_dict: dict[str, ElementProps]
     ) -> None:
         """
         Initialize the Elements analyzer for a given reaction network.
@@ -104,7 +104,7 @@ class Elements:
         self._mass_dict = mass_dict
         self.list: list[Element] = []
         self.index: dict[str, int] = {}
-        self.species: list[Species] = species if isinstance(species, list) else [species]  # type: ignore
+        self.species: list[Specie] = species if isinstance(species, list) else [species]  # type: ignore
         self.count: int = 0
 
         self._set_elements()

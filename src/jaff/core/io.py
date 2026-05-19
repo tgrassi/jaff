@@ -21,17 +21,17 @@ from ..errors import NotJaffFileError
 from ..jaff_types import HDF5Dict
 
 if TYPE_CHECKING:
-    from .. import Network, Reaction, Species
+    from .. import Network, Reaction, Specie
 else:
-    Species = "Species"
+    Species = "Specie"
     Reaction = "Reaction"
     Network = "Network"
 
 ReactionProps = TypedDict(
     "ReactionProps",
     {
-        "reactants": list["Species"],
-        "products": list["Species"],
+        "reactants": list["Specie"],
+        "products": list["Specie"],
         "rate": Basic,
         "dE": Basic,
         "dRad_dt": Basic,
@@ -49,7 +49,7 @@ JaffProps = TypedDict(
     {
         "file_name": NotRequired[Path],
         "label": NotRequired[str],
-        "species": NotRequired[list["Species"]],
+        "species": NotRequired[list["Specie"]],
         "specie_index": NotRequired[dict[str, int]],
         "reactions": NotRequired[list[ReactionProps]],
     },
@@ -177,7 +177,7 @@ def from_jaff_file(filename: str | Path, errors=False):
         errors : bool
             If True, run Network validation checks and exit on errors.
     """
-    from .. import Species
+    from .. import Specie
 
     if isinstance(filename, str):
         filename = Path(filename)
@@ -238,7 +238,7 @@ def from_jaff_file(filename: str | Path, errors=False):
 
     for idx in sorted(by_index.keys()):
         name = by_index[idx]
-        sp_obj = Species(name, mass_dict, idx)
+        sp_obj = Specie(name, mass_dict, idx)
         species_list.append(sp_obj)
         specie_index[name] = idx
         species_by_index[idx] = sp_obj

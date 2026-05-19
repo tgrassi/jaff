@@ -47,7 +47,7 @@ const double crate = DEFAULT_CRATE;  // Cosmic ray ionization rate
 """
 
     # Process template files
-    num_species = str(network.get_number_of_species())
+    num_species = str(network.nspec)
     num_reactions = str(len(network.reactions))
 
     # Generate proper C++ array declarations
