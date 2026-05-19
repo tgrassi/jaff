@@ -132,7 +132,7 @@
     psi = 1.7 * chi * exp(-1.87*av) * sqrt(tgas) / ne
 
     # Gong's k_gr
-    logT = log(tgas, 10)
+    logT = log(tgas)
     k_gr = 1e-14 * c0 / (1 + c1 * psi**c2 * \
         (1 + c3 * tgas**c4 * psi**(-c5-c6*logT)))
 
@@ -316,7 +316,7 @@
 
     # Rate coefficient fitting functions
     k1 = A_kCHx * (300/tgas)**n_kCHx
-    k2 = c0 * exp(-T1/tgas) + c1 * exp(-T2/tgas) + \
+    k2 = c0 * exp(-T0/tgas) + c1 * exp(-T1/tgas) + \
         c2 * exp(-T2/tgas) + c3 * exp(-T3/tgas)
 
     # Final rate coefficient
@@ -421,7 +421,7 @@
 
     return 0.99e-13 * tgas**-1.3 * exp(-23/tgas) / ne
 
-@function chemRate33(tgas)
+@function chemRate32(tgas)
     # Reaction 33: He+ + e- -> He
     # tgas Gas temperature in K
 
@@ -429,8 +429,8 @@
     return 1e-11 * tgas**-0.5 * (11.19 + (-1.676 + \
         (-0.2852 + 0.04433 * logT) * logT) * logT)
 
-@function chemRate36(tgas)
-    # Reaction 36: C+ + e- -> c
+@function chemRate35(tgas)
+    # Reaction 36: C+ + e- -> C
     # tgas Gas temperature in K
 
     # Constants in Gong's function for C+ reaction rate
@@ -452,20 +452,20 @@
     # Return
     return alpharr + alphadr
 
-@function chemRate38(tgas)
+@function chemRate37(tgas)
     # Reaction 38: H2 + H2+ -> H + H3+
     # tgas Gas temperature in K
 
     return 1.76e-9 * tgas**0.042 * exp(-tgas / 46600.)
 
-@function chemRate40(tgas)
+@function chemRate39(tgas)
     # Reaction 40: H+ + e- -> H
     # tgas Gas temperature in K
 
     return 2.753e-14 * (315614/tgas)**1.5 * (1 + \
         (115188./tgas)**0.407)**-2.242
 
-@function chemRate41(tgas, nH, nH0, nH2)
+@function chemRate40(tgas, nH, nH0, nH2)
     # Reaction 41: H2 + H -> H + H + H
     # tgas Gas temperature in K
     # nH Number density of H nuclei in cm^-3
@@ -480,7 +480,7 @@
     return Piecewise((10**(logk9h * n2ncr_ / (1 + n2ncr_) + \
         logk9l / (1 + n2ncr_)), tgas > 7.0e2), (0, True))
 
-@function chemRate42(tgas, nH, nH0, nH2)
+@function chemRate41(tgas, nH, nH0, nH2)
     # Reaction 42: H2 + H2 -> H + H + H2
     # tgas Gas temperature in K
     # nH Number density of H nuclei in cm^-3
@@ -497,7 +497,7 @@
         (1 + n2ncr_) + logk10l / (1 + n2ncr_)), tgas > 7.0e2), \
         (0, True))
 
-@function chemRate43(tgas)
+@function chemRate42(tgas)
     # Reaction 43: H + e- -> H+ + e- + e-
     # tgas Gas temperature in K
 
@@ -508,14 +508,14 @@
         - 2.63197617e-3 * lnTe**6 + 1.11954395e-4 * lnTe**7 \
         - 2.03914985e-6 * lnTe**8), tgas > 7.0e2), (0, True))
 
-@function chemRate49(tgas)
+@function chemRate48(tgas)
     # Reaction 49: O + H+ -> O+ + H
     # tgas Gas temperature in K
 
     return (1.1e-11 * tgas**0.517 + 4.0e-10 * tgas**6.69e-3 ) \
         * exp(-227/tgas)
 
-@function chemRate50(tgas)
+@function chemRate49(tgas)
     # Reaction 50: O+ + H -> O + H+
     # tgas Gas temperature in K
 
@@ -595,15 +595,15 @@
     f = 1 / (1 + ncrH2(tgas, nH, nH0, nH2, k_photo) / nH)
     return (0.2 + 4.2*f) * eV
 
-@function deltaE41()
+@function deltaE40()
     # Reaction 41: H2 + H -> H + H + H
     return -4.48 * eV
 
-@function deltaE42()
+@function deltaE41()
     # Reaction 42: H2 + H2 -> H + H + H2
     return -4.48 * eV
 
-@function deltaE43()
+@function deltaE42()
     # Reaction 43: H + e- -> H+ + e- + e-
     return -13.6 * eV
 
@@ -630,10 +630,10 @@
     C = Array([5.22, 2.25, 0.04996, 0.00430, 0.147, 0.431, 0.692])
 
     # Psi factor appearing in grain charging
-    psi = 1.7 * chi * exp(-1.87*av) * sqrt(tgas) / ne
+    psi = 1.7 * chi * exp(-1.87*av) * sqrt(tgas) / ne + 50
 
     # PE heating rate
-    return 1e-26 * 1.7 * chi * nH * (C[0] + C[1] * tgas**C[4]) / \
+    return 1e-26 * 1.7 * chi * exp(-1.87*av) * d2g / d2g_solar * nH * (C[0] + C[1] * tgas**C[4]) / \
         (1 + C[2] * psi**C[5] * (1 + C[3] * psi**C[6]))
 
 #### Cooling functions ####
@@ -872,7 +872,7 @@
     # Collision rate coefficients for para-H2
     q10_pH2 = 0.67e-10 * T2**(-0.085+0.102*lnT2)
     q20_pH2 = 0.86e-10 * T2**(-0.010+0.048*lnT2)
-    q21_pH2 = 1.475e-10 * T2**(0.072+0.064*lnT2)
+    q21_pH2 = 1.75e-10 * T2**(0.072+0.064*lnT2)
 
     # Collision rate coefficients for otho-H2
     q10_oH2 = 0.71e-10 * T2**(-0.004+0.049*lnT2)
@@ -920,7 +920,7 @@
         (3.88997286356e-10 * tgas**0.07, True))
 
     # Get total collisional de-excitation rate coefficient
-    k10 = k_e * n_e + k_H * n_H + (k_oH2 * f_oH2 + k_pH2 * f_pH2) * n_H2
+    k10 = k_e * n_e + k_H * n_H0 + (k_oH2 * f_oH2 + k_pH2 * f_pH2) * n_H2
 
     # Compute cooling rate
     return n_Cp * cooling_2level(T10, A10, g0, g1, k10, tgas)
@@ -969,7 +969,7 @@
     q21_pH2 = 2.10e-12 * T2**(0.889+0.043*lnT2)
 
     # Collision rate coefficients for ortho-H2
-    q10_oH2 = 1.37e-10 * T2**(0.206+0.043*lnT2)
+    q10_oH2 = 1.37e-10 * T2**(0.296+0.043*lnT2)
     q20_oH2 = 2.23e-10 * T2**(0.237+0.058*lnT2)
     q21_oH2 = 3.00e-12 * T2**(1.198+0.525*lnT2)
 
@@ -1060,7 +1060,7 @@
     Td_rad = ( (heat_rate_CMB + heat_rate_ISRF) / (0.01 * sigma_d10 * c_a) )**(1/6)
 
     # Get dust cooling rate assuming radiative heating sets dust temp
-    cool_rate_rad = alpha_GD * (d2g / d2g_solar) * n_H * sqrt(tgas) * (Td_rad - tgas)
+    cool_rate_rad = alpha_GD * (d2g / d2g_solar) * n_H * sqrt(tgas) * (tgas - Td_rad)
 
     # Return min cooling rate
     return Min(cool_rate_coll, cool_rate_rad)
@@ -1074,7 +1074,7 @@
     # n_e Number density of free electrons, in cm^-3
 
     # Grain charge state parameter
-    x = 1.7 * chi * exp(-1.87*av) * sqrt(tgas) / (n_e + 1e-50)
+    x = 1.7 * chi * exp(-1.87*av) * sqrt(tgas) / (n_e + 1e-50) + 50
     lnx = log(x)
 
     # Fit coefficients
