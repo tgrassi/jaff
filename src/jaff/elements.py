@@ -11,9 +11,8 @@ from __future__ import annotations
 from functools import cache
 from typing import TYPE_CHECKING
 
-from . import Species
-
 if TYPE_CHECKING:
+    from . import Species
     from .common.helper import ElementProps
 
 
@@ -24,7 +23,7 @@ class Element:
         if symbol in cls._register:
             return cls._register[symbol]
 
-        instance = super().__init__(cls)
+        instance = super().__new__(cls)
         cls._register[symbol] = instance
 
         return instance
@@ -43,12 +42,40 @@ class Element:
         self.protons: int = mass_dict[symbol]["protons"]
         self.neutrons: int = mass_dict[symbol]["neutrons"]
         self.electrons: int = mass_dict[symbol]["electrons"]
+        self._initialized = True
 
     def __repr__(self) -> str:
         return f"Element(symbol={self.symbol!r}, name={self.name!r}"
 
     def __str__(self) -> str:
         return self.symbol
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Element):
+            raise TypeError(
+                f"'==' not supported between instances of 'Element' and '{other}'"
+            )
+
+        return self.symbol == other.symbol
+
+    def __lt__(self, other) -> bool:
+        if not isinstance(other, Element):
+            raise TypeError(
+                f"'<' not supported between instances of 'Element' and '{other}'"
+            )
+
+        return self.symbol < other.symbol
+
+    def __rt__(self, other) -> bool:
+        if not isinstance(other, Element):
+            raise TypeError(
+                f"'>' not supported between instances of 'Element' and '{other}'"
+            )
+
+        return self.symbol > other.symbol
+
+    def __hash__(self):
+        return hash(self.symbol)
 
 
 class Elements:
@@ -62,7 +89,7 @@ class Elements:
     Attributes:
         net: The chemical reaction network to analyze.
         elements: Sorted list of unique chemical element symbols found in the network.
-        nelems: Total number of unique elements in the network.
+        count: Total number of unique elements in the network.
     """
 
     def __init__(
@@ -77,11 +104,8 @@ class Elements:
         self._mass_dict = mass_dict
         self.list: list[Element] = []
         self.index: dict[str, int] = {}
-        self.species: list[Species] = (
-            [species] if isinstance(species, Species) else species
-        )
-
-        self.nelms: int = 0
+        self.species: list[Species] = species if isinstance(species, list) else [species]  # type: ignore
+        self.count: int = 0
 
         self._set_elements()
 
@@ -93,11 +117,9 @@ class Elements:
             List of unique element symbols (alphabetic characters only).
         """
         elements: set[str] = set()
-        if isinstance(self.species, Species):
-            species = [self.species]
 
         # Collect all elements from each species' exploded representation
-        for specie in species:
+        for specie in self.species:
             # Union with the set of atoms in this species
             elements |= set(specie.exploded)  # type: ignore[arg-type]
 
@@ -109,7 +131,7 @@ class Elements:
             self.index[e.name] = i
             self.index[e.symbol] = i
 
-        self.nelems = len(self.list)
+        self.count = len(self.list)
 
     @cache
     def truth_matrix(self) -> list[list[int]]:
@@ -120,7 +142,7 @@ class Elements:
         species j, and 0 otherwise.
 
         Returns:
-            2D matrix (nelems × nspecies) with binary values:
+            2D matrix (count × nspecies) with binary values:
             - 1 if the element is present in the species
             - 0 if the element is absent from the species
 
@@ -130,9 +152,9 @@ class Elements:
              [0, 1, 1],   # H present in H2O and CH4
              [1, 1, 0]]   # O present in CO and H2O
         """
-        # Initialize matrix with zeros (nelems rows × nspecies columns)
+        # Initialize matrix with zeros (count rows × nspecies columns)
         element_truth_matrix: list[list[int]] = [
-            [0] * len(self.species) for _ in range(self.nelems)
+            [0] * len(self.species) for _ in range(self.count)
         ]
 
         # Populate matrix: 1 if element is in species, 0 otherwise
@@ -151,7 +173,7 @@ class Elements:
         element i present in species j.
 
         Returns:
-            2D matrix (nelems × nspecies) with integer counts representing
+            2D matrix (count × nspecies) with integer counts representing
             the number of atoms of each element in each species.
 
         Example:
@@ -160,9 +182,9 @@ class Elements:
              [0, 2, 4],   # H: 0 in CO, 2 in H2O, 4 in CH4
              [1, 1, 0]]   # O: 1 in CO, 1 in H2O, 0 in CH4
         """
-        # Initialize matrix with zeros (nelems rows × nspecies columns)
+        # Initialize matrix with zeros (count rows × nspecies columns)
         element_density_matrix: list[list[int]] = [
-            [0] * len(self.species) for _ in range(self.nelems)
+            [0] * len(self.species) for _ in range(self.count)
         ]
 
         # Populate matrix with element counts for each species

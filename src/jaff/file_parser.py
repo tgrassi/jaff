@@ -1207,7 +1207,7 @@ class Fileparser:
                     # Returns: int - number of species
                     "nspec": {"func": lambda: len(self.net.species)},
                     # Returns: int - number of elements
-                    "nelem": {"func": lambda: self.net.elements.nelems},
+                    "nelem": {"func": lambda: self.net.elements.count},
                     # Returns: int - number of reactions
                     "nreact": {"func": lambda: len(self.net.reactions)},
                     # Returns: int - number of reactions
