@@ -64,7 +64,7 @@ class Reaction:
         self.metadata: dict = {}
 
         # Add type metadata to reaction
-        self.guess_type()
+        self.rtype()
 
     def __repr__(self):
         return (
@@ -93,7 +93,7 @@ class Reaction:
 
         return self.serialized < other.serialized
 
-    def guess_type(self) -> str:
+    def rtype(self) -> str:
         rtype = "unknown"
 
         if type(self.rate) is str:
@@ -176,9 +176,9 @@ class Reaction:
 
     def get_latex(self) -> str:
         latex = (
-            f"{' + '.join([x.latex for x in self.reactants])}"
+            f"{' + '.join([r.latex() for r in self.reactants])}"
             "\\,\\to\\,"
-            f"{' + '.join([x.latex for x in self.products])}"
+            f"{' + '.join([x.latex() for x in self.products])}"
         )
         return f"${latex}$"
 
@@ -374,17 +374,25 @@ class Reactions(Catalogue[Reaction]):
 
     def from_verbatim(self, verbatim: str, rtype: str | None = None) -> Reaction | None:
         rea = self._by_name[verbatim]
-        if rtype is None or rea.guess_type() == rtype:
+        if rtype is None or rea.rtype() == rtype:
             return rea
 
     def get_list(self) -> list[Reaction]:
         return self._list
 
+    def get(self, reaction: str, rtype: str | None) -> Reaction | None:
+        rea = self[reaction]
+        if rtype is None or rea.rtype() == rtype:
+            return rea
+
+    def with_rtype(self, rtype: str):
+        return Vector([r for r in self if r.rtype() == rtype])
+
     def verbatim(self) -> Vector[str]:
         return Vector([r.verbatim for r in self])
 
-    def guess_types(self) -> Vector[str]:
-        return Vector([r.guess_type() for r in self])
+    def rtypes(self) -> Vector[str]:
+        return Vector([r.rtype() for r in self])
 
     def reactants(self) -> Vector[list[Specie]]:
         return Vector([r.reactants for r in self])
@@ -414,12 +422,12 @@ class Reactions(Catalogue[Reaction]):
         return Vector([r.serialized_exploded for r in self])
 
     def photo_reactions(self) -> Vector[Reaction]:
-        return Vector([r for r in self if r.guess_type() == "photo"])
+        return Vector([r for r in self if r.rtype() == "photo"])
 
     def photo_reaction_truths(self) -> Vector[int]:
-        return Vector([int(reaction.guess_type() == "photo") for reaction in self])
+        return Vector([int(reaction.rtype() == "photo") for reaction in self])
 
     def photo_reaction_indices(self) -> Vector[int]:
         return Vector(
-            [i for i, reaction in enumerate(self) if reaction.guess_type() == "photo"]
+            [i for i, reaction in enumerate(self) if reaction.rtype() == "photo"]
         )

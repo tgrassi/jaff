@@ -681,10 +681,10 @@ def write_data_table(
     reactants = []
     products = []
     for i in react_list:
-        if reactions[i].guess_type() == "unknown":
+        if reactions[i].rtype() == "unknown":
             rtype.append("2_body")
         else:
-            rtype.append(reactions[i].guess_type())
+            rtype.append(reactions[i].rtype())
         reactants_ = {}
         for r in reactions[i].reactants:
             if r.name in reactants_.keys():

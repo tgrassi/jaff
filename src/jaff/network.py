@@ -242,7 +242,7 @@ class Network:
                         f"Please add a custom deltaRad function for reaction {i}"
                     )
 
-            if rea.guess_type() == "photo":
+            if rea.rtype() == "photo":
                 rea.xsecs_dict = self.photochemistry.get_xsec(rea)
 
         # Add chemical and non-chemical heating and cooling rates
@@ -286,7 +286,7 @@ class Network:
             rea.custom_rad_rate = reaction["custom_rad_rate"]
             self.reactions.add(rea)
 
-            if rea.guess_type() == "photo" and self.radiation is not None:
+            if rea.rtype() == "photo" and self.radiation is not None:
                 if rea.custom_rad_rate:
                     self.radiation.set_custom_rate(rea)
                     continue
@@ -437,23 +437,19 @@ class Network:
         if verbosity == 1:
             self.logger.info(f"Reactions not present in {self.label}:")
             print(
-                "\n".join(
-                    [str(other.get_reaction_by_serialized(rea)) for rea in not_in_self]
-                ),
+                "\n".join([str(other.reactions[rea]) for rea in not_in_self]),
                 "\n",
             )
 
             self.logger.info(f"Reactions not present in {other.label}:")
             print(
-                "\n".join(
-                    [str(self.get_reaction_by_serialized(rea)) for rea in not_in_other]
-                ),
+                "\n".join([str(self.reactions[rea]) for rea in not_in_other]),
                 "\n",
             )
 
             self.logger.info(f"Reactions present in both {self.label} and {other.label}:")
             print(
-                "\n".join([str(self.get_reaction_by_serialized(rea)) for rea in common]),
+                "\n".join([str(self.reactions[rea]) for rea in common]),
                 "\n",
             )
 
@@ -476,23 +472,19 @@ class Network:
         if verbosity == 1:
             self.logger.info(f"Species not present in {self.label}:")
             print(
-                ", ".join(
-                    [str(other.get_species_by_serialized(sp)) for sp in not_in_self]
-                ),
+                ", ".join([str(other.species[sp]) for sp in not_in_self]),
                 "\n",
             )
 
             self.logger.info(f"Species not present in {other.label}:")
             print(
-                ", ".join(
-                    [str(self.get_species_by_serialized(sp)) for sp in not_in_other]
-                ),
+                ", ".join([str(self.species[sp]) for sp in not_in_other]),
                 "\n",
             )
 
             self.logger.info(f"Species present in both {self.label} and {other.label}:")
             print(
-                ", ".join([str(self.get_species_by_serialized(sp)) for sp in common]),
+                ", ".join([str(self.species[sp]) for sp in common]),
                 "\n",
             )
 
@@ -578,7 +570,7 @@ class Network:
                         continue
                     if rea1.is_isomer_version(rea2):
                         continue
-                    if rea1.guess_type() != rea2.guess_type():
+                    if rea1.rtype() != rea2.rtype():
                         continue
                     self.logger.warning(
                         f"Duplicate reaction found: [cyan]{rea1.get_verbatim()}[/]"
@@ -609,9 +601,6 @@ class Network:
             for product in reaction.products:
                 species_idx = product.index
                 self.plist[i, species_idx] += 1
-
-    def get_reaction_verbatim(self, idx: int) -> str:
-        return self.reactions[idx].verbatim
 
     def __standardize_symbols(self, expr: Basic, replace_nH: bool) -> Basic:
         """
@@ -708,43 +697,6 @@ class Network:
                 reps[fs] = repl
 
         return expr.xreplace(reps)
-
-    @cached_property
-    def nspec(self) -> int:
-        return self.species.count
-
-    @cached_property
-    def nreact(self) -> int:
-        return len(self.reactions)
-
-    def get_species_index(self, name: str) -> int:
-        return self.species[name].index
-
-    def get_species_object(self, name) -> Specie:
-        return self.species[name]
-
-    def get_reaction_index(self, name) -> int:
-        return self.reactions[name].index
-
-    def get_latex(self, name: str, dollars: bool = True) -> str:
-        if name not in self.species:
-            raise KeyError(f"Invalid specie name: {name}")
-
-        sp = self.species[name]
-        return f"${sp.latex}$" if dollars else sp.latex
-
-    def get_species_by_serialized(self, serialized: str) -> Specie:
-        return self.species[serialized]
-
-    def get_reaction_by_serialized(self, serialized: str) -> Reaction:
-        return self.reactions[serialized]
-
-    def get_reaction_by_verbatim(
-        self, verbatim: str, rtype: str | None = None
-    ) -> Reaction | None:
-        rea = self.reactions[verbatim]
-        if rtype is None or rea.guess_type() == rtype:
-            return rea
 
     def sfluxes(self) -> list[Expr]:
         return get_sfluxes(self.reactions, self.species)

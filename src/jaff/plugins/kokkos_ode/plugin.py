@@ -47,8 +47,8 @@ const double crate = DEFAULT_CRATE;  // Cosmic ray ionization rate
 """
 
     # Process template files
-    num_species = str(network.nspec)
-    num_reactions = str(len(network.reactions))
+    num_species = str(network.species.count)
+    num_reactions = str(network.reactions.count)
 
     # Generate proper C++ array declarations
     # When using CSE, we don't need the flux array

@@ -26,9 +26,9 @@ class Specie:
         self.name: str = name
         self.mass: float | None = None
         self.exploded: list[str] = []
-        self.latex: str = ""
         self.charge: int = 0
         self.index: int = index
+        self.__latex: str = ""
         self.fidx: str = self.get_fidx()
         self.serialized: str = ""
 
@@ -73,6 +73,9 @@ class Specie:
         self.serialized = "/".join(sorted(self.exploded))
 
         return self.serialized
+
+    def latex(self, dollars: bool = True):
+        return f"${self.__latex}$" if dollars else self.__latex
 
     def parse(self, mass_dict: dict) -> None:
         atoms = sorted(mass_dict.keys(), key=lambda x: len(x), reverse=True)
@@ -123,7 +126,7 @@ class Specie:
 
         latex = latex.replace("GRAIN", "g")
 
-        self.latex = f"{{\\rm {latex}}}"
+        self.__latex = f"{{\\rm {latex}}}"
 
         # charge
         if self.name == "e-":
@@ -182,8 +185,8 @@ class Species(Catalogue[Specie]):
     def exploded(self) -> Vector[list[str]]:
         return Vector([s.exploded for s in self])
 
-    def latex(self) -> Vector[str]:
-        return Vector([s.latex for s in self])
+    def latex(self, dollars: bool = True) -> Vector[str]:
+        return Vector([s.latex(dollars) for s in self])
 
     def charges(self) -> Vector[int]:
         return Vector([s.charge for s in self])

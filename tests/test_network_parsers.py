@@ -37,8 +37,8 @@ class TestNetworkParsers:
 
         # Check specific reaction from our sample file
         # H + H + H -> H2 + H
-        h_idx = network.get_species_index("H")
-        h2_idx = network.get_species_index("H2")
+        h_idx = network.species["H"].index
+        h2_idx = network.species["H2"].index
 
         # Find the reaction
         found = False
@@ -193,7 +193,7 @@ class TestNetworkParsers:
 
         # Verify the photo reactions are correctly identified
         for reaction in photo_reactions:
-            assert reaction.guess_type() == "photo"
+            assert reaction.rtype() == "photo"
 
     def test_temperature_limits_application(self, fixtures_dir):
         """Test that temperature limits (tmin/tmax) are correctly applied."""

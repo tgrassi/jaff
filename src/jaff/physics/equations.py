@@ -12,8 +12,7 @@ if TYPE_CHECKING:
 
 
 def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
-    nreact = len(reactions)
-    fluxes: list[Expr] = [Float(0.0) for _ in range(nreact)]
+    fluxes: list[Expr] = [Float(0.0) for _ in range(reactions.count)]
     nden_matrix = MatrixSymbol("nden", species.count, 1)
 
     for i, reaction in enumerate(reactions):

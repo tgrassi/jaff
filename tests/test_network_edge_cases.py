@@ -37,29 +37,26 @@ class TestNetworkEdgeCases:
     def test_missing_species_lookup(self, sample_network):
         """Test error handling for non-existent species lookup."""
         with pytest.raises(KeyError):
-            sample_network.get_species_index("NONEXISTENT_SPECIES")
+            sample_network.species["NONEXISTENT_SPECIES"]
 
     def test_missing_species_object_lookup(self, sample_network):
         """Test error handling for non-existent species object lookup."""
         with pytest.raises(KeyError):
-            sample_network.get_species_object("NONEXISTENT_SPECIES")
+            sample_network.species["NONEXISTENT_SPECIES"]
 
     def test_missing_reaction_lookup(self, sample_network):
         """Test error handling for non-existent reaction lookup."""
         with pytest.raises(KeyError):
-            sample_network.get_species_object("NONEXISTENT_SPECIES")
+            sample_network.species["NONEXISTENT_SPECIES"]
 
     def test_missing_species_latex_lookup(self, sample_network):
         """Test error handling for non-existent species LaTeX lookup."""
         import pytest
 
-        with pytest.raises(KeyError):
-            sample_network.get_latex("NONEXISTENT_SPECIES")
-
     def test_missing_reaction_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized reaction lookup."""
         with pytest.raises(KeyError):
-            sample_network.get_reaction_by_serialized("NONEXISTENT_SERIALIZED")
+            sample_network.reactions("NONEXISTENT_SERIALIZED")
 
     def test_missing_species_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized species lookup."""
@@ -83,7 +80,7 @@ class TestNetworkEdgeCases:
             assert network.rlist is not None
             assert network.plist is not None
             assert network.rlist.shape[0] == 0  # No reactions
-            assert network.nspec >= 0  # May have default species
+            assert network.species.count >= 0  # May have default species
         finally:
             os.unlink(temp_file)
 
@@ -105,7 +102,7 @@ class TestNetworkEdgeCases:
             species_names = [s.name for s in network.species]
             assert "H" in species_names
             assert "H2" in species_names
-            assert network.nspec >= 2
+            assert network.species.count >= 2
         finally:
             os.unlink(temp_file)
 

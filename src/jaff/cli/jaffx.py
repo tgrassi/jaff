@@ -249,7 +249,6 @@ class JaffX:
         esp = export_parser.add_subparsers(dest="format", required=True)
         self.__set_get_nspec(esp)
         self.__set_get_nreact(esp)
-        self.__set_get_latex(esp)
 
     def __set_get_nspec(
         self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"
@@ -264,29 +263,6 @@ class JaffX:
         parser = esp.add_parser("num-reactions", help="Prints the number of species")
         parser.set_defaults(func=self.__get_nreact)
         self.__set_network_args(parser)
-
-    def __set_get_latex(
-        self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"
-    ) -> None:
-        parser = esp.add_parser("latex", help="Prints latex representation of species")
-        parser.set_defaults(func=self.__get_latex)
-        self.__set_network_args(parser)
-
-        parser.add_argument_group("Latex printing properties")
-        parser.add_argument(
-            "-s",
-            "--specie",
-            nargs="*",
-            metavar="TEXT",
-            help="Name of the specie",
-        )
-
-        parser.add_argument(
-            "-d",
-            "--dollars",
-            metavar="BOOL",
-            help="When enabled, encloses output in dollars",
-        )
 
     def __export_to_txt(self, args) -> None:
         mparams = signature(Network.to_txt).parameters
@@ -332,21 +308,11 @@ class JaffX:
 
     def __get_nspec(self, args) -> None:
         net = self.__get_network(args)
-        self.logger.info(f"Total number of species: {net.nspec}")
+        self.logger.info(f"Total number of species: {net.species.count}")
 
     def __get_nreact(self, args) -> None:
         net = self.__get_network(args)
-        self.logger.info(f"Total number of reactions: {net.nreact}")
-
-    def __get_latex(self, args) -> None:
-        mparams = signature(Network.get_latex).parameters
-        net = self.__get_network(args)
-        kwargs = {
-            "dollars": args.dollars or mparams["dollars"].default,
-        }
-        for specie in args.specie:
-            kwargs["name"] = specie
-            self.logger.info(f"Formatted latex for {specie}: {net.get_latex(**kwargs)}")
+        self.logger.info(f"Total number of reactions: {net.reactions.count}")
 
     def __get_network(self, args) -> Network:
         net_params = signature(Network.__init__).parameters
