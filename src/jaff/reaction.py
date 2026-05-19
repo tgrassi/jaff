@@ -21,7 +21,7 @@ from sympy import (
 
 from .core.logger import JaffLogger
 from .physics import constants
-from .types import Catalogue
+from .types import Catalogue, Vector
 
 if TYPE_CHECKING:
     from .species import Specie
@@ -361,5 +361,49 @@ class Reactions(Catalogue[Reaction]):
         if rtype is None or rea.guess_type() == rtype:
             return rea
 
-    def get_list(self):
+    def get_list(self) -> list[Reaction]:
         return self._list
+
+    def verbatim(self) -> Vector[str]:
+        return Vector([r.verbatim for r in self])
+
+    def guess_types(self) -> Vector[str]:
+        return Vector([r.guess_type() for r in self])
+
+    def reactants(self) -> Vector[list[Specie]]:
+        return Vector([r.reactants for r in self])
+
+    def products(self) -> Vector[list[Specie]]:
+        return Vector([r.products for r in self])
+
+    def rates(self) -> Vector[Basic]:
+        return Vector([r.rate for r in self])
+
+    def tmins(self) -> Vector[float | None]:
+        return Vector([r.tmin for r in self])
+
+    def tmaxes(self) -> Vector[float | None]:
+        return Vector([r.tmax for r in self])
+
+    def dE(self) -> Vector[Basic]:
+        return Vector([r.dE for r in self])
+
+    def dRad_dt(self) -> Vector[Basic]:
+        return Vector([r.dRad_dt for r in self])
+
+    def serialized(self) -> Vector[str]:
+        return Vector([r.serialized for r in self])
+
+    def serialized_exploded(self) -> Vector[str]:
+        return Vector([r.serialized_exploded for r in self])
+
+    def photo_reactions(self) -> Vector[Reaction]:
+        return Vector([r for r in self if r.guess_type() == "photo"])
+
+    def photo_reaction_truths(self) -> Vector[int]:
+        return Vector([int(reaction.guess_type() == "photo") for reaction in self])
+
+    def photo_reaction_indices(self) -> Vector[int]:
+        return Vector(
+            [i for i, reaction in enumerate(self) if reaction.guess_type() == "photo"]
+        )

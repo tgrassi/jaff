@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from .common.helper import ElementProps
 from .core.logger import JaffLogger
 from .elements import Elements
-from .types import Catalogue
+from .types import Catalogue, Vector
 
 if TYPE_CHECKING:
     import logging
@@ -151,5 +151,86 @@ class Species(Catalogue[Specie]):
     def from_name(self, name: str) -> Specie:
         return self._by_name[name]
 
-    def get_list(self):
+    def get_list(self) -> list[Specie]:
         return self._list
+
+    def names(self) -> Vector[str]:
+        return Vector([s.name for s in self])
+
+    def masses(self) -> Vector[float | None]:
+        return Vector([s.mass for s in self])
+
+    def exploded(self) -> Vector[list[str]]:
+        return Vector([s.exploded for s in self])
+
+    def latex(self) -> Vector[str]:
+        return Vector([s.latex for s in self])
+
+    def charges(self) -> Vector[int]:
+        return Vector([s.charge for s in self])
+
+    def serialized(self) -> Vector[str]:
+        return Vector([s.serialized for s in self])
+
+    def elements(self) -> Vector[Elements]:
+        return Vector([s.elements for s in self])
+
+    def e_idx(self) -> int:
+        return self["e-"].index
+
+    def normalized_names(self) -> Vector[str]:
+        return Vector([s.name.lower().replace("+", "p").replace("-", "n") for s in self])
+
+    def neutral(self) -> Vector[Specie]:
+        return Vector([s for s in self if s.charge == 0])
+
+    def charged(self) -> Vector[Specie]:
+        return Vector([s for s in self if s.charge != 0])
+
+    def neutral_indies(self) -> Vector[int]:
+        return Vector([i for i, s in enumerate(self) if s.charge == 0])
+
+    def charged_indies(self) -> Vector[int]:
+        return Vector([i for i, s in enumerate(self) if s.charge != 0])
+
+    def charge_truths(self) -> Vector[int]:
+        return Vector([int(bool(s.charge)) for s in self])
+
+    def masses_ne(self) -> Vector[float | None]:
+        return Vector([s.mass for s in self if str(s) != "e-"])
+
+    def charges_ne(self) -> Vector[int]:
+        return Vector([s.charge for s in self if str(s) != "e-"])
+
+    def charge_truths_ne(self) -> Vector[int]:
+        return Vector([int(bool(s.charge)) for s in self if str(s) != "e-"])
+
+    def neutral_indices(self) -> Vector[int]:
+        return Vector([s.index for s in self if s.charge == 0])
+
+    def charged_indices(self) -> Vector[int]:
+        return Vector([s.index for s in self if s.charge != 0])
+
+    def neutral_indices_ne(self) -> Vector[int]:
+        return Vector([s.index for s in self if s.charge == 0 and str(s) != "e-"])
+
+    def charged_indices_ne(self) -> Vector[int]:
+        return Vector([s.index for s in self if s.charge != 0 and str(s) != "e-"])
+
+    def neutral_masses(self) -> Vector[float | None]:
+        return Vector([s.mass for s in self if s.charge == 0])
+
+    def charged_masses(self) -> Vector[float | None]:
+        return Vector([s.mass for s in self if s.charge != 0])
+
+    def neutral_masses_ne(self) -> Vector[float | None]:
+        return Vector([s.mass for s in self if s.charge == 0 and str(s) != "e-"])
+
+    def charged_masses_ne(self) -> Vector[float | None]:
+        return Vector([s.mass for s in self if s.charge != 0 and str(s) != "e-"])
+
+    def charged_charges(self) -> Vector[int]:
+        return Vector([s.charge for s in self if s.charge != 0])
+
+    def charged_charges_ne(self) -> Vector[int]:
+        return Vector([s.charge for s in self if s.charge != 0 and str(s) != "e-"])

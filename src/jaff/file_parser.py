@@ -1225,7 +1225,7 @@ class Fileparser:
                     # Returns: str - language specific internal energy equation code
                     "dedt": {"func": cg.get_dedt},
                     # Returns: int - electron index in species array
-                    "e_idx": {"func": lambda: self.net.species["e-"].index},
+                    "e_idx": {"func": self.net.species.e_idx},
                 },
             },
             # REPEAT command: iterate over network components or generate expressions
@@ -1273,109 +1273,77 @@ class Fileparser:
                     # Returns: list[Reaction] - all __str__ representation of
                     # reaction objects
                     "reactions": {
-                        "func": lambda: [
-                            str(reaction) for reaction in self.net.reactions
-                        ],
+                        "func": self.net.reactions.verbatim,
                         "vars": ["idx", "reaction"],
                     },
                     # Returns: list[str] - species names
                     "species": {
-                        "func": lambda: [specie.name for specie in self.net.species],
+                        "func": self.net.species.names,
                         "vars": ["idx", "specie"],
                     },
                     # Returns: list[str] - species names with +/-
                     "species_with_normalized_sign": {
-                        "func": lambda: [
-                            specie.name.lower().replace("+", "p").replace("-", "n")
-                            for specie in self.net.species
-                        ],
+                        "func": self.net.species.normalized_names,
                         "vars": ["idx", "specie_with_normalized_sign"],
                     },
                     # Returns: list[str] - element symbols
                     "elements": {
-                        "func": lambda: [e.symbol for e in self.net.elements],
+                        "func": self.net.elements.symbols,
                         "vars": ["idx", "element"],
                     },
                     # Returns: list[float] - mass of each species
                     "specie_masses": {
-                        "func": lambda: [specie.mass for specie in self.net.species],
+                        "func": self.net.species.masses,
                         "vars": ["idx", "specie_mass"],
                     },
                     # Returns: list[list] - reactants for each reaction
                     "reactants": {
-                        "func": lambda: [
-                            reaction.reactants for reaction in self.net.reactions
-                        ],
+                        "func": self.net.reactions.reactants,
                         "vars": ["idx", "reactant"],
                     },
                     # Returns: list[list] - products for each reaction
                     "products": {
-                        "func": lambda: [
-                            reaction.products for reaction in self.net.reactions
-                        ],
+                        "func": self.net.reactions.products,
                         "vars": ["idx", "product"],
                     },
-                    # Returns: list[Reaction] - photo reactions only
+                    # Returns: list[str] - photo reactions only
                     "photo_reactions": {
-                        "func": lambda: [
-                            reaction
-                            for reaction in self.net.reactions
-                            if reaction.guess_type() == "photo"
-                        ],
+                        "func": self.net.reactions.photo_reactions().string,
                         "vars": ["idx", "photo_reaction"],
                     },
                     # Returns: list[int] - 1 if photo reaction, 0 otherwise
                     "photo_reaction_truths": {
-                        "func": lambda: [
-                            int(reaction.guess_type() == "photo")
-                            for reaction in self.net.reactions
-                        ],
+                        "func": self.net.reactions.photo_reaction_truths,
                         "vars": ["idx", "photo_reaction_truth"],
                     },
                     # Returns: list[int] - indices of photo reactions
                     "photo_reaction_indices": {
-                        "func": lambda: [
-                            i
-                            for i, reaction in enumerate(self.net.reactions)
-                            if reaction.guess_type() == "photo"
-                        ],
+                        "func": self.net.reactions.photo_reaction_indices,
                         "vars": ["idx", "photo_reaction_index"],
                     },
                     # Returns: list[int] - charge of each species
                     "specie_charges": {
-                        "func": lambda: [specie.charge for specie in self.net.species],
+                        "func": self.net.species.charges,
                         "vars": ["idx", "specie_charge"],
                     },
-                    # Returns: list[Specie] - neutral species objects
+                    # Returns: list[str] - neutral species names
                     "neutral_species": {
-                        "func": lambda: [
-                            str(specie)
-                            for specie in self.net.species
-                            if specie.charge == 0
-                        ],
+                        "func": self.net.species.neutral,
                         "vars": ["idx", "neutral_specie"],
                     },
                     # Returns: list[Specie] - charged species objects
                     "charged_species": {
-                        "func": lambda: [
-                            str(specie)
-                            for specie in self.net.species
-                            if specie.charge != 0
-                        ],
+                        "func": self.net.species.charged,
                         "vars": ["idx", "charged_specie"],
                     },
                     # Returns: list[float] - minimum temperature for each reaction
                     "tmins": {
-                        "func": lambda: [
-                            reaction.tmin for reaction in self.net.reactions
-                        ],
+                        "func": self.net.reactions.tmins,
                         "vars": ["idx", "tmin"],
                     },
                     # Returns: list[float] - maximum temperature for each reaction
                     "tmaxes": {
-                        "func": lambda: [
-                            reaction.tmax for reaction in self.net.reactions
-                        ],
+                        "func": self.net.reactions.tmaxes,
                         "vars": ["idx", "tmax"],
                     },
                     # Returns: matrix - element density for each species
@@ -1390,126 +1358,72 @@ class Fileparser:
                     },
                     # Returns: list[int] - indices of charged species
                     "charged_indices": {
-                        "func": lambda: [
-                            i
-                            for i, specie in enumerate(self.net.species)
-                            if specie.charge != 0
-                        ],
+                        "func": self.net.species.charged_indies,
                         "vars": ["idx", "charge_index"],
                     },
                     # Returns: list[int] - indices of neutral species
                     "neutral_indices": {
-                        "func": lambda: [
-                            i
-                            for i, specie in enumerate(self.net.species)
-                            if specie.charge == 0
-                        ],
+                        "func": self.net.species.neutral_indies,
                         "vars": ["idx", "neutral_index"],
                     },
                     # Returns: list[int] - 1 if charged, 0 if neutral
                     "charge_truths": {
-                        "func": lambda: [
-                            int(bool(specie.charge)) for specie in self.net.species
-                        ],
+                        "func": lambda: self.net.species.charge_truths,
                         "vars": ["idx", "charge_truth"],
                     },
                     # Returns: list[float] - mass of each species excluding electrons
                     "specie_masses_ne": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if str(specie) != "e-"
-                        ],
+                        "func": self.net.species.masses_ne,
                         "vars": ["idx", "specie_mass_ne"],
                     },
                     # Returns: list[int] - charge of each species excluding electrons
                     "specie_charges_ne": {
-                        "func": lambda: [
-                            specie.charge
-                            for specie in self.net.species
-                            if str(specie) != "e-"
-                        ],
+                        "func": self.net.species.charges_ne,
                         "vars": ["idx", "specie_charge_ne"],
                     },
                     # Returns: list[int] - 1 if charged, 0 if neutral (excluding electrons)
                     "charge_truths_ne": {
-                        "func": lambda: [
-                            int(bool(specie.charge))
-                            for specie in self.net.species
-                            if str(specie) != "e-"
-                        ],
+                        "func": self.net.species.charge_truths_ne,
                         "vars": ["idx", "charge_truth_ne"],
                     },
                     # Returns: list[int] - indices of neutral species
                     "neutral_specie_indices": {
-                        "func": lambda: [
-                            specie.index
-                            for specie in self.net.species
-                            if specie.charge == 0
-                        ],
+                        "func": self.net.species.neutral_indices,
                         "vars": ["idx", "neutral_specie_index"],
                     },
                     # Returns: list[int] - indices of charged species
                     "charged_specie_indices": {
-                        "func": lambda: [
-                            specie.index
-                            for specie in self.net.species
-                            if specie.charge != 0
-                        ],
+                        "func": self.net.species.charged_indices,
                         "vars": ["idx", "charged_specie_index"],
                     },
                     # Returns: list[int] - indices of neutral species excluding electrons
                     "neutral_specie_indices_ne": {
-                        "func": lambda: [
-                            specie.index
-                            for specie in self.net.species
-                            if specie.charge == 0 and str(specie) != "e-"
-                        ],
+                        "func": self.net.species.neutral_indices_ne,
                         "vars": ["idx", "neutral_specie_index_ne"],
                     },
                     # Returns: list[int] - indices of charged species excluding electrons
                     "charged_specie_indices_ne": {
-                        "func": lambda: [
-                            specie.index
-                            for specie in self.net.species
-                            if specie.charge != 0 and str(specie) != "e-"
-                        ],
+                        "func": self.net.species.charged_indices_ne,
                         "vars": ["idx", "charged_specie_index_ne"],
                     },
                     # Returns: list[float] - masses of neutral species excluding electrons
                     "neutral_specie_masses_ne": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if specie.charge == 0 and str(specie) != "e-"
-                        ],
+                        "func": self.net.species.neutral_masses_ne,
                         "vars": ["idx", "neutral_specie_mass_ne"],
                     },
                     # Returns: list[float] - masses of charged species excluding electrons
                     "charged_specie_masses_ne": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if specie.charge != 0 and str(specie) != "e-"
-                        ],
+                        "func": self.net.species.charged_masses_ne,
                         "vars": ["idx", "charged_specie_mass_ne"],
                     },
                     # Returns: list[float] - masses of neutral species
                     "neutral_specie_masses": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if specie.charge == 0
-                        ],
+                        "func": self.net.species.neutral_masses,
                         "vars": ["idx", "neutral_specie_mass"],
                     },
                     # Returns: list[float] - masses of charged species
                     "charged_specie_masses": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if specie.charge != 0
-                        ],
+                        "func": self.net.species.charged_masses,
                         "vars": ["idx", "charged_specie_mass"],
                     },
                 },
@@ -1519,167 +1433,102 @@ class Fileparser:
                 "props": {
                     # Returns: list[int] - charge of each species
                     "specie_charges": {
-                        "func": lambda: [specie.charge for specie in self.net.species],
+                        "func": self.net.species.charges,
                         "var": "specie_charge",
                     },
                     # Returns: list[float] - mass of each species
                     "specie_masses": {
-                        "func": lambda: [specie.mass for specie in self.net.species],
+                        "func": self.net.species.masses,
                         "var": "specie_mass",
                     },
                     # Returns: list[int] - 1 if charged, 0 if neutral
                     "charge_truths": {
-                        "func": lambda: [
-                            int(bool(specie.charge)) for specie in self.net.species
-                        ],
+                        "func": self.net.species.charge_truths,
                         "var": "charge_truth",
                     },
                     # Returns: list[int] - 1 if photo reaction, 0 otherwise
                     "photo_reaction_truths": {
-                        "func": lambda: [
-                            int(reaction.guess_type() == "photo")
-                            for reaction in self.net.reactions
-                        ],
+                        "func": self.net.reactions.photo_reaction_truths,
                         "var": "photo_reaction_truth",
                     },
                     # Returns: list[int] - indices of photo reactions
                     "photo_reaction_indices": {
-                        "func": lambda: [
-                            i
-                            for i, reaction in enumerate(self.net.reactions)
-                            if reaction.guess_type() == "photo"
-                        ],
+                        "func": self.net.reactions.photo_reaction_indices,
                         "var": "photo_reaction_index",
                     },
                     # Returns: list[float] - minimum temperature for each reaction
                     "tmins": {
-                        "func": lambda: [
-                            reaction.tmin for reaction in self.net.reactions
-                        ],
+                        "func": self.net.reactions.tmins,
                         "var": "tmin",
                     },
                     # Returns: list[float] - maximum temperature for each reaction
                     "tmaxes": {
-                        "func": lambda: [
-                            reaction.tmax for reaction in self.net.reactions
-                        ],
+                        "func": self.net.reactions.tmaxes,
                         "var": "tmax",
                     },
                     # Returns: list[float] - mass of each species excluding electrons
                     "specie_masses_ne": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if str(specie) != "e-"
-                        ],
+                        "func": self.net.species.masses_ne,
                         "var": "specie_mass_ne",
                     },
                     # Returns: list[int] - charge of each species excluding electrons
                     "specie_charges_ne": {
-                        "func": lambda: [
-                            specie.charge
-                            for specie in self.net.species
-                            if str(specie) != "e-"
-                        ],
+                        "func": self.net.species.charges_ne,
                         "var": "specie_charge_ne",
                     },
                     # Returns: list[int] - charge of charged species excluding electrons
                     "charged_specie_charges_ne": {
-                        "func": lambda: [
-                            specie.charge
-                            for specie in self.net.species
-                            if str(specie) != "e-" and specie.charge != 0
-                        ],
+                        "func": self.net.species.charged_charges_ne,
                         "var": "charged_specie_charge_ne",
                     },
                     # Returns: list[int] - charge of charged species
                     "charged_specie_charges": {
-                        "func": lambda: [
-                            specie.charge
-                            for specie in self.net.species
-                            if specie.charge != 0
-                        ],
+                        "func": self.net.species.charged_charges,
                         "var": "charged_specie_charge",
                     },
                     # Returns: list[int] - 1 if charged, 0 if neutral (excluding electrons)
                     "charge_truths_ne": {
-                        "func": lambda: [
-                            int(bool(specie.charge))
-                            for specie in self.net.species
-                            if str(specie) != "e-"
-                        ],
+                        "func": self.net.species.charge_truths_ne,
                         "var": "charge_truth_ne",
                     },
                     # Returns: list[int] - indices of neutral species
                     "neutral_specie_indices": {
-                        "func": lambda: [
-                            specie.index
-                            for specie in self.net.species
-                            if specie.charge == 0
-                        ],
+                        "func": self.net.species.neutral_indices,
                         "var": "neutral_specie_index",
                     },
                     # Returns: list[int] - indices of charged species
                     "charged_specie_indices": {
-                        "func": lambda: [
-                            specie.index
-                            for specie in self.net.species
-                            if specie.charge != 0
-                        ],
+                        "func": self.net.species.charged_indices,
                         "var": "charged_specie_index",
                     },
                     # Returns: list[int] - indices of neutral species excluding electrons
                     "neutral_specie_indices_ne": {
-                        "func": lambda: [
-                            specie.index
-                            for specie in self.net.species
-                            if specie.charge == 0 and str(specie) != "e-"
-                        ],
+                        "func": self.net.species.neutral_indices_ne,
                         "var": "neutral_specie_index_ne",
                     },
                     # Returns: list[int] - indices of charged species excluding electrons
                     "charged_specie_indices_ne": {
-                        "func": lambda: [
-                            specie.index
-                            for specie in self.net.species
-                            if specie.charge != 0 and str(specie) != "e-"
-                        ],
+                        "func": self.net.species.charged_indices_ne,
                         "var": "charged_specie_index_ne",
                     },
                     # Returns: list[float] - masses of neutral species excluding electrons
                     "neutral_specie_masses_ne": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if specie.charge == 0 and str(specie) != "e-"
-                        ],
+                        "func": self.net.species.neutral_masses_ne,
                         "var": "neutral_specie_mass_ne",
                     },
                     # Returns: list[float] - masses of charged species excluding electrons
                     "charged_specie_masses_ne": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if specie.charge != 0 and str(specie) != "e-"
-                        ],
+                        "func": self.net.species.charged_masses_ne,
                         "var": "charged_specie_mass_ne",
                     },
                     # Returns: list[float] - masses of neutral species
                     "neutral_specie_masses": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if specie.charge == 0
-                        ],
+                        "func": self.net.species.neutral_masses,
                         "var": "neutral_specie_mass",
                     },
                     # Returns: list[float] - masses of charged species
                     "charged_specie_masses": {
-                        "func": lambda: [
-                            specie.mass
-                            for specie in self.net.species
-                            if specie.charge != 0
-                        ],
+                        "func": self.net.species.charged_masses,
                         "var": "charged_specie_mass",
                     },
                 },

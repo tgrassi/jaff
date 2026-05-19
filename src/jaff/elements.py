@@ -11,7 +11,7 @@ from __future__ import annotations
 from functools import cache
 from typing import TYPE_CHECKING
 
-from .types import Catalogue
+from .types import Catalogue, Vector
 
 if TYPE_CHECKING:
     from . import Specie
@@ -220,3 +220,33 @@ class Elements(Catalogue):
                 element_density_matrix[i][j] = specie.exploded.count(element.symbol)
 
         return element_density_matrix
+
+    def from_name(self, name: str) -> Element:
+        return self._by_serialized[name]
+
+    def from_symbol(self, symbol: str) -> Element:
+        return self._by_name[symbol]
+
+    def get_list(self) -> list[Element]:
+        return self._list
+
+    def symbols(self) -> Vector[str]:
+        return Vector([e.symbol for e in self])
+
+    def names(self) -> Vector[str]:
+        return Vector([e.name for e in self])
+
+    def masses(self) -> Vector[float]:
+        return Vector([e.mass for e in self])
+
+    def atomic_masses(self) -> Vector[float]:
+        return Vector([e.atomic_mass for e in self])
+
+    def protons(self) -> Vector[int]:
+        return Vector([e.protons for e in self])
+
+    def neutrons(self) -> Vector[int]:
+        return Vector([e.neutrons for e in self])
+
+    def electrons(self) -> Vector[int]:
+        return Vector([e.electrons for e in self])
