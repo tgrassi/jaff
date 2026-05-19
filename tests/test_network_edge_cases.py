@@ -56,7 +56,7 @@ class TestNetworkEdgeCases:
     def test_missing_reaction_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized reaction lookup."""
         with pytest.raises(KeyError):
-            sample_network.reactions("NONEXISTENT_SERIALIZED")
+            sample_network.reactions["NONEXISTENT_SERIALIZED"]
 
     def test_missing_species_by_serialized(self, sample_network):
         """Test error handling for non-existent serialized species lookup."""
