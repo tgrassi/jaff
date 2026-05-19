@@ -6,7 +6,49 @@ in a reaction network and generating element-related matrices for conservation l
 and stoichiometric analysis.
 """
 
-from jaff import Network
+from __future__ import annotations
+
+from functools import cache
+from typing import TYPE_CHECKING
+
+from . import Species
+
+if TYPE_CHECKING:
+    from .common.helper import ElementProps
+
+
+class Element:
+    _register: dict = {}
+
+    def __new__(cls, symbol: str, mass_dict: dict[str, ElementProps]):
+        if symbol in cls._register:
+            return cls._register[symbol]
+
+        instance = super().__init__(cls)
+        cls._register[symbol] = instance
+
+        return instance
+
+    def __init__(self, symbol: str, mass_dict: dict[str, ElementProps]):
+        if getattr(self, "_initialized", False):
+            return
+
+        if symbol not in mass_dict:
+            raise KeyError(f"No specie found in mass dictionary: {symbol}")
+
+        self.symbol: str = symbol
+        self.name: str = mass_dict[symbol]["name"]
+        self.mass: float = mass_dict[symbol]["mass"]
+        self.atomic_mass: float = mass_dict[symbol]["atomic_mass"]
+        self.protons: int = mass_dict[symbol]["protons"]
+        self.neutrons: int = mass_dict[symbol]["neutrons"]
+        self.electrons: int = mass_dict[symbol]["electrons"]
+
+    def __repr__(self) -> str:
+        return f"Element(symbol={self.symbol!r}, name={self.name!r}"
+
+    def __str__(self) -> str:
+        return self.symbol
 
 
 class Elements:
@@ -23,19 +65,27 @@ class Elements:
         nelems: Total number of unique elements in the network.
     """
 
-    def __init__(self, network: Network) -> None:
+    def __init__(
+        self, species: Species | list[Species], mass_dict: dict[str, ElementProps]
+    ) -> None:
         """
         Initialize the Elements analyzer for a given reaction network.
 
         Args:
             network: Chemical reaction network containing species to analyze.
         """
-        self.net: Network = network
-        self.elements: list[str] = []
-        self.nelms = 0
-        self.__set_elements()
+        self._mass_dict = mass_dict
+        self.list: list[Element] = []
+        self.index: dict[str, int] = {}
+        self.species: list[Species] = (
+            [species] if isinstance(species, Species) else species
+        )
 
-    def __set_elements(self):
+        self.nelms: int = 0
+
+        self._set_elements()
+
+    def _set_elements(self) -> None:
         """
         Extract unique chemical elements from all species in the network.
 
@@ -43,18 +93,26 @@ class Elements:
             List of unique element symbols (alphabetic characters only).
         """
         elements: set[str] = set()
+        if isinstance(self.species, Species):
+            species = [self.species]
+
         # Collect all elements from each species' exploded representation
-        for specie in self.net.species:
+        for specie in species:
             # Union with the set of atoms in this species
             elements |= set(specie.exploded)  # type: ignore[arg-type]
 
         # Filter to only alphabetic characters (element symbols) and convert to list
-        self.elements = sorted(
-            list({element for element in elements if element.isalpha()})
+        self.list = sorted(
+            list({Element(e, self._mass_dict) for e in elements if e.isalpha()})
         )
-        self.nelems = len(self.elements)
+        for i, e in enumerate(self.list):
+            self.index[e.name] = i
+            self.index[e.symbol] = i
 
-    def get_element_truth_matrix(self) -> list[list[int]]:
+        self.nelems = len(self.list)
+
+    @cache
+    def truth_matrix(self) -> list[list[int]]:
         """
         Generate a binary matrix indicating element presence in each species.
 
@@ -74,17 +132,18 @@ class Elements:
         """
         # Initialize matrix with zeros (nelems rows × nspecies columns)
         element_truth_matrix: list[list[int]] = [
-            [0] * len(self.net.species) for _ in range(self.nelems)
+            [0] * len(self.species) for _ in range(self.nelems)
         ]
 
         # Populate matrix: 1 if element is in species, 0 otherwise
-        for i, element in enumerate(self.elements):
-            for j, specie in enumerate(self.net.species):
+        for i, element in enumerate(self.list):
+            for j, specie in enumerate(self.species):
                 element_truth_matrix[i][j] = int(element in specie.exploded)
 
         return element_truth_matrix
 
-    def get_element_density_matrix(self) -> list[list[int]]:
+    @cache
+    def density_matrix(self) -> list[list[int]]:
         """
         Generate a matrix showing element counts in each species.
 
@@ -103,13 +162,13 @@ class Elements:
         """
         # Initialize matrix with zeros (nelems rows × nspecies columns)
         element_density_matrix: list[list[int]] = [
-            [0] * len(self.net.species) for _ in range(self.nelems)
+            [0] * len(self.species) for _ in range(self.nelems)
         ]
 
         # Populate matrix with element counts for each species
-        for i, element in enumerate(self.elements):
-            for j, specie in enumerate(self.net.species):
+        for i, element in enumerate(self.list):
+            for j, specie in enumerate(self.species):
                 # Count occurrences of this element in this species
-                element_density_matrix[i][j] = specie.exploded.count(element)
+                element_density_matrix[i][j] = specie.exploded.count(element.symbol)
 
         return element_density_matrix

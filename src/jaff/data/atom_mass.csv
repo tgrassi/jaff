@@ -1,113 +1,113 @@
-Symbol                Name                 Mass
-dummy                 Dummy                0e0
-CRP                   CosmicRayParticle    0e0
-CR                    CosmicRay            0e0
-Photon                Photon               0e0
-PHOTON                Photon               0e0
-_PARA                 Para                 0e0
-_ORTHO                Ortho                0e0
-_META                 Meta                 0e0
-GRAIN                 Grain                0e0
-_DUST                 Dust                 0e0
-_BULK                 Bulk                 0e0
-e-                    Electron             9.109383e-28
-+                     Cation               0e0
--                     Anion                0e0
-dust                  Dust                 0e0
-c-                    Cyclic               0e0
-l-                    Linear               0e0
-t-                    Terminal             0e0
-c                     Cyclic               0e0
-l                     Linear               0e0
-i                     Ice                  0e0
-n                     Neutral              0e0
-M                     Metal                0e0
-X                     Unknown              0e0
-H                     Hydrogen             1.673773e-24
-D                     Deuterium            3.343586e-24
-He                    Helium               6.646473e-24
-Li                    Lithium              1.152580e-23
-Be                    Beryllium            1.496508e-23
-B                     Boron                1.795043e-23
-C                     Carbon               1.994473e-23
-N                     Nitrogen             2.325867e-23
-O                     Oxygen               2.656763e-23
-F                     Fluorine             3.154759e-23
-Ne                    Neon                 3.350801e-23
-Na                    Sodium               3.817541e-23
-Mg                    Magnesium            4.035940e-23
-Al                    Aluminum             4.480390e-23
-Si                    Silicon              4.663707e-23
-P                     Phosphorus           5.143313e-23
-S                     Sulfur               5.323688e-23
-Cl                    Chlorine             5.887109e-23
-K                     Potassium            6.492425e-23
-Ar                    Argon                6.633521e-23
-Ca                    Calcium              6.655440e-23
-Sc                    Scandium             7.465102e-23
-Ti                    Titanium             7.953981e-23
-V                     Vanadium             8.459034e-23
-Cr                    Chromium             8.634138e-23
-Mn                    Manganese            9.122669e-23
-Fe                    Iron                 9.273612e-23
-Ni                    Nickel               9.747363e-23
-Co                    Cobalt               9.786087e-23
-Cu                    Copper               1.055206e-22
-Zn                    Zinc                 1.085660e-22
-Ga                    Gallium              1.157728e-22
-Ge                    Germanium            1.205385e-22
-As                    Arsenic              1.244102e-22
-Se                    Selenium             1.311162e-22
-Br                    Bromine              1.326837e-22
-Kr                    Krypton              1.391532e-22
-Rb                    Rubidium             1.419226e-22
-Sr                    Strontium            1.454964e-22
-Y                     Yttrium              1.476317e-22
-Zr                    Zirconium            1.514744e-22
-Nb                    Niobium              1.542747e-22
-Mo                    Molybdenum           1.593121e-22
-Ru                    Ruthenium            1.678307e-22
-Rh                    Rhodium              1.708786e-22
-Pd                    Palladium            1.766813e-22
-Ag                    Silver               1.791190e-22
-Cd                    Cadmium              1.866612e-22
-In                    Indium               1.906631e-22
-Sn                    Tin                  1.970894e-22
-Sb                    Antimony             2.021706e-22
-I                     Iodine               2.107299e-22
-Te                    Tellurium            2.118848e-22
-Xe                    Xenon                2.180288e-22
-Cs                    Cesium               2.206946e-22
-Ba                    Barium               2.280418e-22
-La                    Lanthanum            2.306580e-22
-Ce                    Cerium               2.326747e-22
-Pr                    Praseodymium         2.339827e-22
-Nd                    Neodymium            2.395161e-22
-Sm                    Samarium             2.497451e-22
-Eu                    Europium             2.523355e-22
-Gd                    Gadolinium           2.611197e-22
-Tb                    Terbium              2.639018e-22
-Dy                    Dysprosium           2.698376e-22
-Ho                    Holmium              2.738733e-22
-Er                    Erbium               2.777417e-22
-Tm                    Thulium              2.805218e-22
-Yb                    Ytterbium            2.873397e-22
-Lu                    Lutetium             2.905395e-22
-Hf                    Hafnium              2.963896e-22
-Ta                    Tantalum             3.004710e-22
-W                     Tungsten             3.052901e-22
-Re                    Rhenium              3.092040e-22
-Os                    Osmium               3.158345e-22
-Ir                    Iridium              3.191888e-22
-Pt                    Platinum             3.239545e-22
-Au                    Gold                 3.270705e-22
-Hg                    Mercury              3.330875e-22
-Tl                    Thallium             3.393643e-22
-Pb                    Lead                 3.440637e-22
-Bi                    Bismuth              3.470201e-22
-Ra                    Radium               3.753240e-22
-Ac                    Actinium             3.769885e-22
-Pa                    Protactinium         3.836441e-22
-Th                    Thorium              3.853083e-22
-Np                    Neptunium            3.936278e-22
-U                     Uranium              3.952564e-22
+Symbol                Name                 Mass            AtomicMass    Protons    Neutrons    Electrons
+dummy                 Dummy                0e0             None          None       None        None
+CRP                   CosmicRayParticle    0e0             None          None       None        None
+CR                    CosmicRay            0e0             None          None       None        None
+Photon                Photon               0e0             None          None       None        None
+PHOTON                Photon               0e0             None          None       None        None
+_PARA                 Para                 0e0             None          None       None        None
+_ORTHO                Ortho                0e0             None          None       None        None
+_META                 Meta                 0e0             None          None       None        None
+GRAIN                 Grain                0e0             None          None       None        None
+_DUST                 Dust                 0e0             None          None       None        None
+_BULK                 Bulk                 0e0             None          None       None        None
+e-                    Electron             9.109383e-28    None          None       None        None
++                     Cation               0e0             None          None       None        None
+-                     Anion                0e0             None          None       None        None
+dust                  Dust                 0e0             None          None       None        None
+c-                    Cyclic               0e0             None          None       None        None
+l-                    Linear               0e0             None          None       None        None
+t-                    Terminal             0e0             None          None       None        None
+c                     Cyclic               0e0             None          None       None        None
+l                     Linear               0e0             None          None       None        None
+i                     Ice                  0e0             None          None       None        None
+n                     Neutral              0e0             None          None       None        None
+M                     Metal                0e0             None          None       None        None
+X                     Unknown              0e0             None          None       None        None
+H                     Hydrogen             1.673773e-24    1.008         1          0           1
+D                     Deuterium            3.343586e-24    2.014         1          1           1
+He                    Helium               6.646473e-24    4.003         2          2           2
+Li                    Lithium              1.152580e-23    6.94          3          4           3
+Be                    Beryllium            1.496508e-23    9.012         4          5           4
+B                     Boron                1.795043e-23    10.81         5          6           5
+C                     Carbon               1.994473e-23    12.011        6          6           6
+N                     Nitrogen             2.325867e-23    14.007        7          7           7
+O                     Oxygen               2.656763e-23    15.999        8          8           8
+F                     Fluorine             3.154759e-23    18.998        9          10          9
+Ne                    Neon                 3.350801e-23    20.180        10         10          10
+Na                    Sodium               3.817541e-23    22.990        11         12          11
+Mg                    Magnesium            4.035940e-23    24.305        12         12          12
+Al                    Aluminum             4.480390e-23    26.982        13         14          13
+Si                    Silicon              4.663707e-23    28.085        14         14          14
+P                     Phosphorus           5.143313e-23    30.974        15         16          15
+S                     Sulfur               5.323688e-23    32.06         16         16          16
+Cl                    Chlorine             5.887109e-23    35.45         17         18          17
+K                     Potassium            6.492425e-23    39.098        19         20          19
+Ar                    Argon                6.633521e-23    39.948        18         22          18
+Ca                    Calcium              6.655440e-23    40.078        20         20          20
+Sc                    Scandium             7.465102e-23    44.956        21         24          21
+Ti                    Titanium             7.953981e-23    47.867        22         26          22
+V                     Vanadium             8.459034e-23    50.942        23         28          23
+Cr                    Chromium             8.634138e-23    51.996        24         28          24
+Mn                    Manganese            9.122669e-23    54.938        25         30          25
+Fe                    Iron                 9.273612e-23    55.845        26         30          26
+Ni                    Nickel               9.747363e-23    58.693        28         30          28
+Co                    Cobalt               9.786087e-23    58.933        27         32          27
+Cu                    Copper               1.055206e-22    63.546        29         34          29
+Zn                    Zinc                 1.085660e-22    65.38         30         34          30
+Ga                    Gallium              1.157728e-22    69.723        31         38          31
+Ge                    Germanium            1.205385e-22    72.630        32         42          32
+As                    Arsenic              1.244102e-22    74.922        33         42          33
+Se                    Selenium             1.311162e-22    78.971        34         46          34
+Br                    Bromine              1.326837e-22    79.904        35         44          35
+Kr                    Krypton              1.391532e-22    83.798        36         48          36
+Rb                    Rubidium             1.419226e-22    85.468        37         48          37
+Sr                    Strontium            1.454964e-22    87.62         38         50          38
+Y                     Yttrium              1.476317e-22    88.906        39         50          39
+Zr                    Zirconium            1.514744e-22    91.224        40         50          40
+Nb                    Niobium              1.542747e-22    92.906        41         52          41
+Mo                    Molybdenum           1.593121e-22    95.95         42         56          42
+Ru                    Ruthenium            1.678307e-22    101.07        44         58          44
+Rh                    Rhodium              1.708786e-22    102.906       45         58          45
+Pd                    Palladium            1.766813e-22    106.42        46         60          46
+Ag                    Silver               1.791190e-22    107.868       47         60          47
+Cd                    Cadmium              1.866612e-22    112.414       48         66          48
+In                    Indium               1.906631e-22    114.818       49         66          49
+Sn                    Tin                  1.970894e-22    118.710       50         70          50
+Sb                    Antimony             2.021706e-22    121.760       51         70          51
+I                     Iodine               2.107299e-22    126.904       53         74          53
+Te                    Tellurium            2.118848e-22    127.60        52         78          52
+Xe                    Xenon                2.180288e-22    131.293       54         78          54
+Cs                    Cesium               2.206946e-22    132.905       55         78          55
+Ba                    Barium               2.280418e-22    137.327       56         82          56
+La                    Lanthanum            2.306580e-22    138.905       57         82          57
+Ce                    Cerium               2.326747e-22    140.116       58         82          58
+Pr                    Praseodymium         2.339827e-22    140.908       59         82          59
+Nd                    Neodymium            2.395161e-22    144.242       60         82          60
+Sm                    Samarium             2.497451e-22    150.36        62         90          62
+Eu                    Europium             2.523355e-22    151.964       63         90          63
+Gd                    Gadolinium           2.611197e-22    157.25        64         94          64
+Tb                    Terbium              2.639018e-22    158.925       65         94          65
+Dy                    Dysprosium           2.698376e-22    162.500       66         98          66
+Ho                    Holmium              2.738733e-22    164.930       67         98          67
+Er                    Erbium               2.777417e-22    167.259       68         98          68
+Tm                    Thulium              2.805218e-22    168.934       69         100         69
+Yb                    Ytterbium            2.873397e-22    173.045       70         104         70
+Lu                    Lutetium             2.905395e-22    174.967       71         104         71
+Hf                    Hafnium              2.963896e-22    178.49        72         108         72
+Ta                    Tantalum             3.004710e-22    180.948       73         108         73
+W                     Tungsten             3.052901e-22    183.84        74         110         74
+Re                    Rhenium              3.092040e-22    186.207       75         112         75
+Os                    Osmium               3.158345e-22    190.23        76         116         76
+Ir                    Iridium              3.191888e-22    192.217       77         116         77
+Pt                    Platinum             3.239545e-22    195.084       78         117         78
+Au                    Gold                 3.270705e-22    196.967       79         118         79
+Hg                    Mercury              3.330875e-22    200.592       80         122         80
+Tl                    Thallium             3.393643e-22    204.38        81         124         81
+Pb                    Lead                 3.440637e-22    207.2         82         126         82
+Bi                    Bismuth              3.470201e-22    208.980       83         126         83
+Ra                    Radium               3.753240e-22    226.025       88         138         88
+Ac                    Actinium             3.769885e-22    227.028       89         138         89
+Pa                    Protactinium         3.836441e-22    231.036       91         140         91
+Th                    Thorium              3.853083e-22    232.038       90         142         90
+Np                    Neptunium            3.936278e-22    237.048       93         144         93
+U                     Uranium              3.952564e-22    238.029       92         146         92

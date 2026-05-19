@@ -23,10 +23,11 @@ from sympy.core.function import AppliedUndef, UndefinedFunction
 
 from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
 from .common import is_jaff_file
-from .common.helper import load_mass_dict, resolve_dependencies
+from .common.helper import ElementProps, load_mass_dict, resolve_dependencies
 from .common.welcome import motd
 from .core.io import JaffProps, from_jaff_file, to_jaff_file, write_data_table
 from .core.logger import JaffLogger, jaff_progress
+from .elements import Elements
 from .errors import ParserError
 from .network_parser import NetworkParser
 from .photochemistry import Photochemistry
@@ -49,14 +50,6 @@ NetworkProps = TypedDict(
         "rad_energy_density": NotRequired[bool],
         "c": NotRequired[float],
         "_from_cli": NotRequired[bool],
-    },
-)
-
-ElementProps = TypedDict(
-    "ElementProps",
-    {
-        "name": str,
-        "mass": float,
     },
 )
 
@@ -113,7 +106,7 @@ class Network:
         self.logger.info(f"Loading network from {fname}")
         self.logger.info(f"Network label: [yellow]{self.label}[/]")
 
-        self.mass_dict = load_mass_dict()
+        self.mass_dict: dict[str, ElementProps] = load_mass_dict()
         self.photochemistry = Photochemistry()
 
         if not loaded_from_jaff_file:
@@ -129,6 +122,8 @@ class Network:
 
         self.__generate_reactions_dict()
         self.generate_reaction_matrices()
+
+        self.elements: Elements = Elements(self.species, self.mass_dict)
 
         self.logger.info("[green]Network loaded successfully![/]")
 

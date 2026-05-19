@@ -633,11 +633,11 @@ class Codegen:
             for i, rea in enumerate(self.net.reactions):
                 # Subtract flux for each reactant
                 for rr in rea.reactants:
-                    rrfidx = self.net.species_dict[str(rr)]
+                    rrfidx = self.net.specie_index[str(rr)]
                     ode[rrfidx] += f" - flux{self.lb}{i + self.ioff}{self.rb}"
                 # Add flux for each product
                 for pp in rea.products:
-                    ppfidx = self.net.species_dict[str(pp)]
+                    ppfidx = self.net.specie_index[str(pp)]
                     ode[ppfidx] += f" + flux{self.lb}{i + self.ioff}{self.rb}"
 
             out = IndexedList()

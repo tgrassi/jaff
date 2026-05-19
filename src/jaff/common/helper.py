@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from sympy import Basic, Piecewise
 from sympy.core.function import AppliedUndef
@@ -21,6 +21,18 @@ RUST_EXTENSIONS = [".rs"]
 
 F90_PATTERN = re.compile(r"([0-9_.])d([0-9_+-])")
 
+ElementProps = TypedDict(
+    "ElementProps",
+    {
+        "name": str,
+        "mass": float,
+        "atomic_mass": float,
+        "protons": int,
+        "neutrons": int,
+        "electrons": int,
+    },
+)
+
 
 def load_mass_dict() -> dict:
     from ..drivers.sqlite import JaffDb
@@ -28,9 +40,16 @@ def load_mass_dict() -> dict:
     with JaffDb() as jdb:
         rows = jdb.table("atomic_masses").all_rows()
 
-    mass_dict = {}
+    mass_dict: dict[str, ElementProps] = {}
     for row in rows:
-        mass_dict[row["element"]] = {"mass": row["mass"], "name": row["name"]}
+        mass_dict[row["element"]] = {
+            "name": row["name"],
+            "mass": row["mass"],
+            "atomic_mass": row["atomic_mass"],
+            "protons": row["protons"],
+            "neutrons": row["neutrons"],
+            "electrons": row["electrons"],
+        }
 
     return mass_dict
 

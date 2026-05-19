@@ -4,16 +4,18 @@ import sys
 from itertools import product
 from typing import TYPE_CHECKING
 
+from .common.helper import ElementProps
 from .core.logger import JaffLogger
+from .elements import Elements
 
 if TYPE_CHECKING:
     import logging
 
 
 class Species:
-    _registry = {}  # Stores already initialzed species
+    _registry: dict = {}  # Stores already initialzed species
 
-    def __new__(cls, name: str, mass_dict: dict, index: int):
+    def __new__(cls, name: str, mass_dict: dict[str, ElementProps], index: int):
         if name in cls._registry:
             return cls._registry[name]
 
@@ -45,6 +47,8 @@ class Species:
 
         self.parse(mass_dict)
         self.serialize()
+
+        self.elements: Elements = Elements(self, mass_dict)
 
     def __repr__(self):
         return f"Species(name={self.name!r}, mass={self.mass!r}, index={self.index!r})"

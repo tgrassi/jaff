@@ -8,17 +8,23 @@ from jaff.drivers.sqlite import JaffDb
 
 def main():
     masses = Path(__file__).parent.parent / "data" / "atom_mass.csv"
-    df = pd.read_csv(masses, sep=r"\s+", index_col=0)
-    rows = [
-        {
-            "element": f"{symbol}",
-            "name": row["Name"],
-            "mass": row["Mass"],
+    df = pd.read_csv(
+        masses,
+        sep=r"\s+",
+        index_col=0,
+        dtype={"Protons": "Int64", "Neutrons": "Int64", "Electrons": "Int64"},
+    )
+    masses_df = df.rename(
+        columns={
+            "Name": "name",
+            "Mass": "mass",
+            "AtomicMass": "atomic_mass",
+            "Protons": "protons",
+            "Neutrons": "neutrons",
+            "Electrons": "electrons",
         }
-        for symbol, row in df.iterrows()
-    ]
-    del df
-    masses_df = pd.DataFrame(rows).set_index("element")
+    )
+    masses_df.index.name = "element"
     table_name = "atomic_masses"
 
     with JaffDb() as jdb:

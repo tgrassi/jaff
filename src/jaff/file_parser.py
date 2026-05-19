@@ -32,7 +32,6 @@ from typing import Any, Callable, TypedDict
 
 from . import Codegen, Network
 from .codegen import IndexedReturn
-from .elements import Elements
 from .errors import ParserError
 from .jaff_types import IndexedList
 
@@ -118,7 +117,6 @@ class Fileparser:
     Attributes:
         net: Network object
         file: Path to the template file being parsed
-        elems: Elements object
         parsing_enabled: Whether JAFF command parsing is currently active
         parse_function: Function to call for processing subsequent lines
         line: Current line being processed (stripped)
@@ -150,7 +148,6 @@ class Fileparser:
         """
         self.net = network
         self.file = file
-        self.elems: Elements = Elements(self.net)
         self.parsing_enabled: bool = True
         self.parse_function: Callable[[], None] | None = None
         self.line: str = ""
@@ -1210,7 +1207,7 @@ class Fileparser:
                     # Returns: int - number of species
                     "nspec": {"func": lambda: len(self.net.species)},
                     # Returns: int - number of elements
-                    "nelem": {"func": lambda: self.elems.nelems},
+                    "nelem": {"func": lambda: self.net.elements.nelems},
                     # Returns: int - number of reactions
                     "nreact": {"func": lambda: len(self.net.reactions)},
                     # Returns: int - number of reactions
@@ -1296,7 +1293,7 @@ class Fileparser:
                     },
                     # Returns: list[str] - element symbols
                     "elements": {
-                        "func": lambda: self.elems.elements,
+                        "func": lambda: [e.symbol for e in self.net.elements.list],
                         "vars": ["idx", "element"],
                     },
                     # Returns: list[float] - mass of each species
@@ -1383,12 +1380,12 @@ class Fileparser:
                     },
                     # Returns: matrix - element density for each species
                     "element_density_matrix": {
-                        "func": self.elems.get_element_density_matrix,
+                        "func": self.net.elements.density_matrix,
                         "vars": ["idx", "element"],
                     },
                     # Returns: matrix - element presence (0/1) for each species
                     "element_truth_matrix": {
-                        "func": self.elems.get_element_truth_matrix,
+                        "func": self.net.elements.truth_matrix,
                         "vars": ["idx", "element"],
                     },
                     # Returns: list[int] - indices of charged species
@@ -1692,7 +1689,7 @@ class Fileparser:
                 "func": self.__get,
                 "props": {
                     # Returns: int - index of element
-                    "element_idx": {"func": lambda e: self.elems.elements.index(e)},
+                    "element_idx": {"func": lambda e: self.net.elements.index[e]},
                     # Returns: int - index of species
                     "specie_idx": {"func": lambda s: self.net.specie_index[s]},
                     # Returns: int - index of reaction
@@ -1740,7 +1737,7 @@ class Fileparser:
                     # Returns: int - 1 if reaction exists, 0 otherwise
                     "reaction": {"func": lambda r: int(r in self.net.reaction_index)},
                     # Returns: int - 1 if element exists, 0 otherwise
-                    "element": {"func": lambda e: int(e in self.elems.elements)},
+                    "element": {"func": lambda e: int(e in self.net.elements.index)},
                 },
             },
             # END command: stop parsing and reset state
