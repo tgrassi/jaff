@@ -77,7 +77,7 @@ class Network:
         if not fname.exists():
             raise FileNotFoundError(fname)
 
-        jaff_props: JaffProps = {}
+        jaff_props: JaffProps = {}  # type: ignore
         loaded_from_jaff_file = is_jaff_file(fname)
         if loaded_from_jaff_file:
             jaff_props = from_jaff_file(fname, errors)
