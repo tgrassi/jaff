@@ -380,7 +380,7 @@ class Reactions(Catalogue[Reaction]):
     def get_list(self) -> list[Reaction]:
         return self._list
 
-    def get(self, reaction: str, rtype: str | None) -> Reaction | None:
+    def get(self, reaction: str, rtype: str | None = None) -> Reaction | None:
         rea = self[reaction]
         if rtype is None or rea.rtype() == rtype:
             return rea

@@ -1358,12 +1358,12 @@ class Fileparser:
                     },
                     # Returns: list[int] - indices of charged species
                     "charged_indices": {
-                        "func": self.net.species.charged_indies,
+                        "func": lambda: self.net.species.charged("index"),
                         "vars": ["idx", "charge_index"],
                     },
                     # Returns: list[int] - indices of neutral species
                     "neutral_indices": {
-                        "func": self.net.species.neutral_indies,
+                        "func": lambda: self.net.species.neutral("index"),
                         "vars": ["idx", "neutral_index"],
                     },
                     # Returns: list[int] - 1 if charged, 0 if neutral
@@ -1373,57 +1373,47 @@ class Fileparser:
                     },
                     # Returns: list[float] - mass of each species excluding electrons
                     "specie_masses_ne": {
-                        "func": self.net.species.masses_ne,
+                        "func": lambda: self.net.species.masses(ne=True),
                         "vars": ["idx", "specie_mass_ne"],
                     },
                     # Returns: list[int] - charge of each species excluding electrons
                     "specie_charges_ne": {
-                        "func": self.net.species.charges_ne,
+                        "func": lambda: self.net.species.charges(ne=True),
                         "vars": ["idx", "specie_charge_ne"],
                     },
                     # Returns: list[int] - 1 if charged, 0 if neutral (excluding electrons)
                     "charge_truths_ne": {
-                        "func": self.net.species.charge_truths_ne,
+                        "func": lambda: self.net.species.charge_truths(ne=True),
                         "vars": ["idx", "charge_truth_ne"],
                     },
                     # Returns: list[int] - indices of neutral species
                     "neutral_specie_indices": {
-                        "func": self.net.species.neutral_indices,
+                        "func": lambda: self.net.species.neutral("index"),
                         "vars": ["idx", "neutral_specie_index"],
                     },
                     # Returns: list[int] - indices of charged species
                     "charged_specie_indices": {
-                        "func": self.net.species.charged_indices,
+                        "func": lambda: self.net.species.charged("index"),
                         "vars": ["idx", "charged_specie_index"],
-                    },
-                    # Returns: list[int] - indices of neutral species excluding electrons
-                    "neutral_specie_indices_ne": {
-                        "func": self.net.species.neutral_indices_ne,
-                        "vars": ["idx", "neutral_specie_index_ne"],
                     },
                     # Returns: list[int] - indices of charged species excluding electrons
                     "charged_specie_indices_ne": {
-                        "func": self.net.species.charged_indices_ne,
+                        "func": lambda: self.net.species.charged("index", ne=True),
                         "vars": ["idx", "charged_specie_index_ne"],
-                    },
-                    # Returns: list[float] - masses of neutral species excluding electrons
-                    "neutral_specie_masses_ne": {
-                        "func": self.net.species.neutral_masses_ne,
-                        "vars": ["idx", "neutral_specie_mass_ne"],
                     },
                     # Returns: list[float] - masses of charged species excluding electrons
                     "charged_specie_masses_ne": {
-                        "func": self.net.species.charged_masses_ne,
+                        "func": lambda: self.net.species.charged("mass", ne=True),
                         "vars": ["idx", "charged_specie_mass_ne"],
                     },
                     # Returns: list[float] - masses of neutral species
                     "neutral_specie_masses": {
-                        "func": self.net.species.neutral_masses,
+                        "func": lambda: self.net.species.neutral("mass"),
                         "vars": ["idx", "neutral_specie_mass"],
                     },
                     # Returns: list[float] - masses of charged species
                     "charged_specie_masses": {
-                        "func": self.net.species.charged_masses,
+                        "func": lambda: self.net.species.charged("mass"),
                         "vars": ["idx", "charged_specie_mass"],
                     },
                 },
@@ -1468,67 +1458,57 @@ class Fileparser:
                     },
                     # Returns: list[float] - mass of each species excluding electrons
                     "specie_masses_ne": {
-                        "func": self.net.species.masses_ne,
+                        "func": lambda: self.net.species.masses(ne=True),
                         "var": "specie_mass_ne",
                     },
                     # Returns: list[int] - charge of each species excluding electrons
                     "specie_charges_ne": {
-                        "func": self.net.species.charges_ne,
+                        "func": lambda: self.net.species.charges(ne=True),
                         "var": "specie_charge_ne",
                     },
                     # Returns: list[int] - charge of charged species excluding electrons
                     "charged_specie_charges_ne": {
-                        "func": self.net.species.charged_charges_ne,
+                        "func": lambda: self.net.species.charged("charge", ne=True),
                         "var": "charged_specie_charge_ne",
                     },
                     # Returns: list[int] - charge of charged species
                     "charged_specie_charges": {
-                        "func": self.net.species.charged_charges,
+                        "func": lambda: self.net.species.charged("charge"),
                         "var": "charged_specie_charge",
                     },
                     # Returns: list[int] - 1 if charged, 0 if neutral (excluding electrons)
                     "charge_truths_ne": {
-                        "func": self.net.species.charge_truths_ne,
+                        "func": lambda: self.net.species.charge_truths(ne=True),
                         "var": "charge_truth_ne",
                     },
                     # Returns: list[int] - indices of neutral species
                     "neutral_specie_indices": {
-                        "func": self.net.species.neutral_indices,
+                        "func": lambda: self.net.species.neutral("index"),
                         "var": "neutral_specie_index",
                     },
                     # Returns: list[int] - indices of charged species
                     "charged_specie_indices": {
-                        "func": self.net.species.charged_indices,
+                        "func": lambda: self.net.species.charged("index"),
                         "var": "charged_specie_index",
-                    },
-                    # Returns: list[int] - indices of neutral species excluding electrons
-                    "neutral_specie_indices_ne": {
-                        "func": self.net.species.neutral_indices_ne,
-                        "var": "neutral_specie_index_ne",
                     },
                     # Returns: list[int] - indices of charged species excluding electrons
                     "charged_specie_indices_ne": {
-                        "func": self.net.species.charged_indices_ne,
+                        "func": lambda: self.net.species.charged("index", ne=True),
                         "var": "charged_specie_index_ne",
-                    },
-                    # Returns: list[float] - masses of neutral species excluding electrons
-                    "neutral_specie_masses_ne": {
-                        "func": self.net.species.neutral_masses_ne,
-                        "var": "neutral_specie_mass_ne",
                     },
                     # Returns: list[float] - masses of charged species excluding electrons
                     "charged_specie_masses_ne": {
-                        "func": self.net.species.charged_masses_ne,
+                        "func": lambda: self.net.species.charged("mass", ne=True),
                         "var": "charged_specie_mass_ne",
                     },
                     # Returns: list[float] - masses of neutral species
                     "neutral_specie_masses": {
-                        "func": self.net.species.neutral_masses,
+                        "func": lambda: self.net.species.neutral("mass"),
                         "var": "neutral_specie_mass",
                     },
                     # Returns: list[float] - masses of charged species
                     "charged_specie_masses": {
-                        "func": self.net.species.charged_masses,
+                        "func": lambda: self.net.species.charged("mass"),
                         "var": "charged_specie_mass",
                     },
                 },

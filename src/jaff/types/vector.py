@@ -2,6 +2,7 @@ import operator
 from typing import Callable, Generic, TypeVar
 
 T = TypeVar("T")
+U = TypeVar("U")
 
 
 class Vector(list, Generic[T]):
@@ -124,5 +125,5 @@ class Vector(list, Generic[T]):
     def as_string(self) -> "Vector[str]":
         return Vector(str(a) for a in self)
 
-    def as_bool(self) -> "Vector[bool]":
-        return Vector(bool(a) for a in self)
+    def as_type(self, typ: Callable[[T], U]) -> "Vector[U]":
+        return Vector(typ(x) for x in self)
