@@ -90,8 +90,8 @@ class Network:
         self.mass_dict: dict[str, ElementProps] = {}
         self.species: Species = Species()
         self.reactions: Reactions = Reactions()
-        self.rlist: np.ndarray | None = None
-        self.plist: np.ndarray | None = None
+        self.reactant_matrix: np.ndarray | None = None
+        self.product_matrix: np.ndarray | None = None
         self.dEdt_chem: Basic = Float(0.0)
         self.dEdt_other: Basic = Float(0.0)
         self.dRad_dt_extra: Basic = Float(0.0)
@@ -105,6 +105,7 @@ class Network:
         self.logger.info(f"Network label: [yellow]{self.label}[/]")
 
         self.mass_dict: dict[str, ElementProps] = load_mass_dict()
+        Species.configure(self.mass_dict)
         self.photochemistry = Photochemistry()
 
         if not loaded_from_jaff_file:
@@ -118,9 +119,9 @@ class Network:
         self.check_isomers(errors)
         self.check_unique_reactions(errors)
 
-        self.generate_reaction_matrices()
+        self.__generate_reaction_matrices()
 
-        self.elements: Elements = Elements(self.species.get_list(), self.mass_dict)
+        self.elements: Elements = Elements(self.species._list)
 
         self.logger.info("[green]Network loaded successfully![/]")
 
@@ -174,7 +175,7 @@ class Network:
             for s in reactants + products:
                 if s not in specie_names:
                     specie_names.add(s)
-                    self.species.add(Specie(s, self.mass_dict, len(specie_names) - 1))
+                    self.species.add(Specie(s, len(specie_names) - 1))
 
             rr = [self.species[r] for r in reactants]
             pp = [self.species[p] for p in products]
@@ -580,26 +581,26 @@ class Network:
             self.logger.error("Duplicate reactions found")
             sys.exit(1)
 
-    def generate_reaction_matrices(self) -> None:
-        """Generate reaction matrices (rlist and plist) for tracking reactants and products."""
-        n_reactions = self.reactions.count
-        n_species = self.species.count
+    def __generate_reaction_matrices(self) -> None:
+        """Generate reaction matrices (reactant_matrix and product_matrix) for tracking reactants and products."""
 
         # Initialize matrices
-        self.rlist = np.zeros((n_reactions, n_species), dtype=int)
-        self.plist = np.zeros((n_reactions, n_species), dtype=int)
+        self.reactant_matrix = np.zeros(
+            (self.reactions.count, self.species.count), dtype=int
+        )
+        self.product_matrix = np.zeros(
+            (self.reactions.count, self.species.count), dtype=int
+        )
 
         # Fill matrices based on reactions
         for i, reaction in enumerate(self.reactions):
             # Count reactants
             for reactant in reaction.reactants:
-                species_idx = reactant.index
-                self.rlist[i, species_idx] += 1
+                self.reactant_matrix[i, reactant.index] += 1
 
             # Count products
             for product in reaction.products:
-                species_idx = product.index
-                self.plist[i, species_idx] += 1
+                self.product_matrix[i, product.index] += 1
 
     def __standardize_symbols(self, expr: Basic, replace_nH: bool) -> Basic:
         """

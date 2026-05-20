@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from functools import cached_property
 from itertools import product
 from typing import TYPE_CHECKING
 
@@ -17,8 +18,23 @@ class Specie:
     _ATTRS: frozenset[str] = frozenset(
         {"name", "mass", "exploded", "charge", "index", "fidx", "serialized", "elements"}
     )
+    _mass_dict: dict | None = None
 
-    def __init__(self, name: str, mass_dict: dict[str, ElementProps], index: int):
+    @classmethod
+    def configure(cls, mass_dict: dict[str, ElementProps]) -> None:
+        cls._mass_dict = mass_dict
+        Elements.configure(mass_dict)
+
+    @classmethod
+    def __get_mass_dict(cls) -> dict[str, ElementProps]:
+        if cls._mass_dict is None:
+            from .common.helper import load_mass_dict
+
+            cls._mass_dict = load_mass_dict()
+
+        return cls._mass_dict
+
+    def __init__(self, name: str, index: int = 0):
         self.logger: logging.Logger = JaffLogger().get_logger()
         if name.lower() in ["e", "eletron", "electrons", "el", "els"] or name in [
             "E",
@@ -36,10 +52,8 @@ class Specie:
         self.fidx: str = self.get_fidx()
         self.serialized: str = ""
 
-        self.parse(mass_dict)
+        self.parse(self.__get_mass_dict())
         self.serialize()
-
-        self.elements: Elements = Elements(self, mass_dict)
 
     def __repr__(self):
         return f"Species(name={self.name!r}, mass={self.mass!r}, index={self.index!r})"
@@ -65,6 +79,10 @@ class Specie:
             )
 
         return self.name < other.name
+
+    @cached_property
+    def elements(self) -> Elements:
+        return Elements(self)
 
     def get_fidx(self) -> str:
         return (
@@ -150,15 +168,30 @@ class Specie:
 
 
 class Species(Catalogue[Specie]):
-    def __init__(self, species: list[Specie] | None = None, check_length: bool = True):
+    _mass_dict: dict | None = None
+
+    @classmethod
+    def configure(cls, mass_dict: dict[str, ElementProps]) -> None:
+        cls._mass_dict = mass_dict
+        Specie.configure(mass_dict)
+
+    def __init__(
+        self,
+        species: list[Specie] | list[str] | None = None,
+        check_length: bool = True,
+    ):
         _by_name: dict[str, Specie] | None = None
         _by_serialized: dict[str, Specie] = {}
 
         if species is not None:
-            _by_name = {sp.name: sp for sp in species}
-            _by_serialized = {sp.serialized: sp for sp in species}
+            if species and isinstance(species[0], str):
+                species = [Specie(name, idx) for idx, name in enumerate(species)]  # type: ignore[arg-type]
+            _by_name = {sp.name: sp for sp in species}  # type: ignore
+            _by_serialized = {sp.serialized: sp for sp in species}  # type: ignore
 
-        super().__init__(species, _by_name, check_length)
+        _species: list[Specie] = species  # type: ignore
+
+        super().__init__(_species, _by_name, check_length)
         self._by_serialized = _by_serialized
 
     def add(self, specie: Specie) -> None:

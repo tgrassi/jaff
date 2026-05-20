@@ -20,8 +20,22 @@ if TYPE_CHECKING:
 
 class Element:
     _register: dict = {}
+    _mass_dict: dict | None = None
 
-    def __new__(cls, symbol: str, mass_dict: dict[str, ElementProps]):
+    @classmethod
+    def configure(cls, mass_dict: dict[str, ElementProps]) -> None:
+        cls._mass_dict = mass_dict
+
+    @classmethod
+    def __get_mass_dict(cls) -> dict[str, ElementProps]:
+        if cls._mass_dict is None:
+            from .common.helper import load_mass_dict
+
+            cls._mass_dict = load_mass_dict()
+
+        return cls._mass_dict
+
+    def __new__(cls, symbol: str):
         if symbol in cls._register:
             return cls._register[symbol]
 
@@ -30,9 +44,11 @@ class Element:
 
         return instance
 
-    def __init__(self, symbol: str, mass_dict: dict[str, ElementProps]):
+    def __init__(self, symbol: str):
         if getattr(self, "__initialized", False):
             return
+
+        mass_dict = self.__get_mass_dict()
 
         if symbol not in mass_dict:
             raise KeyError(f"No specie found in mass dictionary: {symbol}")
@@ -87,11 +103,40 @@ class Elements(Catalogue):
     """
 
     _register: dict = {}
+    _mass_dict: dict | None = None
 
-    def __new__(cls, species: Specie | list[Specie], mass_dict: dict[str, ElementProps]):
-        _species: list[Specie] = (
-            list[species] if not isinstance(species, list) else species
-        )  # type: ignore
+    @classmethod
+    def configure(cls, mass_dict: dict[str, ElementProps]) -> None:
+        cls._mass_dict = mass_dict
+        Element.configure(mass_dict)
+
+    @classmethod
+    def __get_mass_dict(cls) -> dict[str, ElementProps]:
+        if cls._mass_dict is None:
+            from .common.helper import load_mass_dict
+
+            cls._mass_dict = load_mass_dict()
+        return cls._mass_dict
+
+    @staticmethod
+    def __get_species_list(
+        species: Specie | list[Specie] | str | list[str],
+    ) -> list[Specie]:
+        from .species import Specie as _Specie
+
+        if isinstance(species, str):
+            return [_Specie(species, 0)]
+
+        if isinstance(species, list) and species and isinstance(species[0], str):
+            return [_Specie(name, idx) for idx, name in enumerate(species)]  # type: ignore[arg-type]
+
+        if not isinstance(species, list):
+            return [species]  # type: ignore[list-item]
+
+        return species  # type: ignore
+
+    def __new__(cls, species: Specie | list[Specie] | str | list[str]):
+        _species = cls.__get_species_list(species)
         _serialized: str = "_".join(sorted(str(s) for s in _species))
         if _serialized in cls._register:
             return cls._register[_serialized]
@@ -101,9 +146,7 @@ class Elements(Catalogue):
 
         return instance
 
-    def __init__(
-        self, species: Specie | list[Specie], mass_dict: dict[str, ElementProps]
-    ) -> None:
+    def __init__(self, species: Specie | list[Specie] | str | list[str]) -> None:
         """
         Initialize the Elements analyzer for a given reaction network.
 
@@ -113,8 +156,7 @@ class Elements(Catalogue):
         if getattr(self, "__initialized", False):
             return
 
-        self._mass_dict = mass_dict
-        self.species: list[Specie] = species if isinstance(species, list) else [species]  # type: ignore
+        self.species: list[Specie] = self.__get_species_list(species)
 
         self.__set_elements()
         self.__initalized = True
@@ -134,9 +176,7 @@ class Elements(Catalogue):
             elements |= set(specie.exploded)  # type: ignore[arg-type]
 
         # Filter to only alphabetic characters (element symbols) and convert to list
-        _list = sorted(
-            list({Element(e, self._mass_dict) for e in elements if e.isalpha()})
-        )
+        _list = sorted(list({Element(e) for e in elements if e.isalpha()}))
 
         _by_name = {e.name: e for e in _list}
         _by_symbol = {e.symbol: e for e in _list}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -18,6 +19,8 @@ from sympy import (
     symbols,
     sympify,
 )
+
+from jaff.elements import Elements
 
 from .core.logger import JaffLogger
 from .physics import constants
@@ -93,6 +96,14 @@ class Reaction:
             )
 
         return self.serialized < other.serialized
+
+    @cached_property
+    def species(self) -> Species:
+        return Species(list(set(self.reactants._list) | set(self.products._list)))
+
+    @cached_property
+    def elements(self) -> Elements:
+        return Elements(self.reactants._list + self.products._list)
 
     def rtype(self) -> str:
         rtype = "unknown"
@@ -224,7 +235,7 @@ class Reaction:
         elif isinstance(species, list):
             sp_list = [sp.name if isinstance(sp, Specie) else sp for sp in species]
 
-        return any([x.name in sp_list for x in self.reactants])
+        return all([s in self.reactants for s in sp_list])
 
     def has_product(self, species: list[Specie | str] | str | Specie) -> bool:
         sp_list: list[str] = []
@@ -235,7 +246,7 @@ class Reaction:
         elif isinstance(species, list):
             sp_list = [sp.name if isinstance(sp, Specie) else sp for sp in species]
 
-        return any([x.name in sp_list for x in self.products])
+        return all([s in self.products for s in sp_list])
 
     def get_code(self, lang="cpp") -> str:
         """

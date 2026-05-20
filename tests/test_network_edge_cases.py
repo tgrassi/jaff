@@ -77,9 +77,9 @@ class TestNetworkEdgeCases:
 
             # Check basic properties with empty network
             assert len(network.reactions) == 0
-            assert network.rlist is not None
-            assert network.plist is not None
-            assert network.rlist.shape[0] == 0  # No reactions
+            assert network.reactant_matrix is not None
+            assert network.product_matrix is not None
+            assert network.reactant_matrix.shape[0] == 0  # No reactions
             assert network.species.count >= 0  # May have default species
         finally:
             os.unlink(temp_file)
@@ -170,10 +170,12 @@ class TestNetworkEdgeCases:
                 network = Network(temp_file)
 
             # Should handle large networks
-            assert len(network.reactions) == 50
-            assert len(network.species) >= 2  # At least H and H2
-            assert network.rlist.shape[0] == 50  # 50 reactions
-            assert network.plist.shape[0] == 50
+            assert network.reactions.count == 50
+            assert network.species.count >= 2  # At least H and H2
+            assert network.reactant_matrix is not None
+            assert network.product_matrix is not None
+            assert network.reactant_matrix.shape[0] == 50  # 50 reactions
+            assert network.product_matrix.shape[0] == 50
         finally:
             os.unlink(temp_file)
 
@@ -324,12 +326,14 @@ class TestNetworkEdgeCases:
                 network = Network(temp_file)
 
             # Should handle high stoichiometry
-            assert len(network.reactions) == 2
+            assert network.reactions.count == 2
 
             # Check stoichiometry in matrices
-            if len(network.reactions) > 0:
-                assert network.rlist.shape[0] == 2
-                assert network.plist.shape[0] == 2
+            if network.reactions.count > 0:
+                assert network.reactant_matrix is not None
+                assert network.product_matrix is not None
+                assert network.reactant_matrix.shape[0] == 2
+                assert network.product_matrix.shape[0] == 2
         finally:
             os.unlink(temp_file)
 
@@ -346,7 +350,7 @@ class TestNetworkEdgeCases:
                 network = Network(temp_file)
 
             # Should handle photo reactions
-            assert len(network.reactions) >= 1
+            assert network.reactions.count >= 1
 
             # Check that rate expression contains photorates function
             photo_reactions = [

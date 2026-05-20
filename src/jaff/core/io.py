@@ -12,7 +12,7 @@ from sympy.core.function import AppliedUndef
 
 from .. import __version__ as jaff_version
 from ..common import SCHEMA_VERSION as SYMPY_SCHEMA
-from ..common import fast_log2, inverse_fast_log2, is_jaff_file, load_mass_dict
+from ..common import fast_log2, inverse_fast_log2, is_jaff_file
 from ..common import from_jsonable as sympy_from_jsonable
 from ..common import to_jsonable as sympy_to_jsonable
 from ..core.logger import JaffLogger
@@ -233,11 +233,10 @@ def from_jaff_file(filename: str | Path, errors=False):
 
     species_by_index = {}
     species_list = Species()
-    mass_dict = load_mass_dict()
 
     for idx in sorted(by_index.keys()):
         name = by_index[idx]
-        sp_obj = Specie(name, mass_dict, idx)
+        sp_obj = Specie(name, idx)
         species_list.add(sp_obj)
         species_by_index[idx] = sp_obj
 

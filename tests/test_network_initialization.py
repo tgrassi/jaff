@@ -86,7 +86,7 @@ class TestNetworkInitialization:
                                 ):
                                     with patch.object(
                                         Network,
-                                        "generate_reaction_matrices",
+                                        "_Network__generate_reaction_matrices",
                                         MagicMock(),
                                     ):
                                         network = Network(test_path)
@@ -136,7 +136,7 @@ class TestNetworkInitialization:
                                 Network, "check_unique_reactions"
                             ) as mock_unique:
                                 with patch.object(
-                                    Network, "generate_reaction_matrices"
+                                    Network, "_Network__generate_reaction_matrices"
                                 ) as mock_matrices:
                                     network = Network(sample_kida_file, errors=True)
 
@@ -170,8 +170,8 @@ class TestNetworkInitialization:
         assert isinstance(network.reactions, Reactions)
         assert isinstance(network.mass_dict, dict)
 
-        # Check that rlist and plist are generated
-        assert network.rlist is not None
-        assert network.plist is not None
-        assert hasattr(network.rlist, "shape")  # Should be numpy array
-        assert hasattr(network.plist, "shape")  # Should be numpy array
+        # Check that reactant_matrix and product_matrix are generated
+        assert network.reactant_matrix is not None
+        assert network.product_matrix is not None
+        assert hasattr(network.reactant_matrix, "shape")  # Should be numpy array
+        assert hasattr(network.product_matrix, "shape")  # Should be numpy array
