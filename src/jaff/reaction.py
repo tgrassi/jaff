@@ -21,6 +21,7 @@ from sympy import (
 
 from .core.logger import JaffLogger
 from .physics import constants
+from .species import Species
 from .types import Catalogue, Vector
 
 if TYPE_CHECKING:
@@ -42,8 +43,8 @@ class Reaction:
         errors: bool = False,
     ):
         self.logger = JaffLogger().get_logger()
-        self.reactants: list[Specie] = reactants
-        self.products: list[Specie] = products
+        self.reactants: Species = Species(reactants, check_length=False)
+        self.products: Species = Species(products, check_length=False)
         self.rate: Basic = rate
         self.tmin: float | None = tmin
         self.tmax: float | None = tmax
@@ -122,8 +123,8 @@ class Reaction:
         is_same_serialized = self.serialized_exploded == other.serialized_exploded
 
         # compare actual species names (consider isomers)
-        rp1 = sorted([x.name for x in self.reactants + self.products])
-        rp2 = sorted([x.name for x in other.reactants + other.products])
+        rp1 = sorted([x.name for x in self.reactants._list + self.products._list])
+        rp2 = sorted([x.name for x in other.reactants._list + other.products._list])
         has_different_species_names = rp1 != rp2
 
         return is_same_serialized and has_different_species_names
@@ -210,7 +211,9 @@ class Reaction:
         elif isinstance(species, list):
             sp_list = [sp.name if isinstance(sp, Specie) else sp for sp in species]
 
-        return any([x.name in sp_list for x in self.reactants + self.products])
+        return any(
+            [x.name in sp_list for x in self.reactants._list + self.products._list]
+        )
 
     def has_reactant(self, species: list[Specie | str] | str | Specie) -> bool:
         sp_list: list[str] = []
@@ -394,10 +397,10 @@ class Reactions(Catalogue[Reaction]):
     def rtypes(self) -> Vector[str]:
         return Vector([r.rtype() for r in self])
 
-    def reactants(self) -> Vector[list[Specie]]:
+    def reactants(self) -> Vector[Species]:
         return Vector([r.reactants for r in self])
 
-    def products(self) -> Vector[list[Specie]]:
+    def products(self) -> Vector[Species]:
         return Vector([r.products for r in self])
 
     def rates(self) -> Vector[Basic]:

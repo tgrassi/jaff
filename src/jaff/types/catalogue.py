@@ -5,12 +5,15 @@ T = TypeVar("T")
 
 class Catalogue(Generic[T]):
     def __init__(
-        self, items: list[T] | None = None, items_dict: dict[str, T] | None = None
+        self,
+        items: list[T] | None = None,
+        items_dict: dict[str, T] | None = None,
+        check_length: bool = True,
     ):
         if (items is None) ^ (items_dict is None):
             raise ValueError("Both an list and a dict must be supplied")
 
-        if items is not None and items_dict is not None:
+        if items is not None and items_dict is not None and check_length:
             if len(items) != len(items_dict.keys()):
                 raise ValueError("Length of both list and dict must be same")
 

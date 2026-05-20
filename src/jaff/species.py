@@ -150,7 +150,7 @@ class Specie:
 
 
 class Species(Catalogue[Specie]):
-    def __init__(self, species: list[Specie] | None = None):
+    def __init__(self, species: list[Specie] | None = None, check_length: bool = True):
         _by_name: dict[str, Specie] | None = None
         _by_serialized: dict[str, Specie] = {}
 
@@ -158,7 +158,7 @@ class Species(Catalogue[Specie]):
             _by_name = {sp.name: sp for sp in species}
             _by_serialized = {sp.serialized: sp for sp in species}
 
-        super().__init__(species, _by_name)
+        super().__init__(species, _by_name, check_length)
         self._by_serialized = _by_serialized
 
     def add(self, specie: Specie) -> None:

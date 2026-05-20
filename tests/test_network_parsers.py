@@ -44,10 +44,10 @@ class TestNetworkParsers:
         found = False
         for reaction in network.reactions:
             if (
-                len(reaction.reactants) == 3
+                reaction.reactants.count == 3
                 and all(r.name == "H" for r in reaction.reactants)
-                and len(reaction.products) == 2
-                and any(p.name == "H2" for p in reaction.products)
+                and reaction.products.count == 2
+                and "H2" in reaction.products
             ):
                 found = True
                 assert reaction.tmin == 10
@@ -70,10 +70,10 @@ class TestNetworkParsers:
         found = False
         for reaction in network.reactions:
             if (
-                len(reaction.reactants) == 1
+                reaction.reactants.count == 1
                 and reaction.reactants[0].name == "H2"
-                and len(reaction.products) == 2
-                and any(p.name == "H" for p in reaction.products)
+                and reaction.products.count == 2
+                and "H" in reaction.products
             ):
                 found = True
                 assert reaction.tmin == 10
@@ -99,9 +99,9 @@ class TestNetworkParsers:
         found = False
         for reaction in network.reactions:
             if (
-                len(reaction.reactants) == 2
-                and any(r.name == "O" for r in reaction.reactants)
-                and any(r.name == "H" for r in reaction.reactants)
+                reaction.reactants.count == 2
+                and "O" in reaction.reactants
+                and "H" in reaction.reactants
             ):
                 found = True
                 # Check that the rate expression contains tgas and substituted coefficient
@@ -128,9 +128,9 @@ class TestNetworkParsers:
         found = False
         for reaction in network.reactions:
             if (
-                len(reaction.reactants) == 2
-                and any(r.name == "C+" for r in reaction.reactants)
-                and any(r.name == "H2" for r in reaction.reactants)
+                reaction.reactants.count == 2
+                and "C+" in reaction.reactants
+                and "H2" in reaction.reactants
             ):
                 found = True
                 # Check that inv_tgas was substituted
@@ -169,9 +169,9 @@ class TestNetworkParsers:
         found = False
         for reaction in network.reactions:
             if (
-                len(reaction.reactants) == 2
-                and any(r.name == "H2" for r in reaction.reactants)
-                and any(r.name == "CR" for r in reaction.reactants)
+                reaction.reactants.count == 2
+                and "H2" in reaction.reactants
+                and "CR" in reaction.reactants
             ):
                 found = True
                 # The rate should be the zeta value (1.3e-17)
