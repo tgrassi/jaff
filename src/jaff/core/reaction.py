@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sys
 from functools import cached_property
-from typing import TYPE_CHECKING
 
 import numpy as np
 from sympy import (

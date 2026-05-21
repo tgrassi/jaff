@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING
 from ..types import Catalogue, Vector
 
 if TYPE_CHECKING:
-    from ..common import ElementProps
     from . import Specie
+    from ._typing import ElementProps
 
 
 class Element:

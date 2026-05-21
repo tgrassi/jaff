@@ -4,7 +4,7 @@ import gzip
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, NotRequired, TypedDict
+from typing import TYPE_CHECKING
 
 import numpy as np
 from sympy import Basic, Symbol, __version__, expand_log, lambdify, log, srepr, symbols
@@ -29,32 +29,7 @@ else:
     Reaction = "Reaction"
     Network = "Network"
 
-ReactionProps = TypedDict(
-    "ReactionProps",
-    {
-        "reactants": list["Specie"],
-        "products": list["Specie"],
-        "rate": Basic,
-        "dE": Basic,
-        "dRad_dt": Basic,
-        "custom_rad_rate": bool,
-        "tmin": float | None,
-        "tmax": float | None,
-        "original_string": str,
-        "xsecs_dict": dict[str, float],
-    },
-)
-
-
-JaffProps = TypedDict(
-    "JaffProps",
-    {
-        "file_name": NotRequired[Path],
-        "label": NotRequired[str],
-        "species": Species,
-        "reactions": NotRequired[list[ReactionProps]],
-    },
-)
+from ._typing import JaffProps
 
 
 def to_jaff_file(filename: str | Path, net: "Network"):
@@ -129,7 +104,7 @@ def to_jaff_file(filename: str | Path, net: "Network"):
         ],
         "rate_symbols": [
             {
-                "name": sym.name,
+                "name": sym.name,  # type: ignore
                 "assumptions": {
                     k: v
                     for k, v in (sym.assumptions0 or {}).items()

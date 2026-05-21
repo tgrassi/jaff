@@ -1,23 +1,14 @@
 from functools import cached_property
 from pathlib import Path
 from tokenize import TokenError
-from typing import Any, Callable, NotRequired, TypedDict
+from typing import Any, Callable
 
 import sympy as sp
 from sympy.core.function import AppliedUndef
 
 from ..common import resolve_symbolic_dependencies
 from ..errors import ParserError
-
-FunctionsDict = TypedDict(
-    "FunctionsDict",
-    {
-        "def": sp.Basic,
-        "args": list[sp.Basic],
-        "argcomments": dict[str, str],
-        "locals": NotRequired[dict[str, sp.Basic]],
-    },
-)
+from ._typing import FunctionsDict
 
 
 class AuxiliaryFunctionParser:

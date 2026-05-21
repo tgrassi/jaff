@@ -49,50 +49,12 @@ import sympy as sp
 
 from ..io._logger import JaffLogger, jaff_progress
 from ..types import IndexedList, IndexedValue
+from ._typing import IndexedReturn
 
 if TYPE_CHECKING:
     import logging
 
     from ..core.network import Network
-
-
-class ExtrasDict(TypedDict):
-    """
-    Dictionary containing extra data from indexed code generation.
-
-    Used to store auxiliary information alongside main expressions,
-    for Common Subexpression Elimination (CSE) results.
-
-    Attributes:
-        cse: IndexedList of CSE temporary variable assignments
-    """
-
-    cse: IndexedList
-
-
-class IndexedReturn(TypedDict):
-    """
-    Return type for indexed code generation methods.
-
-    Structure returned by methods like get_indexed_rates(), get_indexed_odes(),
-    etc. Contains both the main expressions and extra data (like CSE temporaries).
-
-    Attributes:
-        extras: Dictionary containing auxiliary data (CSE temporaries, etc.)
-        expressions: IndexedList of main expressions (rates, ODEs, etc.)
-
-    Example:
-        >>> result = cg.get_indexed_rates(use_cse=True)
-        >>> # Access CSE temporaries
-        >>> for indices, expr in result["extras"]["cse"]:
-        ...     print(f"cse{indices[0]} = {expr}")
-        >>> # Access main rate expressions
-        >>> for indices, rate in result["expressions"]:
-        ...     print(f"k[{indices[0]}] = {rate}")
-    """
-
-    extras: ExtrasDict
-    expressions: IndexedList
 
 
 class LangModifier(TypedDict):

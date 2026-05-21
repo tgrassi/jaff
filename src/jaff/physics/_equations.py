@@ -20,7 +20,7 @@ def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
         for reactant in reaction.reactants:
             flux *= nden_matrix[species[str(reactant)].index]
 
-        fluxes[i] = flux
+        fluxes[i] = flux  # type: ignore
 
     return fluxes
 

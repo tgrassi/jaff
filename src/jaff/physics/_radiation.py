@@ -1,24 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, cast
 
 import sympy as sp
 
 from ..common._integrators import smart_integrate
 from ..drivers.sqlite import JaffDb
+from ._typing import RadiationGroupReactionProps
 
 if TYPE_CHECKING:
     from ..core.reaction import Reaction
-
-RadiationGroupReactionProps = TypedDict(
-    "RadiationGroupReactionProps",
-    {
-        "k": sp.Basic,
-        "xsec": sp.Basic | None,
-        "xsec_frac": sp.Basic,
-        "delta_rad": sp.Basic,
-    },
-)
 
 
 class RadiationGroup:

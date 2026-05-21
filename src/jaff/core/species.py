@@ -5,9 +5,9 @@ from functools import cached_property
 from itertools import product
 from typing import TYPE_CHECKING
 
-from ..common import ElementProps
 from ..io import JaffLogger
 from ..types import Catalogue, Vector
+from ._typing import ElementProps
 from .elements import Elements
 
 if TYPE_CHECKING:

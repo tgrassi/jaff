@@ -4,7 +4,6 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import NotRequired, TypedDict
 
 import numpy as np
 from sympy import (
@@ -34,27 +33,11 @@ from ..physics import (
     get_sodes,
     get_sradodes,
 )
+from ._auxiliary_engine import AuxiliaryFunctionParser, FunctionsDict
+from ._network_engine import NetworkParser
 from .elements import Elements
 from .reaction import Reaction, Reactions
 from .species import Specie, Species
-from ._auxiliary_engine import AuxiliaryFunctionParser, FunctionsDict
-from ._network_engine import NetworkParser
-
-NetworkProps = TypedDict(
-    "NetworkProps",
-    {
-        "fname": str | Path,
-        "errors": NotRequired[bool],
-        "label": NotRequired[str],
-        "funcfile": NotRequired[str],
-        "replace_nH": NotRequired[bool],
-        "rad_bands": NotRequired[list],
-        "rad_powerlaw_index": NotRequired[int | float],
-        "rad_energy_density": NotRequired[bool],
-        "c": NotRequired[float],
-        "_from_cli": NotRequired[bool],
-    },
-)
 
 
 class Network:

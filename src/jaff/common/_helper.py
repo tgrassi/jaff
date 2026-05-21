@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING
 
 from sympy import Basic, Piecewise
 from sympy.core.function import AppliedUndef
 
+from ..core._typing import ElementProps
 from ..errors import ParserError
 
 if TYPE_CHECKING:
@@ -20,18 +21,6 @@ FORTRAN_EXTENSIONS = [".f", ".f90", ".f95", ".f03", ".f08", ".for", ".f77"]
 RUST_EXTENSIONS = [".rs"]
 
 F90_PATTERN = re.compile(r"([0-9_.])d([0-9_+-])")
-
-ElementProps = TypedDict(
-    "ElementProps",
-    {
-        "name": str,
-        "mass": float,
-        "atomic_mass": float,
-        "protons": int,
-        "neutrons": int,
-        "electrons": int,
-    },
-)
 
 
 def load_mass_dict() -> dict:

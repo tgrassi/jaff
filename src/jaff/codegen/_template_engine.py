@@ -30,73 +30,16 @@ import ast
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, TypedDict
+from typing import TYPE_CHECKING, Any, Callable
 
 from ..errors import ParserError
 from ..types import IndexedList
-from .codegen import Codegen, IndexedReturn
+from ._typing import CommandProps, IdxSpanResult
+from ._typing import IndexedReturn
+from .codegen import Codegen
 
 if TYPE_CHECKING:
     from .. import Network
-
-
-class IdxSpanResult(TypedDict):
-    """
-    Result structure for index span detection.
-
-    Used internally by the parser to detect and parse index tokens in
-    template lines, extracting both the position and any arithmetic offsets.
-
-    Attributes:
-        offset: List of integer offsets for each index (e.g., from $idx+2$)
-        span: List of tuples containing (start, end) positions of each index token
-
-    Offset Calculation Examples:
-        "$idx$"      -> offset: [0]     (no offset)
-        "$idx+1$"    -> offset: [1]     (add 1)
-        "$idx-2$"    -> offset: [-2]    (subtract 2)
-        "$idx+10$"   -> offset: [10]    (add 10)
-
-    Multiple indices:
-        "array[$idx+1$][$idx-3$]"
-        -> offset: [1, -3]
-        -> span: [(6, 13), (14, 21)]
-
-    Usage in Parser:
-        When processing: "rate[$idx+1$] = $rate$;"
-
-        Result:
-        {
-            "offset": [1],           # +1 offset from template
-            "span": [(5, 13)]        # Character positions of "$idx+1$"
-        }
-
-        Parser then replaces span[0] with actual index (e.g., 0+1=1)
-        Output: "rate[1] = ..."
-    """
-
-    offset: list[int]
-    span: list[tuple[int, int]]
-
-
-class CommandProps(TypedDict):
-    """
-    Properties defining a JAFF command.
-
-    Defines the behavior and available properties for each JAFF command
-    (SUB, REPEAT, REDUCE, GET, HAS, END). Each command has a handler function
-    and a dictionary of properties it can operate on.
-
-    Attributes:
-        func: Callable function that handles the command
-        props: Dictionary mapping property names to their metadata:
-            - "func": Callable that returns the property value(s)
-            - "vars": List of variable names for REPEAT properties
-            - "var": Single variable name for REDUCE properties
-    """
-
-    func: Callable[..., Any]
-    props: dict[str, dict[str, Any]]
 
 
 class TemplateParser:

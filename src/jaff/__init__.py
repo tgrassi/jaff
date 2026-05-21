@@ -9,7 +9,8 @@ An astrochemical network parser for various reaction network formats.
 __version__ = "0.1.0"
 
 from .core.elements import Element, Elements
-from .core.network import Network, NetworkProps
+from .core.network import Network
+from .core._typing import NetworkProps
 from .core.reaction import Reaction, Reactions
 from .core.species import Specie, Species
 from .codegen.builder import Builder

@@ -25,7 +25,7 @@ from __future__ import annotations
 import argparse
 from inspect import signature
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
@@ -37,43 +37,10 @@ from ..common import motd
 from ..drivers import HDF5, Toml
 from ..io import JaffLogger, jaff_progress
 from ..types import HDF5Dict
+from ._typing import JaffgenProps
 
 if TYPE_CHECKING:
     import logging
-
-    from sympy import Basic
-
-NETWORK_PROPS = TypedDict(
-    "NETWORK_PROPS",
-    {
-        "fname": Path,
-        "label": str | None,
-        "funcfile": Path | None,
-        "replace_nH": bool,
-        "errors": bool,
-        "rad_bands": list[str | int | float | "Basic"],
-        "rad_powerlaw_index": int | float,
-        "rad_energy_density": bool,
-        "c": float,
-        "_from_cli": bool,
-    },
-)
-
-JAFFGEN_PROPS = TypedDict(
-    "JAFFGEN_PROPS",
-    {
-        "config_file": Path | None,
-        "config_file_dir": Path | None,
-        "output_dir": Path,
-        "input_dir": Path | None,
-        "input_files": list[Path] | None,
-        "network_file": Path,
-        "network_dir": Path,  # Used to override self.network_dir
-        "default_lang": str | None,
-        "template": str | None,
-        "netprops": NETWORK_PROPS,
-    },
-)
 
 
 class JaffGen:
@@ -94,7 +61,7 @@ class JaffGen:
             self.jaff_dir / "templates" / "preprocessor"
         )
         self.files: list[Path] = []
-        self.jaffgen_config: JAFFGEN_PROPS = {"netprops": {}}  # type: ignore
+        self.jaffgen_config: JaffgenProps = {"netprops": {}}  # type: ignore
         self.jaffgen_config_raw: Toml | None = None
 
         self.jaffgen_config["config_file"] = None
