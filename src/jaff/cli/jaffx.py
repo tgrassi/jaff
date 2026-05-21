@@ -105,21 +105,24 @@ class JaffX:
 
         txt_grp.add_argument(
             "--fast-log",
-            metavar="BOOL",
-            help="If enabled, sample points are equally spaced in fast_log2(T) rather than log(T)",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="Sample points are equally spaced in fast_log2(T) rather than log(T)",
         )
 
         txt_grp.add_argument(
             "--include-all",
-            metavar="BOOL",
+            action=argparse.BooleanOptionalAction,
+            default=None,
             help="Include all reactions, setting non-tabulatable rates to NaN. Otherwise, only include tabulatable, non-constant coefficients.",
         )
 
         txt_grp.add_argument(
             "-v",
             "--verbose",
-            metavar="BOOL",
-            help="If enabled, produces verbose output while adaptively refining",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="Produces verbose output while adaptively refining",
         )
 
     def __set_export_hdf5(
@@ -179,21 +182,24 @@ class JaffX:
 
         hdf5_grp.add_argument(
             "--fast-log",
-            metavar="BOOL",
-            help="If enabled, sample points are equally spaced in fast_log2(T) rather than log(T)",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="Sample points are equally spaced in fast_log2(T) rather than log(T)",
         )
 
         hdf5_grp.add_argument(
             "--include-all",
-            metavar="BOOL",
+            action=argparse.BooleanOptionalAction,
+            default=None,
             help="Include all reactions, setting non-tabulatable rates to NaN. Otherwise, only include tabulatable, non-constant coefficients.",
         )
 
         hdf5_grp.add_argument(
             "-v",
             "--verbose",
-            metavar="BOOL",
-            help="If enabled, produces verbose output while adaptively refining",
+            action=argparse.BooleanOptionalAction,
+            default=None,
+            help="Produces verbose output while adaptively refining",
         )
 
     def __set_export_jaff(
@@ -237,7 +243,8 @@ class JaffX:
 
         network_grp.add_argument(
             "--replace-nh",
-            metavar="BOOL",
+            action=argparse.BooleanOptionalAction,
+            default=None,
             help="Standardize hydrogen density symbols if true",
         )
 
@@ -260,7 +267,7 @@ class JaffX:
     def __set_get_nreact(
         self, esp: "argparse._SubParsersAction[argparse.ArgumentParser]"
     ) -> None:
-        parser = esp.add_parser("num-reactions", help="Prints the number of species")
+        parser = esp.add_parser("num-reactions", help="Prints the number of reactions")
         parser.set_defaults(func=self.__get_nreact)
         self.__set_network_args(parser)
 
@@ -275,9 +282,15 @@ class JaffX:
             "err_tol": args.err_tol or mparams["err_tol"].default,
             "rate_min": args.rate_min or mparams["rate_min"].default,
             "rate_max": args.rate_max or mparams["rate_max"].default,
-            "fast_log": args.fast_log or mparams["fast_log"].default,
-            "include_all": args.include_all or mparams["include_all"].default,
-            "verbose": args.verbose or mparams["verbose"].default,
+            "fast_log": args.fast_log
+            if args.fast_log is not None
+            else mparams["fast_log"].default,
+            "include_all": args.include_all
+            if args.include_all is not None
+            else mparams["include_all"].default,
+            "verbose": args.verbose
+            if args.verbose is not None
+            else mparams["verbose"].default,
         }
 
         net.to_txt(**kwargs)
@@ -293,9 +306,15 @@ class JaffX:
             "err_tol": args.err_tol or mparams["err_tol"].default,
             "rate_min": args.rate_min or mparams["rate_min"].default,
             "rate_max": args.rate_max or mparams["rate_max"].default,
-            "fast_log": args.fast_log or mparams["fast_log"].default,
-            "include_all": args.include_all or mparams["include_all"].default,
-            "verbose": args.verbose or mparams["verbose"].default,
+            "fast_log": args.fast_log
+            if args.fast_log is not None
+            else mparams["fast_log"].default,
+            "include_all": args.include_all
+            if args.include_all is not None
+            else mparams["include_all"].default,
+            "verbose": args.verbose
+            if args.verbose is not None
+            else mparams["verbose"].default,
         }
 
         net.to_hdf5(**kwargs)
@@ -320,7 +339,9 @@ class JaffX:
             "fname": args.network,
             "funcfile": args.funcfile or net_params["funcfile"].default,
             "label": args.label or net_params["label"].default,
-            "replace_nH": args.replace_nh or net_params["replace_nH"].default,
+            "replace_nH": args.replace_nh
+            if args.replace_nh is not None
+            else net_params["replace_nH"].default,
             "_from_cli": True,
         }
 
