@@ -10,7 +10,7 @@ from sympy.core.function import AppliedUndef
 from ..errors import ParserError
 
 if TYPE_CHECKING:
-    from ..auxilary_file_parser import FunctionsDict
+    from ..core._auxiliary_engine import FunctionsDict
 
 HDF_EXTENSIONS = [".hdf5", ".hdf", ".h5"]
 CSV_EXTENSIONS = [".csv", ".txt", ".dat"]

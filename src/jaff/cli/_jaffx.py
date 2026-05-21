@@ -2,11 +2,9 @@ import argparse
 import logging
 from inspect import signature
 
-from jaff.network import NetworkProps
-
-from .. import Network
-from ..common.welcome import motd
-from ..core.logger import JaffLogger
+from .. import Network, NetworkProps
+from ..common import motd
+from ..io import JaffLogger
 
 
 class JaffX:

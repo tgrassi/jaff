@@ -24,16 +24,20 @@ REPLACE Directive:
     as regular expressions.
 """
 
+from __future__ import annotations
+
 import ast
 import re
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Callable, TypedDict
+from typing import TYPE_CHECKING, Any, Callable, TypedDict
 
-from . import Codegen, Network
-from .codegen import IndexedReturn
-from .errors import ParserError
-from .jaff_types import IndexedList
+from ..errors import ParserError
+from ..types import IndexedList
+from .codegen import Codegen, IndexedReturn
+
+if TYPE_CHECKING:
+    from .. import Network
 
 
 class IdxSpanResult(TypedDict):
@@ -95,7 +99,7 @@ class CommandProps(TypedDict):
     props: dict[str, dict[str, Any]]
 
 
-class Fileparser:
+class TemplateParser:
     """
     Parser for template files containing JAFF directives.
 

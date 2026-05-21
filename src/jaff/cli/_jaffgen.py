@@ -29,15 +29,14 @@ from typing import TYPE_CHECKING, Any, TypedDict
 
 import pandas as pd
 
-from .codegen import Codegen as cg
-from .common.welcome import motd
-from .config_table_parser import ConfigTable
-from .core.logger import JaffLogger, jaff_progress
-from .drivers.hdf5 import HDF5
-from .drivers.toml import Toml
-from .file_parser import Fileparser
-from .jaff_types import HDF5Dict
-from .network import Network
+from .. import Network
+from ..cli import ConfigTable
+from ..codegen import Codegen as cg
+from ..codegen import TemplateParser
+from ..common import motd
+from ..drivers import HDF5, Toml
+from ..io import JaffLogger, jaff_progress
+from ..types import HDF5Dict
 
 if TYPE_CHECKING:
     import logging
@@ -88,7 +87,7 @@ class JaffGen:
 
         # Locate JAFF package directory and built-in template directory
         # Templates are stored in jaff/templates/generator/
-        self.jaff_dir: Path = Path(__file__).parent
+        self.jaff_dir: Path = Path(__file__).parent.parent
         self.network_dir: Path = self.jaff_dir.parent.parent / "networks"
         self.generator_template_dir: Path = self.jaff_dir / "templates" / "generator"
         self.preprocessor_template_dir: Path = (
@@ -190,7 +189,7 @@ class JaffGen:
         # Process each template file
         for file in jaff_progress.track(self.files, description="Processing files"):
             # Initialize file parser for this template
-            fparser: Fileparser = Fileparser(
+            fparser: TemplateParser = TemplateParser(
                 self.net, file, self.jaffgen_config["default_lang"]
             )
 

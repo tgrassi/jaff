@@ -1,6 +1,6 @@
 [project]
 name = "jaff"
-version = "0.1.0"
+version = "0.1.5"
 description = "An astrochemical network parser"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,8 +35,8 @@ dependencies = [
 "Homepage" = "https://github.com/tgrassi/jaff"
 
 [project.scripts]
-jaffgen = "jaff.generate:main"
-jaffx = "jaff.cli.jaffx:main"
+jaffgen = "jaff.cli._jaffgen:main"
+jaffx = "jaff.cli._jaffx:main"
 
 [project.optional-dependencies]
 dev = [

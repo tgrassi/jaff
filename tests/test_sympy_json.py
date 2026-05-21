@@ -10,7 +10,7 @@ import sympy
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from jaff.common.sympy_json import dumps, from_jsonable, loads, to_jsonable
+from jaff.common._sympy_json import dumps, from_jsonable, loads, to_jsonable
 
 
 def _rt(expr: sympy.Basic) -> sympy.Basic:

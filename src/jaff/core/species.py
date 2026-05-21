@@ -5,10 +5,10 @@ from functools import cached_property
 from itertools import product
 from typing import TYPE_CHECKING
 
-from .common.helper import ElementProps
-from .core.logger import JaffLogger
+from ..common import ElementProps
+from ..io import JaffLogger
+from ..types import Catalogue, Vector
 from .elements import Elements
-from .types import Catalogue, Vector
 
 if TYPE_CHECKING:
     import logging
@@ -28,7 +28,7 @@ class Specie:
     @classmethod
     def __get_mass_dict(cls) -> dict[str, ElementProps]:
         if cls._mass_dict is None:
-            from .common.helper import load_mass_dict
+            from ..common import load_mass_dict
 
             cls._mass_dict = load_mass_dict()
 

@@ -5,9 +5,9 @@ from typing import Callable, TypedDict
 
 from sympy import Basic, parse_expr
 
-from .common import f90_convert, resolve_symbolic_dependencies
-from .core.logger import JaffLogger, jaff_progress
-from .errors import ParserError
+from ..common import f90_convert, resolve_symbolic_dependencies
+from ..errors import ParserError
+from ..io import JaffLogger, jaff_progress
 
 patternProps = TypedDict(
     "patternProps",

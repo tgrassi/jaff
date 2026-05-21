@@ -6,20 +6,20 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from .core.logger import JaffLogger
-from .physics import constants
+from ..io import JaffLogger
+from . import constants
 
 if TYPE_CHECKING:
     import logging
 
-    from . import Reaction
+    from ..core import Reaction
 
 
 class Photochemistry:
     def __init__(self):
         self.logger: logging.Logger = JaffLogger().get_logger()
         self.xsecs: dict = {}
-        self.xsecs_folder: Path = Path(__file__).parent / "data" / "xsecs"
+        self.xsecs_folder: Path = Path(__file__).parent.parent / "data" / "xsecs"
 
         self.load_xsecs_leiden()
 

@@ -20,15 +20,11 @@ from sympy import (
     sympify,
 )
 
-from jaff.elements import Elements
-
-from .core.logger import JaffLogger
-from .physics import constants
-from .species import Species
-from .types import Catalogue, Vector
-
-if TYPE_CHECKING:
-    from .species import Specie
+from ..io import JaffLogger
+from ..physics import constants
+from ..types import Catalogue, Vector
+from .elements import Elements
+from .species import Specie, Species
 
 
 class Reaction:

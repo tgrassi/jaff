@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from jaff.codegen import Codegen
-from jaff.network import Network
+from jaff import Network
 
 
 @pytest.fixture

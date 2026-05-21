@@ -13,7 +13,7 @@ from jaff import Reactions, Species
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from jaff.network import Network
+from jaff import Network
 
 
 class TestNetworkInitialization:
@@ -76,7 +76,7 @@ class TestNetworkInitialization:
             patch("builtins.open", MagicMock()),
             patch("pathlib.Path.exists", return_value=True),
         ):
-            with patch("jaff.network.Photochemistry", MagicMock()):
+            with patch("jaff.core.network.Photochemistry", MagicMock()):
                 with patch.object(Network, "_Network__load_network", MagicMock()):
                     with patch.object(Network, "check_sink_sources", MagicMock()):
                         with patch.object(Network, "check_recombinations", MagicMock()):

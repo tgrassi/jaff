@@ -37,6 +37,8 @@ Example:
     >>> print(rates)
 """
 
+from __future__ import annotations
+
 import re
 from collections.abc import Callable
 from functools import cache, reduce
@@ -45,12 +47,13 @@ from typing import TYPE_CHECKING, Any, List, Set, Tuple, TypedDict, cast
 
 import sympy as sp
 
-from .core.logger import JaffLogger, jaff_progress
-from .jaff_types import IndexedList, IndexedValue
-from .network import Network
+from ..io._logger import JaffLogger, jaff_progress
+from ..types import IndexedList, IndexedValue
 
 if TYPE_CHECKING:
     import logging
+
+    from ..core.network import Network
 
 
 class ExtrasDict(TypedDict):
@@ -983,7 +986,6 @@ class Codegen:
 
         if use_cse:
             with jaff_progress.indeterminate("Generating cse expressions"):
-                self.logger.info("Generating cse expressions")
                 cse_var = sp.numbered_symbols(prefix=cse_var)
                 replacements, reduced_exprs = sp.cse(rhs_symbols, symbols=cse_var)
 

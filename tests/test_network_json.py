@@ -14,7 +14,7 @@ import sympy
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from jaff.network import Network
+from jaff import Network
 
 
 def test_network_json_roundtrip_sample_kida_valid():

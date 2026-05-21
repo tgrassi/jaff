@@ -30,9 +30,8 @@ def _is_jupyter() -> bool:
 
 
 IN_JUPYTER = _is_jupyter()
-# True when running inside a Jupyter kernel OR as a subprocess launched from one.
-# Jupyter kernels export JPY_PARENT_PID; child processes inherit it.
 _IN_JUPYTER_ENV = IN_JUPYTER or "JPY_PARENT_PID" in os.environ
+_IN_INTERACTIVE = hasattr(sys, "ps1")
 
 _PROGRESS_KWARGS = dict(
     expand=True,
@@ -64,7 +63,7 @@ def _make_progress(console: Console, auto_refresh: bool = True) -> Progress:
 class JaffProgress(Progress):
     @contextmanager
     def indeterminate(self, description: str):
-        if IN_JUPYTER:
+        if IN_JUPYTER or _IN_INTERACTIVE:
             with _make_progress(self.console) as p:
                 task_id = p.add_task(description, total=None)
                 yield task_id
@@ -87,7 +86,7 @@ class JaffProgress(Progress):
         update_period: float = 0.1,
         **kwargs,
     ) -> Iterable[ProgressType]:
-        if IN_JUPYTER:
+        if IN_JUPYTER or _IN_INTERACTIVE:
             with _make_progress(self.console, auto_refresh=False) as p:
                 if total is None and hasattr(sequence, "__len__"):
                     total = len(sequence)  # type: ignore
@@ -145,7 +144,7 @@ jaff_progress = JaffProgress(
     *_make_progress_columns(), console=jaff_console, **_PROGRESS_KWARGS
 )
 
-if not _IN_JUPYTER_ENV:
+if not _IN_JUPYTER_ENV and not _IN_INTERACTIVE:
     jaff_progress.start()
     atexit.register(jaff_progress.stop)
 

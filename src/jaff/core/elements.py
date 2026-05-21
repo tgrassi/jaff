@@ -11,11 +11,11 @@ from __future__ import annotations
 from functools import cache
 from typing import TYPE_CHECKING
 
-from .types import Catalogue, Vector
+from ..types import Catalogue, Vector
 
 if TYPE_CHECKING:
+    from ..common import ElementProps
     from . import Specie
-    from .common.helper import ElementProps
 
 
 class Element:
@@ -29,7 +29,7 @@ class Element:
     @classmethod
     def __get_mass_dict(cls) -> dict[str, ElementProps]:
         if cls._mass_dict is None:
-            from .common.helper import load_mass_dict
+            from ..common import load_mass_dict
 
             cls._mass_dict = load_mass_dict()
 
@@ -113,7 +113,7 @@ class Elements(Catalogue):
     @classmethod
     def __get_mass_dict(cls) -> dict[str, ElementProps]:
         if cls._mass_dict is None:
-            from .common.helper import load_mass_dict
+            from ..common import load_mass_dict
 
             cls._mass_dict = load_mass_dict()
         return cls._mass_dict

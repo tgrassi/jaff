@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING
 
 from sympy import Basic, Expr, Float, Idx, MatrixSymbol
 
-from ..core.logger import jaff_progress
+from ..io._logger import jaff_progress
 
 if TYPE_CHECKING:
     from .. import Reactions, Species
-    from .radiation import Radiation
+    from ._radiation import Radiation
 
 
 def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:

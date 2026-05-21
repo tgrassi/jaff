@@ -21,21 +21,24 @@ from sympy import (
 )
 from sympy.core.function import AppliedUndef, UndefinedFunction
 
-from .auxilary_file_parser import AuxilaryFunctionParser, FunctionsDict
-from .common import is_jaff_file
-from .common.helper import ElementProps, load_mass_dict, resolve_dependencies
-from .common.welcome import motd
-from .core.io import JaffProps, from_jaff_file, to_jaff_file, write_data_table
-from .core.logger import JaffLogger, jaff_progress
+from ..common import is_jaff_file, load_mass_dict, motd, resolve_dependencies
+from ..common._helper import ElementProps
+from ..errors import ParserError
+from ..io import JaffLogger, jaff_progress
+from ..io._io import JaffProps, from_jaff_file, to_jaff_file, write_data_table
+from ..physics import (
+    Photochemistry,
+    Radiation,
+    constants,
+    get_sfluxes,
+    get_sodes,
+    get_sradodes,
+)
 from .elements import Elements
-from .errors import ParserError
-from .network_parser import NetworkParser
-from .photochemistry import Photochemistry
-from .physics import constants
-from .physics.equations import get_sfluxes, get_sodes, get_sradodes
-from .physics.radiation import Radiation
 from .reaction import Reaction, Reactions
 from .species import Specie, Species
+from ._auxiliary_engine import AuxiliaryFunctionParser, FunctionsDict
+from ._network_engine import NetworkParser
 
 NetworkProps = TypedDict(
     "NetworkProps",
@@ -412,7 +415,7 @@ class Network:
         if not funcfile.exists():
             raise FileNotFoundError(funcfile)
 
-        with AuxilaryFunctionParser(funcfile) as afp:
+        with AuxiliaryFunctionParser(funcfile) as afp:
             func_dict: FunctionsDict = afp.get_dict()
 
         return func_dict

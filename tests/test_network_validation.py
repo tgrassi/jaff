@@ -9,14 +9,12 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from jaff.core.logger import JaffLogger
+from jaff.io import JaffLogger
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from jaff.network import Network
-from jaff.reaction import Reaction
-from jaff.species import Specie
+from jaff import Network, Reaction, Specie
 
 
 class TestNetworkValidation:

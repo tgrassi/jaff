@@ -15,14 +15,14 @@ from ..common import SCHEMA_VERSION as SYMPY_SCHEMA
 from ..common import fast_log2, inverse_fast_log2, is_jaff_file
 from ..common import from_jsonable as sympy_from_jsonable
 from ..common import to_jsonable as sympy_to_jsonable
-from ..core.logger import JaffLogger
 from ..drivers.hdf5 import HDF5
 from ..errors import NotJaffFileError
-from ..jaff_types import HDF5Dict
-from ..reaction import Reactions
+from ..types import HDF5Dict
+from ._logger import JaffLogger
 
 if TYPE_CHECKING:
     from .. import Network, Reaction, Specie, Species
+    from ..core.reaction import Reactions
 else:
     Specie = "Specie"
     Species = "Species"

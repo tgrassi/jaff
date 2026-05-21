@@ -6,8 +6,8 @@ from typing import Any, Callable, NotRequired, TypedDict
 import sympy as sp
 from sympy.core.function import AppliedUndef
 
-from .common import resolve_symbolic_dependencies
-from .errors import ParserError
+from ..common import resolve_symbolic_dependencies
+from ..errors import ParserError
 
 FunctionsDict = TypedDict(
     "FunctionsDict",
@@ -20,7 +20,7 @@ FunctionsDict = TypedDict(
 )
 
 
-class AuxilaryFunctionParser:
+class AuxiliaryFunctionParser:
     def __init__(self, file: Path | str):
         if not isinstance(file, (Path, str)):
             raise ValueError(
@@ -301,7 +301,7 @@ if __name__ == "__main__":
     import time
 
     start_time = time.perf_counter()
-    afp = AuxilaryFunctionParser(Path("networks/GOW.dat_functions"))
+    afp = AuxiliaryFunctionParser(Path("networks/GOW/GOW.jfunc"))
 
     end_time = time.perf_counter()
     print(f"Execution time: {end_time - start_time:.6f} seconds")

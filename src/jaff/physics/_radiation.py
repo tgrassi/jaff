@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, TypedDict, cast
 
 import sympy as sp
 
-from ..common.integrators import smart_integrate
+from ..common._integrators import smart_integrate
 from ..drivers.sqlite import JaffDb
 
 if TYPE_CHECKING:
-    from ..reaction import Reaction
+    from ..core.reaction import Reaction
 
 RadiationGroupReactionProps = TypedDict(
     "RadiationGroupReactionProps",

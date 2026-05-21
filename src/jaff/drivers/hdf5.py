@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from ..jaff_types import HDF5Dict
+from ..types import HDF5Dict
 
 
 class HDF5:
