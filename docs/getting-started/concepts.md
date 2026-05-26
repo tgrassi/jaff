@@ -6,16 +6,7 @@ icon: lucide/layers
 
 # Basic Concepts
 
-## What is JAFF?
-
-**JAFF** (Just Another Fancy Format) is a Python library for working with chemical reaction networks. It provides tools to:
-
-- **Load** chemical reaction networks from various formats
-- **Analyze** network properties (species, reactions, elements)
-- **Generate** optimized code for rate calculations, ODEs, and Jacobians
-- **Export** networks to multiple programming languages (C, C++, Fortran, Python and others)
-
-The main aim of jaff is to provide a commone interface for all common chemical network formats and it doubles down as a code generator.
+The main aim of jaff is to provide a common interface for all common chemical network formats and it doubles down as a code generator. It is also the first code to completely support explicit photochemistry code generation
 
 ## Core Components
 
@@ -23,26 +14,33 @@ The main aim of jaff is to provide a commone interface for all common chemical n
 
 A **chemical network** describes a system of chemical species and the reactions between them.
 
-**Key Elements:**
-
-- **Species**: Individual chemical entities (atoms, molecules, ions)
-- **Reactions**: Transformations between species
-- **Rate Coefficients**: Functions that determine reaction speeds
-- **Stoichiometry**: The ratios of reactants and products
-
 **Example Network:**
 
+The following network describes a simple collisonal hydrogen ionization and recommbination network
+
 ```text
-H + O -> OH
-H2 + O -> OH + H
-OH + H2 -> H2O + H
+H -> H+ + e-
+H+ + e- -> H
 ```
 
 This network has:
 
-- 4 species: H, O, H2, OH, H2O
-- 3 reactions
+- 3 species: H, H+ and e-
+- 2 reactions
 - Temperature-dependent rate coefficients
+
+A rate coefficient tells us how fast the reaction occurs.
+For a reaction of the form
+
+$$ \alpha A + \beta B -> \gamma C $$
+
+where $\alpha$, $\beta$ and $\gamma$ are the stoichiometric coefficients, the rate of the reaction is given by
+
+$$ r = k\ [A]^{\alpha} [B]^{\beta} $$
+
+where $k$ is the rate coefficient and $[A]$ and $[B]$ represents the concentrations of $A$ and $B$ respectively.
+
+In astrophysics, reactions can occur due to a lot of reasons. For example, a reaction can occur due to thermal collisions, collisions with cosmic ray particles, photons from various astrophysical sources or simply a spontaenous decay. All these reactions typically have different characterstic and rates and the cause of the reaction can significantly alter the environment.
 
 ### 2. Network Object
 
@@ -52,7 +50,7 @@ The `Network` class represents a loaded chemical network in memory.
 from jaff import Network
 
 # Load a network file
-net = Network("networks/react_COthin")
+net = Network("networks/COthin/react_COthin.jet")
 
 # Access properties
 print(f"Species: {len(net.species)}")      # Number of species
@@ -62,10 +60,8 @@ print(f"Label: {net.label}")                # Network identifier
 
 **It contains:**
 
-- `species`: List of all chemical species
-- `reactions`: List of all reactions
-- `specie_index`: Fast lookup dictionary (name → index)
-- `reaction_index`: Dictionary of reactions by type
+- `species`: Collection of all chemical species; supports name lookup via `net.species["name"]`
+- `reactions`: Collection of all reactions
 - Mass information and elemental composition
 - `file_name`: The network file name
 - `label`: A label for the network
@@ -202,10 +198,10 @@ from jaff import Codegen
 cg = Codegen(network=net, lang="c++")
 
 # Use default offset (0 for C++)
-code1 = cg.get_rates(idx_offset=0)  # arr[0], arr[1], ...
+code1 = cg.get_rates_str(idx_offset=0)  # arr[0], arr[1], ...
 
 # Use custom offset (e.g., start at 1)
-code2 = cg.get_rates(idx_offset=1)  # arr[1], arr[2], ...
+code2 = cg.get_rates_str(idx_offset=1)  # arr[1], arr[2], ...
 ```
 
 ### Common Subexpression Elimination (CSE)
@@ -232,7 +228,7 @@ rate[2] = k2 * x0 * n[2];
 Enable CSE with `use_cse=True`:
 
 ```python
-code = cg.get_rates(use_cse=True)  # More efficient
+code = cg.get_rates_str(use_cse=True)  # More efficient
 ```
 
 ### ODEs (Ordinary Differential Equations)
@@ -250,7 +246,7 @@ Where:
 JAFF generates these ODEs automatically:
 
 ```python
-ode_code = cg.get_ode(ode_var="dydt", use_cse=True)
+ode_code = cg.get_ode_str(ode_var="dydt", use_cse=True)
 ```
 
 ### Jacobian Matrix
@@ -264,7 +260,7 @@ Where $f_i = dy_i/dt$ is the ODE for species i.
 Jacobians are essential for implicit ODE solvers:
 
 ```python
-jac_code = cg.get_jacobian(jac_var="J", use_cse=True)
+jac_code = cg.get_jacobian_str(jac_var="J", use_cse=True)
 ```
 
 ### Element Conservation
@@ -272,15 +268,11 @@ jac_code = cg.get_jacobian(jac_var="J", use_cse=True)
 Chemical reactions conserve elements. JAFF can check conservation:
 
 ```python
-from jaff.elements import Elements
+elem = net.elements
 
-elem = Elements(net)
-
-# Get element truth matrix (which species contain which elements)
-truth_matrix = elem.get_element_truth_matrix()
-
-# Get element density matrix (how many of each element per species)
-density_matrix = elem.get_element_density_matrix()
+# Get element truth matrix (rows=elements, cols=species; entry [i][j] = 1 if present)
+# Note: use density_matrix() for atom counts
+density_matrix = elem.density_matrix()
 ```
 
 ## Workflow Examples
@@ -291,7 +283,7 @@ density_matrix = elem.get_element_density_matrix()
 from jaff import Network
 
 # 1. Load network
-net = Network("networks/react_COthin")
+net = Network("networks/COthin/react_COthin.jet")
 
 # 2. Explore species
 for species in net.species:
@@ -315,7 +307,7 @@ The recommended workflow uses the `Preprocessor` class to replace pragmas in tem
 from jaff import Network, Codegen, Preprocessor
 
 # 1. Load network
-net = Network("networks/react_COthin")
+net = Network("networks/COthin/react_COthin.jet")
 
 # 2. Create code generator and preprocessor
 cg = Codegen(network=net, lang="cxx")
@@ -333,7 +325,7 @@ replacements = {
     "RATES": rates,
     "ODE": odes,
     "JACOBIAN": jacobian,
-    "NUM_SPECIES": f"static constexpr int neqs = {net.get_number_of_species()};"
+    "NUM_SPECIES": f"static constexpr int neqs = {net.species.count};"
 }
 
 # 5. Process template file with pragma replacement
@@ -370,21 +362,13 @@ The preprocessor will replace content between `// PREPROCESS_<KEY>` and `// PREP
 
 ### Template-Based Workflow
 
-```python
-from jaff import Network
-from jaff.file_parser import Fileparser
-from pathlib import Path
+Use the `jaffgen` CLI to process template files with `$JAFF` directives:
 
-# 1. Load network
-net = Network("networks/react_COthin")
+```bash
+jaffgen --network networks/COthin/react_COthin.jet --files template.cpp
+```
 
-# 2. Process template file
-parser = Fileparser(net, Path("template.cpp"))
-output = parser.parse_file()
-
-# 3. Save generated code
-with open("output.cpp", "w") as f:
-    f.write(output)
+The generated file is placed in the `generated/` folder. See [Template Syntax](../user-guide/template-syntax.md) for directive reference.
 ````
 
 ## Best Practices
@@ -409,7 +393,7 @@ This enables warnings for:
 Enable CSE for production code:
 
 ```python
-cg.get_rates(use_cse=True)  # Faster execution
+cg.get_rates_str(use_cse=True)  # Faster execution
 ```
 
 ### 3. Check Generated Code
@@ -417,7 +401,7 @@ cg.get_rates(use_cse=True)  # Faster execution
 Always review generated code before using:
 
 ```python
-code = cg.get_rates()
+code = cg.get_rates_str()
 print(code)  # Inspect output
 ```
 
@@ -427,13 +411,13 @@ Match your target framework:
 
 ```python
 # For C/C++/Python: start at 0
-code = cg.get_rates(idx_offset=0)
+code = cg.get_rates_str(idx_offset=0)
 
 # For Fortran: start at 1
-code = cg.get_rates(idx_offset=1)
+code = cg.get_rates_str(idx_offset=1)
 
 # For custom arrays: use any offset
-code = cg.get_rates(idx_offset=5)
+code = cg.get_rates_str(idx_offset=5)
 ```
 
 ### 5. Organize Generated Code
@@ -443,9 +427,9 @@ Structure your output logically:
 ```python
 # Generate all components
 commons = cg.get_commons()
-rates = cg.get_rates(use_cse=True)
-odes = cg.get_ode(use_cse=True)
-jac = cg.get_jacobian(use_cse=True)
+rates = cg.get_rates_str(use_cse=True)
+odes = cg.get_ode_str(use_cse=True)
+jac = cg.get_jacobian_str(use_cse=True)
 
 # Combine in logical order
 full_code = f"""

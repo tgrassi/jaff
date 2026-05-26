@@ -28,6 +28,15 @@
     --jaff-code-titlebar: rgba(0, 0, 0, 0.18);
 }
 
+code,
+pre,
+kbd {
+    font-variant-ligatures: contextual;
+    font-feature-settings:
+        "calt" 1,
+        "liga" 1;
+}
+
 /* Apply Space Grotesk to headings and set specific colors */
 .md-typeset h1,
 .md-typeset h2,
@@ -168,7 +177,7 @@ body,
     position: relative;
     width: 100%;
     min-height: 100svh;
-    border-left: 1px solid var(--jaff-grid);
+    /*border-left: 1px solid var(--jaff-grid);*/
     transition: border-color 0.2s ease;
 }
 
@@ -253,6 +262,19 @@ table,
     background: transparent !important;
 }
 
+/* Smooth color transition for left sidebar nav links */
+.md-sidebar--primary .md-nav__link,
+.md-sidebar--primary .md-nav__link * {
+    transition: color 0.3s ease;
+}
+
+/* Highlight all ancestor section/nested headers when any child page is active */
+.md-sidebar--primary .md-nav__item--active > .md-nav__link:not(.md-nav__link--active),
+.md-sidebar--primary .md-nav__item--active > label.md-nav__link {
+    color: var(--md-accent-fg-color) !important;
+    opacity: 1 !important;
+}
+
 /* TOC sidebar: active link matches accent color with fade-in */
 .md-sidebar--secondary .md-nav__link,
 .md-sidebar--secondary .md-nav__link * {
@@ -298,14 +320,18 @@ table,
 }
 
 /* Left sidebar nav icon flip on hover */
-.md-sidebar--primary .md-nav__link svg,
-.md-sidebar--primary .md-nav__link .md-icon {
+.md-sidebar--primary .md-nav__link svg {
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.md-sidebar--primary .md-nav__link:hover svg,
-.md-sidebar--primary .md-nav__link:hover .md-icon {
+.md-sidebar--primary .md-nav__link:hover svg {
     transform: rotateY(180deg);
+}
+
+/* Prevent chevron (.md-nav__icon span) from rotating on hover */
+.md-sidebar--primary .md-nav__link:hover .md-nav__icon,
+.md-sidebar--primary .md-nav__link:hover .md-nav__icon svg {
+    transform: none !important;
 }
 
 /* Links: semibold + clean underline so they pop from body text */
@@ -347,7 +373,7 @@ table,
     }
 }
 
-/* JS fallback entrance animation */
+/* Page entrance animation — applied via CSS to avoid FOUC */
 @keyframes jaff-page-enter {
     from {
         opacity: 0;
@@ -359,6 +385,45 @@ table,
     }
 }
 
+.md-content__inner,
 .jaff-page-enter {
     animation: jaff-page-enter 0.85s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Left nav scrollbar: subtle, near-background color */
+.md-sidebar--primary .md-sidebar__scrollwrap {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+.md-sidebar--primary .md-sidebar__scrollwrap::-webkit-scrollbar {
+    width: 4px;
+}
+
+.md-sidebar--primary .md-sidebar__scrollwrap::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.md-sidebar--primary .md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.12);
+    border-radius: 9999px;
+}
+
+[data-md-color-scheme="slate"] .md-sidebar--primary .md-sidebar__scrollwrap {
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+[data-md-color-scheme="slate"] .md-sidebar--primary .md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.md-typeset .mermaid {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.md-typeset .mermaid svg {
+    width: 100% !important;
+    height: auto !important;
+    display: block;
 }

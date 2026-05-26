@@ -185,8 +185,58 @@
         }
     }
 
+    function setupNavSlide() {
+        const sidebar = document.querySelector(".md-sidebar--primary");
+        if (!sidebar) return;
+
+        sidebar.addEventListener("click", (e) => {
+            const link = e.target.closest("a.md-nav__link");
+            if (!link || !link.href || !sidebar.contains(link)) return;
+
+            // Collect ancestor nested items of the clicked link (sections to keep/expand)
+            const newAncestors = new Set();
+            let cur = link.parentElement;
+            while (cur && sidebar.contains(cur)) {
+                if (cur.classList && cur.classList.contains("md-nav__item--nested")) {
+                    newAncestors.add(cur);
+                }
+                cur = cur.parentElement;
+            }
+
+            // Find all currently-active nested items that are NOT ancestors → collapse them
+            const toCollapse = [];
+            sidebar.querySelectorAll(".md-nav__item--nested.md-nav__item--active").forEach(item => {
+                if (newAncestors.has(item)) return;
+                const cb = item.querySelector(":scope > input.md-nav__toggle");
+                if (cb && cb.checked) toCollapse.push(cb);
+            });
+
+            // Find ancestors that need expanding
+            const toExpand = [];
+            newAncestors.forEach(item => {
+                const cb = item.querySelector(":scope > input.md-nav__toggle");
+                if (cb && !cb.checked) toExpand.push(cb);
+            });
+
+            if (!toCollapse.length && !toExpand.length) return;
+
+            // Block instant navigation so sidebar isn't replaced mid-animation
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            toCollapse.forEach(cb => { cb.checked = false; });
+            toExpand.forEach(cb => { cb.checked = true; });
+
+            // Wait for slide transition (250ms) then navigate
+            setTimeout(() => {
+                window.location.href = link.href;
+            }, 280);
+        }, true); // capture phase: run before instant-nav's handler
+    }
+
     function init() {
         setup(".md-sidebar--secondary", ".md-nav--secondary");
+        setupNavSlide();
     }
 
     if (typeof document$ !== "undefined") {

@@ -9,7 +9,7 @@ icon: lucide/monitor-down
 
 ## Requirements
 
-JAFF requires Python 3.9 or higher. Check your Python version:
+JAFF requires `python>=3.9`. Check your Python version:
 
 ```bash
 python --version
@@ -17,29 +17,35 @@ python --version
 
 ## Installation Methods
 
-### Method 1: Install from Source
+<!-- prettier-ignore -->
+!!! tip "Managing virtual environments"
+    Although JAFF can be installed in a variety of ways, it is encouraged to use [uv](https://docs.astral.sh/uv/) to install jaff and manage it's virtual environment
+
+### Install from Source
 
 For the latest development version:
 
-```bash
-# Clone the repository
-git clone https://github.com/tgrassi/jaff.git
-cd jaff
+=== "pip"
 
-# Install the package
-pip install -e .
-```
+    ```bash
+    # Clone the repository
+    git clone git@github.com:jaff-chemistry/jaff.git
+    cd jaff
 
-Or using uv:
+    # Install the package
+    pip install -e .
+    ```
 
-```bash
-# Clone the repository
-git clone https://github.com/tgrassi/jaff.git
-cd jaff
+=== "uv"
 
-# Install the package
-uv pip install -e .
-```
+    ```bash
+    # Clone the repository
+    git clone https://github.com/tgrassi/jaff.git
+    cd jaff
+
+    # Install the package
+    uv pip install -e .
+    ```
 
 ## Virtual Environment (Recommended)
 
@@ -106,81 +112,34 @@ You should see the JAFF code generator help message.
 
 After installation, JAFF provides the following command-line tools:
 
+- **`jaffx`** - Quick command executor
+
+```bash
+jaffx export hdf5 --network networks/demos/demo1.jet --file demo.hdf5
+```
+
 - **`jaffgen`** - Code generator for chemical reaction networks
-    ```bash
-    jaffgen --network networks/test.dat --template microphysics
-    ```
-
-You can also use the module invocation:
 
 ```bash
-python -m jaff.generate --network networks/test.dat --template microphysics
-```
-
-## Testing Your Installation
-
-Try loading a sample network and generating code:
-
-```python
-from jaff import Network
-
-# Load a network file
-net = Network("path/to/network.dat")
-print(f"Loaded network with {len(net.species)} species")
-print(f"and {len(net.reactions)} reactions")
-```
-
-Or from the command line:
-
-```bash
-# Generate C++ code from a template
-jaffgen --network networks/test.dat --files template.cpp --outdir output/
+jaffgen --network networks/demos/demo1.jet --template microphysics
 ```
 
 ## Troubleshooting
 
-### ImportError: No module named 'jaff'
+### `ImportError`: No module named 'jaff'
 
 Make sure you've activated your virtual environment and that the installation completed successfully.
 
-### Version Conflicts
-
-If you encounter dependency conflicts:
-
-```bash
-# Upgrade pip first
-pip install --upgrade pip
-
-# Try installing again
-pip install jaff
-```
-
-With uv:
-
-```bash
-# uv handles upgrades automatically
-uv pip install jaff
-```
-
 ### NumPy/SciPy Installation Issues
 
-On some systems, you may need to install NumPy and SciPy separately:
+On some systems, if you are using pip, you may need to install `NumPy` and `SciPy` separately:
 
 ```bash
 # Install scientific stack first
 pip install numpy scipy
-
-# Then install JAFF
-pip install jaff
 ```
 
-With uv (handles dependencies better):
-
-```bash
-uv pip install jaff
-```
-
-### Permission Errors
+<!--### Permission Errors
 
 If you get permission errors on Linux/macOS:
 
@@ -192,7 +151,7 @@ pip install --user jaff
 python -m venv .venv
 source .venv/bin/activate
 pip install jaff
-```
+```-->
 
 ## Next Steps
 
@@ -223,7 +182,7 @@ uv pip install --upgrade jaff
 
 ## Uninstalling
 
-To remove JAFF from your system:
+To remove JAFF from your system/venv:
 
 === "pip"
 

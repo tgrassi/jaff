@@ -20,7 +20,7 @@ icon: lucide/house
 
 <!--## Welcome to JAFF-->
 
-JAFF is a comprehensive tool for working with astrochemical reaction networks. It provides a unified interface for parsing multiple network formats, analyzing chemical species and reactions, and generating optimized code for numerical simulations in multiple programming languages: `C`, `C++`, `Fortran`, `Python`, `Rust`, `Julia`, and `R`.
+JAFF is a comprehensive library for working with astrochemical reaction networks. It provides an unified interface for parsing multiple network formats, analyzing chemical species and reactions, and generating optimized code for numerical simulations in multiple programming languages: `C`, `C++`, `Fortran`, `Python`, `Rust`, `Julia`, and `R` and is the first automated code generator capable of treating photo-chemistry explicitly.
 
 <div class="grid cards" markdown>
 
@@ -28,7 +28,7 @@ JAFF is a comprehensive tool for working with astrochemical reaction networks. I
 
     ***
 
-    Parses `KIDA`, `UDFA`, `PRIZMO`, `KROME`, and `UCLCHEM` networks with automatic format detection.
+    Parses `KIDA`, `UDFA`, `PRIZMO`, `KROME` and `UCLCHEM` networks with automatic format detection.
 
 - :lucide-chart-spline:{ .lg .middle } **Validation and Analysis**
 
@@ -58,61 +58,38 @@ JAFF is a comprehensive tool for working with astrochemical reaction networks. I
 from jaff import Network
 
 # Load a chemical network
-net = Network("networks/react_COthin")
+net = Network("networks/h_photoionization/h_photo.jet")
 
 # Access species information
-print(f"Network contains {len(net.species)} species")
-print(f"First species: {net.species[0].name}, mass: {net.species[0].mass} amu")
+print(f"Network contains {net.species.count} species")
+print(f"First species: {net.species[0].name}, mass: {net.species[0].mass} gm")
 
 # Access reactions
-for reaction in net.reactions[:3]:
-    print(reaction.get_sympy())  # Symbolic representation
-
-# Generate code
-from jaff import Codegen
-cg = Codegen(network=net, lang="cxx")
-rate_code = cg.get_rates(idx_offset=0, rate_var="rate", brac_format="[]")
-print(rate_code)
+rea = net.reactions["H -> H+ + e-"]
+print(f"Reactants: {', '.join(rea.reactants.names())}")
+print(f"Products: {', '.join(rea.products.names())}")
 ```
 
----
+**Output**
 
-## Use Cases
-
-### Astrochemistry Simulations
-
-Generate efficient ODE solvers for modeling chemical evolution in:
-
-- **Interstellar clouds** - dark clouds, molecular clouds
-- **Protoplanetary disks** - planet formation environments
-- **Planetary atmospheres** - exoplanet and solar system atmospheres
-- **Stellar outflows** - AGB stars, supernovae
-
-### Network Analysis
-
-- Compare different reaction databases
-- Identify missing species or reactions
-- Validate stoichiometric conservation
-- Extract element density matrices
-
-### Code Integration
-
-- Generate code compatible with existing simulation frameworks
-- Customize output format with templates
-- Optimize for performance with CSE
-- Support multiple programming languages
+```text
+Network contains 3 species
+First species: H, mass: 1.008 gm
+Reactants: H
+Products: H+, e-
+```
 
 ---
 
 ## Supported Network Formats
 
-| Format      | Description                            | Reference                                                            |
-| ----------- | -------------------------------------- | -------------------------------------------------------------------- |
-| **KIDA**    | Kinetic Database for Astrochemistry    | [A&A, 689, A63 (2024)](https://doi.org/10.1051/0004-6361/202450606)  |
-| **UDFA**    | UMIST Database for Astrochemistry      | [A&A, 682, A109 (2024)](https://doi.org/10.1051/0004-6361/202346908) |
-| **PRIZMO**  | Uses `->` separator with `VARIABLES{}` | [MNRAS 494, 4471 (2020)](https://doi.org/10.1093/mnras/staa971)      |
-| **KROME**   | Comma-separated with `@format:` header | [MNRAS 439, 2386 (2014)](https://doi.org/10.1093/mnras/stu114)       |
-| **UCLCHEM** | Comma-separated with `,NAN,` marker    | [AJ 154 38 (2017)](https://doi.org/10.3847/1538-3881/aa773f)         |
+| Format      | Description                                          | Reference                                                            |
+| ----------- | ---------------------------------------------------- | -------------------------------------------------------------------- |
+| **KIDA**    | Kinetic Database for Astrochemistry                  | [A&A, 689, A63 (2024)](https://doi.org/10.1051/0004-6361/202450606)  |
+| **UDFA**    | UMIST Database for Astrochemistry                    | [A&A, 682, A109 (2024)](https://doi.org/10.1051/0004-6361/202346908) |
+| **PRIZMO**  | Protoplanetary disk chemistry evolution code         | [MNRAS 494, 4471 (2020)](https://doi.org/10.1093/mnras/staa971)      |
+| **KROME**   | Library for astrophysical chemistry and microphysics | [MNRAS 439, 2386 (2014)](https://doi.org/10.1093/mnras/stu114)       |
+| **UCLCHEM** | Gas-grain astrochemical code for Python modelling    | [AJ 154 38 (2017)](https://doi.org/10.3847/1538-3881/aa773f)         |
 
 ---
 
@@ -124,7 +101,7 @@ Generate efficient ODE solvers for modeling chemical evolution in:
 
     ***
 
-    Install JAFF in your system and run your required network analysis
+    New to JAFF? The installation documentation provides a comprehensive guide to help you get started with JAFF quickly
 
     [:octicons-arrow-right-24: Installation Guide](getting-started/installation.md)
 
@@ -132,15 +109,15 @@ Generate efficient ODE solvers for modeling chemical evolution in:
 
     ***
 
-    Learn how to work with networks, species, and reactions
+    The user guide provides in-depth information on the key concepts of Networks, Reactions and Species and how to utilize them
 
-    [:octicons-arrow-right-24: User Guide](user-guide/loading-networks.md)
+    [:octicons-arrow-right-24: User Guide](user-guide/designing-networks/index.md)
 
 - :lucide-braces:{ .lg .middle } **Code Generation**
 
     ***
 
-    Generate optimized code for simulations
+    Use JAFF's templated code generation capabilites to generate code any any of the major programming languages to simulate chemical reactions
 
     [:octicons-arrow-right-24: Code Generation Guide](user-guide/code-generation.md)
 
@@ -148,7 +125,7 @@ Generate efficient ODE solvers for modeling chemical evolution in:
 
     ***
 
-    Complete API documentation for all modules
+    The reference guide contains a detailed description of the functions, modules, and objects used by JAFF, assuming that you have an understanding of basic concepts
 
     [:octicons-arrow-right-24: API Docs](api/index.md)
 
@@ -186,8 +163,10 @@ JAFF is released under the [MIT License](about/license.md).
 
 ---
 
+<!-- prettier-ignore -->
 !!! tip "New to astrochemistry?"
-Check out our [Basic Concepts](getting-started/concepts.md) page to learn about chemical networks, reaction rates, and how JAFF can help your research.
+    Check out our [Basic Concepts](getting-started/concepts.md) page to learn about chemical networks, reaction rates, and how JAFF can help your research.
 
+<!-- prettier-ignore -->
 !!! example "Ready to dive in?"
-Jump straight to the [Quick Start Guide](getting-started/quickstart.md) to start using JAFF in minutes!
+    Jump straight to the [Quick Start Guide](getting-started/quickstart.md) to start using JAFF in minutes!

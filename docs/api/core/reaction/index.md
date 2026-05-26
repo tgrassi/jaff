@@ -1,0 +1,66 @@
+---
+tags:
+    - Api
+    - Reaction
+---
+
+# Reaction
+
+`jaff.core.reaction.Reaction`
+
+Represents a single chemical reaction with reactants, products, rate expression, temperature bounds, and energy/radiation terms.
+
+## Constructor
+
+`#!python Reaction(reactants, products, rate, tmin, tmax, dE, dRad_dt, original_string, index, errors=False)`
+
+**Parameters**
+
+**reactants** : _list[Specie]_
+: Reactant species.
+
+**products** : _list[Specie]_
+: Product species.
+
+**rate** : _sympy.Basic_
+: Symbolic rate expression.
+
+**tmin** : _float or None_
+: Minimum valid temperature in Kelvin.
+
+**tmax** : _float or None_
+: Maximum valid temperature in Kelvin.
+
+**dE** : _sympy.Basic_
+: Internal energy change expression for the reactions.
+
+**dRad** : _sympy.Basic_
+: Extra radiation energy density per unit energy (eV) that may be produced/absorbed by the reaction. The energy symbol must be `E` for the quantity to be integrated during cross-section calculation
+
+**original_string** : _str_
+: Raw reaction string from the network file.
+
+**index** : _int_
+: Position in the network reaction list.
+
+**errors** : _bool, optional_
+: If `True`, terminate the process on mass or charge conservation violations instead of merely logging a warning. Default `False`.
+
+## Attributes
+
+| Attribute             | Type            | Description                                                                                                                                      |
+| --------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `reactants`           | `Species`       | Ordered species catalogue of reactant species                                                                                                    |
+| `products`            | `Species`       | Ordered species catalogue of product species                                                                                                     |
+| `rate`                | `sympy.Basic`   | SymPy expression for the rate coefficient (units depend on reaction order; typically cm³ s⁻¹ for two-body reactions)                             |
+| `tmin`                | `float or None` | Minimum gas temperature at which the rate is valid (K). `None` means no lower bound                                                              |
+| `tmax`                | `float or None` | Maximum gas temperature at which the rate is valid (K). `None` means no upper bound                                                              |
+| `dE`                  | `sympy.Basic`   | SymPy expression for the energy released per reaction event (erg)                                                                                |
+| `dRad`                | `sympy.Basic`   | SymPy expression for the extra photon absorption/emission rate contribution to the radiation moment equations                                    |
+| `verbatim`            | `str`           | Human-readable `"R1 + R2 -> P1 + P2"` form                                                                                                       |
+| `serialized`          | `str`           | Canonical name-level form `"<sorted_reactants>__<sorted_products>"`                                                                              |
+| `serialized_exploded` | `str`           | Like `serialized` but built from atom-level serialized forms of each species (isomer-insensitive)                                                |
+| `index`               | `int`           | Zero-based position in the parent `Reactions` catalogue                                                                                          |
+| `metadata`            | `dict`          | Arbitrary key/value store. `metadata["type"]` is populated by `rtype()`                                                                          |
+| `custom_rad_rate`     | `bool`          | `True` when the radiation rate was supplied via a `.jfunc` aux function rather than computed from cross-sections                                 |
+| `xsecs_dict`          | `dict or None`  | Photo-ionisation cross-section data: `{"energy": [...], "xsecs": [...]}`, energies in erg, cross-sections in cm². `None` for non-photo reactions |
