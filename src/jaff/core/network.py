@@ -1,3 +1,21 @@
+"""Top-level ``Network`` class for loading and querying JAFF reaction networks.
+
+A ``Network`` is the main entry point for users of the JAFF library.  It
+reads a reaction network file in any supported format (KROME, PRIZMO, UDFA,
+KIDA, UCLChem, or the binary ``.jaff`` serialisation), builds typed
+``Species`` and ``Reactions`` catalogues, validates the network, and exposes
+symbolic ODE and flux expressions for downstream code generation.
+
+Auxiliary ``.jfunc`` files may accompany the network file.  They can supply
+custom rate coefficients, chemical heating/cooling rates, and radiation
+moment contributions using the ``@var`` / ``@function`` syntax parsed by
+``AuxiliaryFunctionParser``.
+
+Number densities are represented as ``nden[i]`` — a reference into a SymPy
+``MatrixSymbol("nden", n_species, 1)``.  The symbol ``idx_X`` refers to the
+integer position of species ``X`` within the network.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -41,6 +59,44 @@ from .species import Specie, Species
 
 
 class Network:
+    """Astrochemical reaction network loaded from a file.
+
+    After construction the following public attributes are available:
+
+    Attributes
+    ----------
+    file_name : Path
+        Absolute path to the source network file.
+    label : str
+        Human-readable label for this network (defaults to the file stem).
+    species : Species
+        Ordered catalogue of all species in the network.
+    reactions : Reactions
+        Ordered catalogue of all reactions in the network.
+    elements : Elements
+        Unique elements derived from all species.
+    reactant_matrix : np.ndarray
+        Integer stoichiometry matrix, shape ``(n_reactions, n_species)``.
+        Entry ``[i, j]`` counts how many times species *j* appears as a
+        reactant in reaction *i*.
+    product_matrix : np.ndarray
+        Integer stoichiometry matrix for products, same shape.
+    dEdt_chem : Basic
+        SymPy expression for the total chemical heating/cooling rate
+        (erg cm⁻³ s⁻¹), accumulated over all reactions.
+    dEdt_other : Basic
+        Additional heating/cooling rate from the ``heatingcoolingrate``
+        auxiliary function, if present.
+    dRad_dt_extra : Basic
+        Extra radiation moment source terms from ``@function`` definitions.
+    radiation : Radiation | None
+        Radiation field object; ``None`` when no radiation bands are specified.
+    photochemistry : Photochemistry
+        Cross-section database used to populate ``xsecs_dict`` on photo-reactions.
+    mass_dict : dict[str, ElementProps]
+        Element mass dictionary used during species construction.
+    """
+
     def __init__(
         self,
         fname: str | Path,
@@ -54,6 +110,47 @@ class Network:
         c: float = constants.cgs.c,  # Speed of light in cgs unit
         _from_cli: bool = False,
     ):
+        """Load a reaction network from *fname*.
+
+        Parameters
+        ----------
+        fname : str | Path
+            Path to the network file.  Supported extensions: any text format
+            auto-detected by ``NetworkParser``, plus ``.jaff`` binary files.
+        errors : bool, optional
+            If ``True``, treat conservation violations and duplicate reactions
+            as fatal errors (process exits).  Default ``False`` (warnings
+            only).
+        label : str | None, optional
+            Human-readable name for this network.  Defaults to the file stem.
+        funcfile : str | Path | None, optional
+            Path to a ``.jfunc`` auxiliary function file.  When ``None``,
+            JAFF looks for ``<network>.jfunc`` in the same directory.  Pass
+            the string ``"none"`` to skip auxiliary-function loading entirely.
+        replace_nH : bool, optional
+            When ``True`` (default), the shorthand symbol ``nh`` (and ``n_H``,
+            ``n_He``) in rate expressions is expanded to a sum of
+            ``nden[i]`` terms over all H-bearing (He-bearing) species.  Set
+            to ``False`` to keep ``nh`` / ``nhe`` as free symbols.
+        rad_bands : list, optional
+            Radiation band boundaries used to construct the ``Radiation``
+            object.  An empty list (default) disables radiation transport.
+        rad_powerlaw_index : int | float, optional
+            Power-law spectral index for the radiation field, default ``0``.
+        rad_energy_density : bool, optional
+            If ``True``, radiation moments are energy densities rather than
+            number densities, default ``False``.
+        c : float, optional
+            Speed of light in CGS units (cm s⁻¹).  Defaults to
+            ``constants.cgs.c``.
+        _from_cli : bool, optional
+            Internal flag: suppresses the MOTD banner when ``True``.
+
+        Raises
+        ------
+        FileNotFoundError
+            If *fname* does not exist.
+        """
         self.logger: logging.Logger = JaffLogger().get_logger()
 
         if isinstance(fname, str):
@@ -117,21 +214,28 @@ class Network:
         funcfile,
         replace_nH,
     ):
+        """Parse the network file and build species, reactions, and auxiliary quantities.
+
+        Parameters
+        ----------
+        fname : Path
+            Resolved path to the network file.
+        funcfile : str | Path | None
+            Path to an auxiliary ``.jfunc`` file, or ``None``/``"none"`` to skip.
+        replace_nH : bool
+            When ``True``, expand ``nh`` to a sum over H-bearing species.
+        """
         specie_names = set()
-        # All variables found in the rate expressions (not in the custom variables)
         free_symbols = set()
         undef_funcs = set()
         interp_funcs = set()
 
-        # number of photo-reactions
         n_photo = 0
         tgas = symbols("tgas")
 
         with NetworkParser(fname, self.logger) as netp:
             reactions_list, global_vars = netp.get_parsed()
 
-        # Read the auxiliary function file to get the list of functions
-        # to substitute
         aux_funcs = self.__read_aux_funcs(funcfile)
 
         global_vars = {
@@ -157,7 +261,6 @@ class Network:
             aux_delta_rad = f"deltarad{i}"
             aux_delta_e = f"deltae{i}"
 
-            # Handle reactants and products
             for s in reactants + products:
                 if s not in specie_names:
                     specie_names.add(s)
@@ -181,24 +284,17 @@ class Network:
                 if sym != tgas and expr.has(tgas):
                     local_subs_dict[sym] = expr.xreplace({tgas: local_subs_dict[tgas]})
 
-            # Handle rate
             rate_expr, is_photoreaction, n_photo = self.__parse_rate(
                 aux_chem_rate, rate, aux_funcs, global_vars, n_photo
             )
             rate_expr = resolve_dependencies(rate_expr, local_subs_dict, aux_funcs)
 
-            # Resolve other functions
-
-            # Read auxilary photon addition/consumption rate
-            # which will be weighted and added to the moment 0
-            # equation in each band
+            # deltarad{i}: photon absorption/emission rate per band for the moment-0 equations
             deltaRad: Basic = Float(0.0)
             if aux_delta_rad in aux_funcs:
                 deltaRad = aux_funcs[aux_delta_rad]["def"]
 
-            # If there is a deltaE function describing change in
-            # chemical energy associated with this reaction, add
-            # an appropriate term to the dEdt_chem for this network.
+            # deltae{i}: chemical energy change per reaction, accumulates into dEdt_chem
             deltaE: Basic = Float(0.0)
             if aux_delta_e in aux_funcs:
                 deltaE = aux_funcs[aux_delta_e]["def"]
@@ -207,11 +303,9 @@ class Network:
                 free_symbols |= self.free_symbols(expr)
                 self.__detect_undefined_functions(expr, undef_funcs, interp_funcs)
 
-            # Handle reaction
             rea = Reaction(
                 rr, pp, rate_expr, tmin, tmax, deltaE, deltaRad, reaction["string"], i
             )
-            # Save to reaction list
             self.reactions.add(rea)
 
             if is_photoreaction and self.radiation is not None:
@@ -231,7 +325,6 @@ class Network:
             if rea.rtype() == "photo":
                 rea.xsecs_dict = self.photochemistry.get_xsec(rea)
 
-        # Add chemical and non-chemical heating and cooling rates
         if "heatingcoolingrate" in aux_funcs:
             self.dEdt_other = aux_funcs["heatingcoolingrate"]["def"]
             self.dEdt_other = self.__standardize_symbols(self.dEdt_other, replace_nH)
@@ -244,7 +337,6 @@ class Network:
         self.logger.info(f"Loaded {self.reactions.count} reactions")
         self.logger.info(f"Loaded {n_photo} photo-chemistry reactions")
 
-        # Issue warning message if undefined functions remain
         if interp_funcs:
             self.logger.info(
                 f"Found the following interpolation functions: {', '.join([f'[cyan]{func}[/]' for func in interp_funcs])}"
@@ -255,6 +347,14 @@ class Network:
             )
 
     def __load_network_from_jaff_file(self, jaff_props: JaffProps):
+        """Restore species, reactions, and radiation state from a ``.jaff`` file payload.
+
+        Parameters
+        ----------
+        jaff_props : JaffProps
+            Deserialised property dictionary returned by
+            :func:`~jaff.io._io.from_jaff_file`.
+        """
         self.species = jaff_props["species"]
         for i, reaction in enumerate(jaff_props["reactions"]):
             rea = Reaction(
@@ -262,7 +362,7 @@ class Network:
                 products=reaction["products"],
                 rate=reaction["rate"],
                 dE=reaction["dE"],
-                dRad_dt=reaction["dRad_dt"],
+                dRad=reaction["dRad"],
                 tmin=reaction["tmin"],
                 tmax=reaction["tmax"],
                 original_string=reaction["original_string"],
@@ -280,8 +380,19 @@ class Network:
                 self.radiation.set_custom_rate(rea)
 
     def __normalize_nework_extras(self, replace_nH):
-        # Apply replacement rules to replace standard symbols
-        # appearing in rates with terms involving known species
+        """Standardize convenience symbols in all rate and auxiliary expressions.
+
+        Replaces shorthand symbols (``nh``, ``ne``, ``ntot``, ``n_X``, …) with
+        ``nden[i]`` references in every reaction rate, the chemical heating/cooling
+        sum :attr:`dEdt_chem`, and the extra radiation source term
+        :attr:`dRad_dt_extra`.
+
+        Parameters
+        ----------
+        replace_nH : bool
+            When ``True``, expand hydrogen-density shorthands to sums over
+            H-bearing species.
+        """
         nden = MatrixSymbol("nden", self.species.count, 1)
         for r in self.reactions:
             r.rate = self.__standardize_symbols(r.rate, replace_nH)
@@ -290,7 +401,7 @@ class Network:
             for s in r.reactants:
                 dE_dt *= nden[self.species[s.name].index]
             self.dEdt_chem += dE_dt
-            self.dRad_dt_extra += r.dRad_dt  # type: ignore
+            self.dRad_dt_extra += r.dRad  # type: ignore
         self.dEdt_chem = self.__standardize_symbols(self.dEdt_chem, replace_nH)
         self.dRad_dt_extra = self.__standardize_symbols(self.dRad_dt_extra, replace_nH)
 
@@ -302,6 +413,34 @@ class Network:
         global_vars: dict[str, Basic],
         n_photo: int,
     ) -> tuple[Basic, bool, int]:
+        """Convert a raw rate string to a SymPy expression.
+
+        Checks, in priority order:
+
+        1. Whether an auxiliary function named *aux_chem_rate* exists (custom rate).
+        2. Whether *rate* is a global variable name.
+        3. Whether *rate* describes a photo-reaction (contains ``"photo"``).
+        4. Falls back to ``sympy.parse_expr``.
+
+        Parameters
+        ----------
+        aux_chem_rate : str
+            Key for the optional custom-rate auxiliary function (e.g. ``"chemrate0"``).
+        rate : str
+            Raw rate string from the network file.
+        aux_funcs : dict[str, FunctionsDict]
+            Parsed auxiliary functions dictionary.
+        global_vars : dict[str, Basic]
+            Resolved global variable map from the network file.
+        n_photo : int
+            Running counter of photo-reactions seen so far.
+
+        Returns
+        -------
+        tuple[Basic, bool, int]
+            ``(rate_expr, is_photoreaction, n_photo)`` where *n_photo* is
+            incremented by 1 for photo-reactions.
+        """
         is_photoreaction = False
         if aux_chem_rate in aux_funcs:
             rate_expr = aux_funcs[aux_chem_rate]["def"]
@@ -339,6 +478,20 @@ class Network:
     def __detect_undefined_functions(
         expr: Expr | Basic, undef_funcs: set, interp_funcs: set
     ) -> None:
+        """Scan *expr* for undefined function calls and categorise them.
+
+        Functions whose names contain ``"interp"`` are added to *interp_funcs*;
+        all others are added to *undef_funcs*.
+
+        Parameters
+        ----------
+        expr : Expr | Basic
+            SymPy expression to scan.
+        undef_funcs : set
+            Accumulator for unrecognised undefined function names.
+        interp_funcs : set
+            Accumulator for interpolation function names.
+        """
         for f in expr.atoms(AppliedUndef):
             if "interp" in f.func.__name__:
                 interp_funcs |= {f.func.__name__}
@@ -346,30 +499,10 @@ class Network:
             undef_funcs |= {f.func.__name__}
 
     def __read_aux_funcs(self, funcfile: str | Path | None) -> dict:
-        """
-        Read the auxiliary function file
+        """Load auxiliary function file (.jfunc).
 
-        Parameters:
-            funcfile : string or None
-                Name of auxiliary function file; if left as None,
-                the default name self.file_name+"_functions' is used,
-                and if set to the string 'none' then no auxiliary
-                functions will be read
-
-        Returns:
-            funcs : dict
-                a dict whose keys are the names of functions and
-                whose values are dicts containing the fields "def",
-                "args", and "argcomments"; "def" contains a Sympy
-                expression giving the function definition, "args"
-                contains a list of Sympy.Symbols defining the
-                arguments, "comments" is a string that captures any
-                comments the follow the function definition,
-                and "argcomments" is a list of strings capturing
-                comments on the definitions of the arguments.
-
-        Raises:
-            IOError, if the file does not exist or cannot be parsed
+        If funcfile is None, looks for <network_name>.jfunc alongside the network file.
+        Pass ``"none"`` to skip loading entirely.
         """
         if funcfile == "none":
             return {}
@@ -404,13 +537,46 @@ class Network:
         return func_dict
 
     def to_jaff(self, filename: str | Path):
+        """Serialise this network to a binary ``.jaff`` file.
+
+        Parameters
+        ----------
+        filename : str | Path
+            Output file path.  The ``.jaff`` extension is conventional but
+            not enforced.
+        """
         to_jaff_file(filename, self)
 
     @staticmethod
     def free_symbols(expr: Basic) -> set[Basic]:
+        """Return the free symbols of *expr*, excluding ``nden`` matrix entries.
+
+        ``nden[i]`` references are excluded because they are internal index
+        variables, not user-visible physical symbols.
+
+        Parameters
+        ----------
+        expr : Basic
+            A SymPy expression.
+
+        Returns
+        -------
+        set[Basic]
+            Free symbols that do not involve ``"nden"``.
+        """
         return {fs for fs in expr.free_symbols if "nden" not in str(fs)}
 
     def compare_reactions(self, other: Network, verbosity: int = 1):
+        """Log reactions present in one network but not the other.
+
+        Parameters
+        ----------
+        other : Network
+            Network to compare against.
+        verbosity : int, optional
+            When ``1`` (default), print the reaction sets for common and
+            unique reactions.  Other values suppress output.
+        """
         self.logger.info(f'Comparing networks "{self.label}" and "{other.label}"...')
 
         self_reacts = {rea.serialized for rea in self.reactions}
@@ -444,6 +610,15 @@ class Network:
         self.logger.info(f'{len(not_in_other)} reactions are missing in "{other.label}"')
 
     def compare_species(self, other: Network, verbosity: int = 1) -> None:
+        """Log species present in one network but not the other.
+
+        Parameters
+        ----------
+        other : Network
+            Network to compare against.
+        verbosity : int, optional
+            When ``1`` (default), print the species sets.
+        """
         self.logger.info(
             f'Comparing species in networks "{self.label}" and "{other.label}"...'
         )
@@ -479,6 +654,17 @@ class Network:
         self.logger.info(f'{len(not_in_other)} species are missing in "{other.label}"')
 
     def check_sink_sources(self, errors: bool) -> None:
+        """Warn (or abort) if any species is never produced or never consumed.
+
+        A *sink* species appears as a reactant in at least one reaction but
+        is never produced.  A *source* species is produced but never consumed.
+        The special species ``"dummy"`` is excluded from the check.
+
+        Parameters
+        ----------
+        errors : bool
+            If ``True``, call ``sys.exit()`` when sinks or sources are found.
+        """
         produced = {p.name for rea in self.reactions for p in rea.products}
         consumed = {r.name for rea in self.reactions for r in rea.reactants}
         species_names = {s.name for s in self.species if s.name != "dummy"}
@@ -503,6 +689,14 @@ class Network:
             sys.exit()
 
     def check_recombinations(self, errors: bool) -> None:
+        """Warn if any positively charged species has no electron recombination reaction.
+
+        Parameters
+        ----------
+        errors : bool
+            If ``True``, call ``sys.exit(1)`` when recombination reactions
+            are missing.
+        """
         electron_recomb_species = set()
 
         for rea in self.reactions:
@@ -530,6 +724,17 @@ class Network:
             sys.exit(1)
 
     def check_isomers(self, errors: bool) -> None:
+        """Warn if two or more species share the same atomic composition (isomers).
+
+        Isomers are detected by comparing ``Specie.exploded`` tuples.  For
+        example, HCO+ and HOC+ both have ``["C", "H", "O", "+"]`` and would
+        be reported here.
+
+        Parameters
+        ----------
+        errors : bool
+            If ``True``, call ``sys.exit(1)`` when isomers are found.
+        """
         groups = {}
 
         for sp in self.species:
@@ -538,7 +743,7 @@ class Network:
 
         has_errors = False
 
-        for exploded, names in groups.items():
+        for _, names in groups.items():
             if len(names) > 1:
                 has_errors = True
                 self.logger.warning(f"Isomers detected: {', '.join(names)}")
@@ -548,6 +753,17 @@ class Network:
             sys.exit(1)
 
     def check_unique_reactions(self, errors):
+        """Warn if duplicate reactions (same species, same type, same T range) are found.
+
+        Two reactions are considered true duplicates when their serialized
+        forms match, their temperature ranges overlap, they have the same
+        reaction type, and they are not merely isomer variants of each other.
+
+        Parameters
+        ----------
+        errors : bool
+            If ``True``, call ``sys.exit(1)`` when duplicates are detected.
+        """
         has_duplicates = False
         for i, rea1 in enumerate(self.reactions):
             for rea2 in self.reactions[i + 1 :]:
@@ -568,9 +784,7 @@ class Network:
             sys.exit(1)
 
     def __generate_reaction_matrices(self) -> None:
-        """Generate reaction matrices (reactant_matrix and product_matrix) for tracking reactants and products."""
-
-        # Initialize matrices
+        """Build integer stoichiometry matrices: shape (n_reactions × n_species)."""
         self.reactant_matrix = np.zeros(
             (self.reactions.count, self.species.count), dtype=int
         )
@@ -578,33 +792,18 @@ class Network:
             (self.reactions.count, self.species.count), dtype=int
         )
 
-        # Fill matrices based on reactions
         for i, reaction in enumerate(self.reactions):
-            # Count reactants
             for reactant in reaction.reactants:
                 self.reactant_matrix[i, reactant.index] += 1
 
-            # Count products
             for product in reaction.products:
                 self.product_matrix[i, product.index] += 1
 
     def __standardize_symbols(self, expr: Basic, replace_nH: bool) -> Basic:
-        """
-        This routine applies a set of standard substitution rules to
-        standardize symbols.
+        """Replace convenience symbols (nh, ne, ntot, n_X, …) with nden[i] references.
 
-        Parameters:
-            expr : sympy object
-                A sympy object on which the standardiation is to be done;
-                must support the free_symbols method
-            replace_nH : bool
-                If True, expressions for the total number density of H and
-                He in all chemical states will be replaced with expressions
-                in terms of the species number densities; if False, they
-                will be changed to the symbols "nh" and "nhe"
-
-        Returns:
-            The expression with the substitution rules applied
+        When replace_nH is False, H/He element sums become ``nh``/``nhe`` symbols
+        instead of being expanded over all species.
         """
         if expr == Float(0.0):
             return expr
@@ -628,14 +827,7 @@ class Network:
             "nhp": "H+",
         }
 
-        # Suffix mapping for the "n_" logic
-        # Symbols of the form "n_"
-        # Xp --> X+
-        # X0 --> X
-        # Xm --> X-
-        # e --> e-
-        # H --> sum over all H species
-        # He --> sum over all He species
+        # n_X suffix convention: Xp→X+, X0→X, Xm→X-
         n_suffixes = {"p": "+", "m": "-", "0": ""}
 
         for fs in expr.free_symbols:
@@ -643,33 +835,26 @@ class Network:
             low_name = name.lower()
             repl = None
 
-            # Handle special "ntot" (sum of all particles)
             if low_name == "ntot":
                 repl = sum(nden[Idx(i)] for i in range(self.species.count))
 
-            # Handle "nh" specifically
             elif low_name == "nh":
                 repl = get_element_sum("H") if replace_nH else symbols("nh")
 
-            # Handle simple aliases (nh0, ne, etc)
             elif low_name in simple_map:
                 spec_name = simple_map[low_name]
                 repl = nden[Idx(self.species[spec_name].index)]
 
-            # Handle "n_" prefixed symbols
             elif low_name.startswith("n_"):
                 core = name[2:]
 
-                # Sub-case: Element sums
                 if core in ["H", "He"]:
                     if replace_nH:
                         repl = get_element_sum(core)
                     else:
                         repl = symbols(f"n{core.lower()}")
 
-                # Specific species with suffixes
                 else:
-                    # Convert suffixes: Xp -> X+, Xm -> X-, X0 -> X, e -> e-
                     if core == "e":
                         core = "e-"
                     elif core[-1] in n_suffixes:
@@ -678,19 +863,52 @@ class Network:
                     if core in self.species:
                         repl = nden[Idx(self.species[core].index)]
 
-            # Add valid replacemnts ro the dictionary
             if repl is not None:
                 reps[fs] = repl
 
         return expr.xreplace(reps)
 
     def sfluxes(self) -> list[Expr]:
+        """Return symbolic flux expressions for all reactions.
+
+        The flux of reaction *i* is ``rate_i * nden[r1] * nden[r2] * ...``,
+        where the product runs over all reactant species.
+
+        Returns
+        -------
+        list[Expr]
+            One SymPy expression per reaction, in reaction-index order.
+        """
         return get_sfluxes(self.reactions, self.species)
 
     def sodes(self) -> list[Basic]:
+        """Return symbolic ODE right-hand sides for all species.
+
+        Each entry is the net rate of change of a species number density
+        (cm⁻³ s⁻¹), formed by summing flux contributions over all reactions
+        in which the species participates as a reactant or product.
+
+        Returns
+        -------
+        list[Basic]
+            One SymPy expression per species, in species-index order.
+        """
         return get_sodes(self.reactions, self.species)
 
     def sradodes(self, order: int = 0) -> list[Expr]:
+        """Return symbolic radiation moment ODE right-hand sides.
+
+        Parameters
+        ----------
+        order : int, optional
+            Radiation moment order (0 = number/energy density, 1 = flux),
+            by default ``0``.
+
+        Returns
+        -------
+        list[Expr]
+            One SymPy expression per radiation band.
+        """
         return get_sradodes(self.radiation, self.species, order)
 
     def to_hdf5(
@@ -707,6 +925,38 @@ class Network:
         include_all=False,
         verbose=False,
     ) -> None:
+        """Write a pre-tabulated rate coefficient table to an HDF5 file.
+
+        Parameters
+        ----------
+        fname : str | Path
+            Output file path.  The ``.hdf5`` extension is recommended.
+        label : str | None, optional
+            Dataset label stored inside the file.  Defaults to
+            ``self.label``.
+        T_min : float | None, optional
+            Minimum temperature for the tabulation grid (K).
+        T_max : float | None, optional
+            Maximum temperature for the tabulation grid (K).
+        nT : int, optional
+            Number of temperature grid points, by default 64.
+        err_tol : float, optional
+            Maximum allowed relative error in rate interpolation, default
+            0.01 (1 %).
+        rate_min : float, optional
+            Rates below this threshold are clamped to ``rate_min``,
+            default ``1e-30``.
+        rate_max : float, optional
+            Rates above this threshold are clamped to ``rate_max``,
+            default ``1e100``.
+        fast_log : bool, optional
+            Use a fast logarithm approximation, default ``False``.
+        include_all : bool, optional
+            Include all reactions, even those with temperature bounds,
+            default ``False``.
+        verbose : bool, optional
+            Print per-reaction tabulation progress, default ``False``.
+        """
         if isinstance(fname, str):
             fname = Path(fname)
 
@@ -744,6 +994,36 @@ class Network:
         include_all=False,
         verbose=False,
     ) -> None:
+        """Write a pre-tabulated rate coefficient table to a plain-text file.
+
+        Parameters are identical to ``to_hdf5``, except the output format is
+        a whitespace-separated text table.
+
+        Parameters
+        ----------
+        fname : str | Path
+            Output file path.  The ``.txt`` extension is recommended.
+        label : str | None, optional
+            Dataset label stored in the file header.
+        T_min : float | None, optional
+            Minimum temperature (K).
+        T_max : float | None, optional
+            Maximum temperature (K).
+        nT : int, optional
+            Number of temperature grid points, default 64.
+        err_tol : float, optional
+            Maximum allowed relative interpolation error, default 0.01.
+        rate_min : float, optional
+            Lower rate clamp, default ``1e-30``.
+        rate_max : float, optional
+            Upper rate clamp, default ``1e100``.
+        fast_log : bool, optional
+            Use fast logarithm approximation, default ``False``.
+        include_all : bool, optional
+            Include temperature-bounded reactions, default ``False``.
+        verbose : bool, optional
+            Print tabulation progress, default ``False``.
+        """
         if isinstance(fname, str):
             fname = Path(fname)
 
@@ -782,7 +1062,38 @@ class Network:
         include_all=False,
         verbose=False,
     ) -> None:
+        """Write a pre-tabulated rate coefficient table in the specified format.
 
+        This is the general-purpose version of ``to_hdf5`` / ``to_txt``.
+
+        Parameters
+        ----------
+        fname : str | Path
+            Output file path.
+        label : str | None, optional
+            Dataset label.  Defaults to ``self.label``.
+        T_min : float | None, optional
+            Minimum temperature (K).
+        T_max : float | None, optional
+            Maximum temperature (K).
+        nT : int, optional
+            Number of temperature grid points, default 64.
+        err_tol : float, optional
+            Maximum allowed relative interpolation error, default 0.01.
+        rate_min : float, optional
+            Lower rate clamp, default ``1e-30``.
+        rate_max : float, optional
+            Upper rate clamp, default ``1e100``.
+        fast_log : bool, optional
+            Use fast logarithm approximation, default ``False``.
+        format : str, optional
+            Output format: ``"hdf5"``, ``"txt"``, or ``"auto"`` (inferred
+            from the file extension), default ``"auto"``.
+        include_all : bool, optional
+            Include temperature-bounded reactions, default ``False``.
+        verbose : bool, optional
+            Print tabulation progress, default ``False``.
+        """
         write_data_table(
             reactions=self.reactions,
             logger=self.logger,

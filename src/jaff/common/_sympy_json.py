@@ -1,5 +1,64 @@
-# ABOUTME: JSON serializer/deserializer for a safe subset of SymPy expressions
-# ABOUTME: Provides a versioned, cross-SymPy-compatible AST format for JAFF
+"""
+Versioned JSON serializer / deserializer for SymPy expressions.
+
+Public API
+----------
+``SCHEMA_VERSION``
+    Integer version tag embedded in every serialized payload (currently ``2``).
+    Consumers must check this value and reject payloads with an unrecognised
+    version.
+:func:`dumps` / :func:`loads`
+    JSON string round-trip for a single SymPy expression with a full metadata
+    envelope (``format``, ``schema_version``, ``sympy_version``).
+:func:`to_jsonable` / :func:`from_jsonable`
+    Lower-level helpers that convert to/from a JSON-compatible Python object
+    (list/number/dict) without wrapping it in the metadata envelope.  Used by
+    the JAFF network serializer when expressions are embedded in a larger JSON
+    document.
+
+Encoding formats
+----------------
+Two encoder variants are provided:
+
+* :class:`_Encoder` (verbose) -- each node is a ``{"type": ..., ...}`` dict.
+  Useful for debugging.
+* :class:`_EncoderCompact` (default) -- each node is a compact list whose
+  first element is a short tag string.  Tag mapping:
+
+  ======  ================
+  Tag     SymPy type
+  ======  ================
+  ``T``   ``BooleanTrue``
+  ``F``   ``BooleanFalse``
+  ``S``   ``Symbol``
+  ``I``   ``Integer``
+  ``Q``   ``Rational``
+  float   ``Float`` (raw number)
+  ``Flt`` ``Float`` (with precision)
+  ``Str`` internal ``Str``
+  ``MS``  ``MatrixSymbol``
+  ``ME``  ``MatrixElement``
+  ``ECP`` ``ExprCondPair``
+  ``LT``  ``StrictLessThan``
+  ``GT``  ``StrictGreaterThan``
+  ``PW``  ``Piecewise``
+  ``Pow`` ``Pow``
+  ``Add`` ``Add``
+  ``Mul`` ``Mul``
+  ``exp`` ``exp``
+  ``log`` ``log``
+  ``Max`` ``Max``
+  ``Min`` ``Min``
+  ======  ================
+
+Cross-version compatibility
+---------------------------
+Optional SymPy internals (``sympy.core.symbol.Str``,
+``sympy.matrices.expressions.matexpr.MatrixElement``,
+``sympy.functions.elementary.piecewise.ExprCondPair``) are imported with
+``try/except`` at module load time.  If a build of SymPy does not expose
+them the corresponding encoder/decoder branches are disabled gracefully.
+"""
 
 from __future__ import annotations
 
@@ -28,6 +87,7 @@ except Exception:  # pragma: no cover
 
 
 SCHEMA_VERSION = 2
+"""int: Current schema version for serialized SymPy expressions."""
 
 
 def dumps(
@@ -38,6 +98,33 @@ def dumps(
     compact: bool = True,
     include_assumptions: bool = True,
 ) -> str:
+    """
+    Serialize a SymPy expression to a JSON string with a metadata envelope.
+
+    The resulting string is a JSON object with keys ``format``,
+    ``schema_version``, ``sympy_version``, and ``expr``.
+
+    Parameters
+    ----------
+    expr : sympy.Basic
+        The expression to serialize.
+    indent : int, optional
+        JSON indentation width (default ``2``).
+    sort_keys : bool, optional
+        Whether to sort JSON object keys (default ``True``).
+    compact : bool, optional
+        Use the compact list-based encoding (default ``True``).  Pass
+        ``False`` to use the verbose dict-based encoding (useful for
+        debugging).
+    include_assumptions : bool, optional
+        Whether to embed symbol assumption flags (e.g. ``positive=True``) in
+        the output (default ``True``).
+
+    Returns
+    -------
+    str
+        A JSON string representing the expression.
+    """
     payload = {
         "format": "jaff.sympy_json",
         "schema_version": SCHEMA_VERSION,
@@ -50,6 +137,25 @@ def dumps(
 
 
 def loads(s: str) -> sympy.Basic:
+    """
+    Deserialize a SymPy expression from a JSON string produced by :func:`dumps`.
+
+    Parameters
+    ----------
+    s : str
+        A JSON string with a ``jaff.sympy_json`` envelope.
+
+    Returns
+    -------
+    sympy.Basic
+        The reconstructed SymPy expression.
+
+    Raises
+    ------
+    SympyJsonError
+        If the payload is not a ``jaff.sympy_json`` document or uses an
+        unsupported ``schema_version``.
+    """
     payload = json.loads(s)
     if not isinstance(payload, dict) or payload.get("format") != "jaff.sympy_json":
         raise SympyJsonError("Not a jaff.sympy_json payload")
@@ -62,6 +168,33 @@ def loads(s: str) -> sympy.Basic:
 def to_jsonable(
     expr: sympy.Basic, *, compact: bool = True, include_assumptions: bool = True
 ) -> Any:
+    """
+    Convert a SymPy expression to a JSON-compatible Python object.
+
+    Does not add the ``jaff.sympy_json`` envelope; use :func:`dumps` for a
+    self-contained serialized form.
+
+    Parameters
+    ----------
+    expr : sympy.Basic
+        The expression to encode.
+    compact : bool, optional
+        Use the compact list-based encoding (default ``True``).
+    include_assumptions : bool, optional
+        Embed symbol assumption flags in the output (default ``True``).
+
+    Returns
+    -------
+    list or float or dict
+        A JSON-serializable object representing *expr*.
+
+    Raises
+    ------
+    TypeError
+        If *expr* is not a :class:`sympy.Basic` instance.
+    SympyJsonError
+        If the expression tree contains an unsupported SymPy node type.
+    """
     if not isinstance(expr, sympy.Basic):
         raise TypeError(f"Expected sympy.Basic, got {type(expr)!r}")
     if compact:
@@ -70,6 +203,27 @@ def to_jsonable(
 
 
 def from_jsonable(obj: Any) -> sympy.Basic:
+    """
+    Reconstruct a SymPy expression from a JSON-compatible Python object.
+
+    Accepts output produced by :func:`to_jsonable` (compact form: list or
+    number).
+
+    Parameters
+    ----------
+    obj : list or int or float
+        The JSON-compatible node to decode.
+
+    Returns
+    -------
+    sympy.Basic
+        The reconstructed SymPy expression.
+
+    Raises
+    ------
+    SympyJsonError
+        If *obj* is not a recognised compact node (must be a list or number).
+    """
     if not isinstance(obj, (list, int, float)):
         raise SympyJsonError(f"Expected list/number node, got {type(obj)!r}")
     return _DecoderCompact().decode(obj)
@@ -77,22 +231,63 @@ def from_jsonable(obj: Any) -> sympy.Basic:
 
 @dataclass(frozen=True)
 class _SymbolKey:
+    """Hashable cache key for a :class:`sympy.Symbol` with its assumptions."""
+
     name: str
     assumptions: Tuple[Tuple[str, bool], ...]
 
 
 @dataclass(frozen=True)
 class _MatrixSymbolKey:
+    """Hashable cache key for a :class:`sympy.MatrixSymbol`."""
+
     name: str
     rows: Any
     cols: Any
 
 
 class _Encoder:
+    """
+    Verbose dict-based SymPy expression encoder.
+
+    Produces ``{"type": "<TypeName>", ...}`` dicts.  Primarily useful for
+    debugging; the default serialization path uses :class:`_EncoderCompact`.
+
+    Parameters
+    ----------
+    include_assumptions : bool
+        Whether to include symbol assumptions in the output.
+    """
+
     def __init__(self, *, include_assumptions: bool) -> None:
+        """Initialise the verbose dict-based encoder.
+
+        Parameters
+        ----------
+        include_assumptions : bool
+            Whether to include symbol assumptions in the encoded output.
+        """
         self._include_assumptions = include_assumptions
 
     def encode(self, expr: sympy.Basic) -> Dict[str, Any]:
+        """
+        Encode *expr* to a JSON-compatible dict.
+
+        Parameters
+        ----------
+        expr : sympy.Basic
+            The expression node to encode.
+
+        Returns
+        -------
+        dict
+            A JSON-serializable dictionary representation of *expr*.
+
+        Raises
+        ------
+        SympyJsonError
+            If *expr* contains an unsupported SymPy node type.
+        """
         if expr is sympy.true:
             return {"type": "BooleanTrue"}
         if expr is sympy.false:
@@ -196,10 +391,48 @@ class _Encoder:
 
 
 class _EncoderCompact:
+    """
+    Compact list-based SymPy expression encoder.
+
+    Produces short-tag lists (e.g. ``["S", "tgas"]`` for a Symbol) that are
+    significantly smaller than the verbose dict form and are the default output
+    of :func:`to_jsonable`.
+
+    Parameters
+    ----------
+    include_assumptions : bool
+        Whether to include symbol assumptions in the output.
+    """
+
     def __init__(self, *, include_assumptions: bool) -> None:
+        """Initialise the compact list-based encoder.
+
+        Parameters
+        ----------
+        include_assumptions : bool
+            Whether to include symbol assumptions in the encoded output.
+        """
         self._include_assumptions = include_assumptions
 
     def encode(self, expr: sympy.Basic) -> List[Any]:
+        """
+        Encode *expr* to a compact JSON-compatible list.
+
+        Parameters
+        ----------
+        expr : sympy.Basic
+            The expression node to encode.
+
+        Returns
+        -------
+        list or float
+            A compact JSON-serializable representation of *expr*.
+
+        Raises
+        ------
+        SympyJsonError
+            If *expr* contains an unsupported SymPy node type.
+        """
         if expr is sympy.true:
             return ["T"]
         if expr is sympy.false:
@@ -287,11 +520,39 @@ class _EncoderCompact:
 
 
 class _Decoder:
+    """
+    Verbose dict-based SymPy expression decoder.
+
+    Decodes the output of :class:`_Encoder`.  Caches
+    :class:`sympy.Symbol` and :class:`sympy.MatrixSymbol` objects so that
+    identical symbols with the same assumptions share the same Python object.
+    """
+
     def __init__(self) -> None:
+        """Initialise the verbose dict-based decoder with empty symbol caches."""
         self._symbol_cache: Dict[_SymbolKey, sympy.Symbol] = {}
         self._matrix_symbol_cache: Dict[_MatrixSymbolKey, sympy.MatrixSymbol] = {}
 
     def decode(self, obj: Any) -> sympy.Basic:
+        """
+        Decode a verbose dict node to a SymPy expression.
+
+        Parameters
+        ----------
+        obj : dict
+            A JSON-compatible dict node produced by :class:`_Encoder`.
+
+        Returns
+        -------
+        sympy.Basic
+            The reconstructed SymPy expression.
+
+        Raises
+        ------
+        SympyJsonError
+            If *obj* is not a dict, has a missing/invalid ``type`` field,
+            or uses an unsupported node type.
+        """
         if not isinstance(obj, dict):
             raise SympyJsonError(f"Expected dict node, got {type(obj)!r}")
         t = obj.get("type")
@@ -437,11 +698,42 @@ class _Decoder:
 
 
 class _DecoderCompact:
+    """
+    Compact list-based SymPy expression decoder.
+
+    Decodes the output of :class:`_EncoderCompact` and is the default decoder
+    used by :func:`from_jsonable`.  Symbol objects are cached so that
+    identical symbols share the same Python object within a single decode call.
+    """
+
     def __init__(self) -> None:
+        """Initialise the compact list-based decoder with empty symbol caches."""
         self._symbol_cache: Dict[_SymbolKey, sympy.Symbol] = {}
         self._matrix_symbol_cache: Dict[_MatrixSymbolKey, sympy.MatrixSymbol] = {}
 
     def decode(self, obj: Any) -> sympy.Basic:
+        """
+        Decode a compact list (or number) node to a SymPy expression.
+
+        Raw ``int`` / ``float`` values are decoded as
+        ``sympy.Float(obj, 53)`` (double precision).
+
+        Parameters
+        ----------
+        obj : list, int, or float
+            A compact JSON node produced by :class:`_EncoderCompact`.
+
+        Returns
+        -------
+        sympy.Basic
+            The reconstructed SymPy expression.
+
+        Raises
+        ------
+        SympyJsonError
+            If *obj* is not a recognised compact node or contains invalid
+            payload for a given tag.
+        """
         if isinstance(obj, (int, float)):
             return sympy.Float(obj, 53)
         if not isinstance(obj, list) or not obj:
@@ -599,6 +891,24 @@ class _DecoderCompact:
 
 
 def _decode_args_list(value: Any) -> List[Dict[str, Any]]:
+    """
+    Validate and return the ``args`` list from a verbose dict node.
+
+    Parameters
+    ----------
+    value : Any
+        The ``args`` field extracted from a JSON node dict.
+
+    Returns
+    -------
+    list of dict
+        The validated list of argument dicts.
+
+    Raises
+    ------
+    SympyJsonError
+        If *value* is not a list or any element is not a dict.
+    """
     if not isinstance(value, list):
         raise SympyJsonError("args must be a list")
     for item in value:
@@ -608,10 +918,42 @@ def _decode_args_list(value: Any) -> List[Dict[str, Any]]:
 
 
 def _encode_float_17(value: sympy.Float) -> float:
+    """
+    Round-trip *value* through a 17-significant-digit string representation.
+
+    17 decimal digits are sufficient to uniquely identify any IEEE 754 double,
+    ensuring lossless round-trip through JSON's ``float`` type.
+
+    Parameters
+    ----------
+    value : sympy.Float
+        The SymPy float to encode.
+
+    Returns
+    -------
+    float
+        A Python float equal (to double precision) to *value*.
+    """
     return float(str(sympy.Float(value, 17)))
 
 
 def _encode_assumptions(sym: sympy.Symbol) -> Dict[str, bool]:
+    """
+    Extract bool-valued assumption flags from a :class:`sympy.Symbol`.
+
+    Only ``str`` keys paired with ``bool`` values are included; internal
+    SymPy assumptions with non-bool values are silently dropped.
+
+    Parameters
+    ----------
+    sym : sympy.Symbol
+        The symbol whose assumptions to extract.
+
+    Returns
+    -------
+    dict[str, bool]
+        Mapping of assumption name to value.
+    """
     out: Dict[str, bool] = {}
     for k, v in (sym.assumptions0 or {}).items():
         if isinstance(k, str) and isinstance(v, bool):
@@ -620,6 +962,20 @@ def _encode_assumptions(sym: sympy.Symbol) -> Dict[str, bool]:
 
 
 def _decode_assumptions(assumptions: Mapping[str, Any]) -> Dict[str, bool]:
+    """
+    Filter a raw assumptions dict to keep only ``str``-keyed ``bool`` values.
+
+    Parameters
+    ----------
+    assumptions : Mapping[str, Any]
+        Raw assumptions mapping loaded from JSON.
+
+    Returns
+    -------
+    dict[str, bool]
+        Cleaned mapping safe to pass as keyword arguments to
+        :class:`sympy.Symbol`.
+    """
     out: Dict[str, bool] = {}
     for k, v in assumptions.items():
         if isinstance(k, str) and isinstance(v, bool):

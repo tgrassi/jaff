@@ -1,3 +1,26 @@
+"""
+Serialization, deserialization, and tabulation utilities for JAFF network files.
+
+This module provides three public entry-points:
+
+* ``to_jaff_file`` -- serialize a :class:`~jaff.Network` to a gzip-compressed
+  JSON file with the ``jaff.network_json`` format marker.
+* ``from_jaff_file`` -- deserialize such a file (or a legacy uncompressed one)
+  back into a :class:`~jaff.io._typing.JaffProps` dict that can be handed
+  directly to the :class:`~jaff.Network` constructor.
+* ``get_table`` / ``write_data_table`` -- build a rate-coefficient lookup
+  table over a temperature grid and optionally write it to a quokka-compatible
+  text or HDF5 file.
+
+The file format
+---------------
+A ``.jaff`` file is a gzip-compressed UTF-8 JSON document with the top-level
+keys ``format``, ``schema_version``, ``jaff_version``, ``sympy_schema_version``,
+``sympy_version``, ``label``, ``file_name``, ``species``, ``rate_symbols``, and
+``reactions``.  SymPy expressions are stored via the versioned compact encoding
+in :mod:`jaff.common._sympy_json` (``SCHEMA_VERSION = 2``).
+"""
+
 from __future__ import annotations
 
 import gzip
@@ -34,14 +57,30 @@ from ._typing import JaffProps
 
 def to_jaff_file(filename: str | Path, net: "Network"):
     """
-    Serialize this Network to a .jaff file (gzip-compressed JSON payload).
+    Serialize a :class:`~jaff.Network` to a gzip-compressed ``.jaff`` JSON file.
 
-    Notes:
-        - Uses a versioned, whitelisted SymPy JSON AST for expressions.
-        - Excludes photochemistry-specific runtime state; reactions may still
-            include xsecs if present.
-        - Files are written with gzip compression even when the filename ends
-            with `.jaff` (no `.gz` suffix).
+    The output document uses the ``jaff.network_json`` format marker and
+    ``schema_version = 1``.  SymPy expressions (rates, energy releases, …) are
+    encoded with the compact :mod:`~jaff.common._sympy_json` serializer at its
+    current ``SCHEMA_VERSION``.  Plain string rates (e.g. custom C/Fortran
+    expressions) are wrapped in a ``{"kind": "string", "value": …}`` envelope.
+
+    Parameters
+    ----------
+    filename : str or pathlib.Path
+        Destination path.  If the path does not already end with ``.jaff`` (or
+        ``.jaff.gz``) the ``.jaff`` suffix is appended automatically.
+    net : Network
+        The reaction network to serialize.
+
+    Raises
+    ------
+    ValueError
+        If any reaction rate contains an undefined SymPy function (``AppliedUndef``),
+        which cannot be round-tripped through the JSON schema.
+    TypeError
+        If a rate field is neither a :class:`sympy.Basic` expression, a plain
+        :class:`str`, nor ``None``.
     """
     if isinstance(filename, str):
         filename = Path(filename)
@@ -50,6 +89,7 @@ def to_jaff_file(filename: str | Path, net: "Network"):
         filename = filename.with_suffix(".jaff")
 
     def has_undefined_functions(expr):
+        """Return True if *expr* contains any undefined (``AppliedUndef``) SymPy functions."""
         if not isinstance(expr, Basic):
             return False
 
@@ -59,6 +99,13 @@ def to_jaff_file(filename: str | Path, net: "Network"):
         return False
 
     def encode_maybe_sympy(value):
+        """
+        Encode a rate field to a JSON-compatible object.
+
+        Plain strings are wrapped as ``{"kind": "string", "value": …}``.
+        SymPy expressions are encoded with the compact sympy_json encoder.
+        ``None`` passes through unchanged.
+        """
         if isinstance(value, str):
             return {"kind": "string", "value": value}
         if isinstance(value, Basic):
@@ -73,6 +120,13 @@ def to_jaff_file(filename: str | Path, net: "Network"):
         raise TypeError(f"Unsupported value type for serialization: {type(value)!r}")
 
     def jsonable(obj):
+        """
+        Recursively convert an object to a JSON-serializable form.
+
+        NumPy arrays become lists; NumPy scalars become Python scalars; dicts,
+        lists, and tuples are traversed recursively.  All other types are
+        returned unchanged (assumed to be natively JSON-serializable).
+        """
         if obj is None or isinstance(obj, (str, int, float, bool)):
             return obj
         if isinstance(obj, np.ndarray):
@@ -129,7 +183,7 @@ def to_jaff_file(filename: str | Path, net: "Network"):
                 "tmin": r.tmin,
                 "tmax": r.tmax,
                 "dE": encode_maybe_sympy(r.dE),
-                "dRad_dt": encode_maybe_sympy(r.dRad_dt),
+                "dRad": encode_maybe_sympy(r.dRad),
                 "custom_rad_rate": r.custom_rad_rate,
                 "original_string": r.original_string,
                 "xsecs": jsonable(r.xsecs_dict),
@@ -144,14 +198,36 @@ def to_jaff_file(filename: str | Path, net: "Network"):
 
 def from_jaff_file(filename: str | Path, errors=False):
     """
-    Deserialize a Network previously written by Network.to_jaff_file.
+    Deserialize a ``.jaff`` file into a :class:`~jaff.io._typing.JaffProps` dict.
 
-    Parameters:
-        filename : str
-            `.jaff` file to read (gzip-compressed JSON by default; legacy
-            uncompressed JSON is also supported).
-        errors : bool
-            If True, run Network validation checks and exit on errors.
+    Transparently handles both gzip-compressed files (the current default) and
+    legacy plain-text JSON files by sniffing the two-byte magic header
+    ``\\x1f\\x8b`` before opening.
+
+    Parameters
+    ----------
+    filename : str or pathlib.Path
+        Path to a ``.jaff`` or ``.jaff.gz`` file.
+    errors : bool, optional
+        Reserved for future use; currently ignored.
+
+    Returns
+    -------
+    JaffProps
+        A typed dict containing ``file_name``, ``label``, ``species``
+        (:class:`~jaff.core.Species`), and ``reactions`` (list of
+        :class:`~jaff.core._typing.ReactionProps` dicts).  This can be passed
+        directly to the :class:`~jaff.Network` constructor.
+
+    Raises
+    ------
+    FileNotFoundError
+        If *filename* does not exist on disk.
+    NotJaffFileError
+        If the file extension does not identify it as a JAFF network file.
+    ValueError
+        If the JSON payload is malformed, has an unrecognised ``format`` tag,
+        or uses an unsupported ``schema_version``.
     """
     from .. import Specie, Species
 
@@ -193,7 +269,6 @@ def from_jaff_file(filename: str | Path, errors=False):
     if not isinstance(species_payload, list):
         raise ValueError("Invalid species list in JSON")
 
-    # Create species list in index order.
     by_index = {}
     for spj in species_payload:
         if not isinstance(spj, dict):
@@ -234,6 +309,13 @@ def from_jaff_file(filename: str | Path, errors=False):
             }
 
     def apply_symbol_assumptions(expr):
+        """
+        Re-create free symbols in *expr* with their stored assumption flags.
+
+        SymPy assumptions (e.g. ``positive=True``) affect simplification; they
+        are round-tripped via the ``rate_symbols`` payload so that the
+        deserialized expression is semantically equivalent to the original.
+        """
         if not rate_symbol_assumptions:
             return expr
         symbols = [s for s in expr.free_symbols if s.name in rate_symbol_assumptions]
@@ -246,6 +328,16 @@ def from_jaff_file(filename: str | Path, errors=False):
         return expr.xreplace(replacements)
 
     def decode_maybe_sympy(node):
+        """
+        Decode a single rate-field node from the JSON payload.
+
+        Handles three cases:
+
+        * ``None`` -- returned as-is.
+        * ``{"kind": "string", "value": …}`` -- plain-string rate expression.
+        * Any other list/int/float/dict -- passed to the compact sympy_json
+          decoder and then re-tagged with the correct symbol assumptions.
+        """
         if node is None:
             return None
         if isinstance(node, dict):
@@ -293,7 +385,7 @@ def from_jaff_file(filename: str | Path, errors=False):
                 "products": products,
                 "rate": rate,
                 "dE": dE,
-                "dRad_dt": dRad_dt,
+                "dRad": dRad_dt,
                 "custom_rad_rate": custom_rad_rate,
                 "tmin": tmin,
                 "tmax": tmax,
@@ -318,71 +410,88 @@ def get_table(
     verbose=False,
 ):
     """
-    Return a tabulation of rate coefficients as a function of
-    temperature for all reactions.
+    Build a temperature-indexed rate-coefficient lookup table for a reaction list.
+
+    Only reactions whose rate expression depends **solely** on ``tgas`` (gas
+    temperature) are tabulated.  Rates that also depend on ``av`` (visual
+    extinction), ``crate`` (cosmic-ray rate), or any undefined SymPy function
+    are filled with ``NaN``.  Before classification, ``av`` is substituted with
+    ``0.0`` and ``crate`` with ``1.0`` to eliminate those symbols where the
+    dependence is trivial.
+
+    The temperature grid is built adaptively: starting from ``nT`` points the
+    algorithm doubles the grid by inserting midpoints until the maximum relative
+    interpolation error across all reactions falls below ``err_tol``.  All
+    arithmetic is performed in log-rate space to avoid catastrophic cancellation
+    and overflow.
+
+    When ``fast_log=True`` the grid is uniform in :func:`~jaff.common.fast_log2`
+    space (rather than in ``log10(T)`` space) so that it can be directly indexed
+    by the fast-log approximation used in quokka's runtime interpolation kernel.
 
     Parameters
     ----------
-        T_min : float or None
-            minimum temperature for the tabulation; if left as None,
-            will be set to the minimum temperature over reactions in
-            the network
-        T_max : float or None
-            maximum temperature for the tabulation; if left as None,
-            will be set to the maximum temperature over reactions in
-            the network
-        nT : int
-            initial guess for number of sampling temperatures
-        err_tol : float or None
-            relative error tolerance for interpolation; if set to
-            None, adaptive resampling is disabled and the table size
-            will be exactly nT
-        rate_min : float
-            adaptive error tolerance is not applied to rates below
-            rate_min
-        rate_max : float
-            rataes above rate_max are clipped to rate_max to prevent
-            overflow
-        fast_log : bool
-            if True, sample points are equally spaced in fast_log2(T)
-            rather than log(T)
-        verbose : bool
-            if True, produce verbose output while adaptively refining
+    reactions : Reactions
+        Iterable of :class:`~jaff.core.Reaction` objects for which rates are to
+        be tabulated.
+    logger : logging.Logger or None
+        Logger instance used for progress/diagnostic messages.  When ``None``
+        a default :class:`~jaff.io._logger.JaffLogger` is constructed.
+    T_min : float or None, optional
+        Minimum temperature in K.  Inferred from ``reaction.tmin`` values when
+        not supplied.
+    T_max : float or None, optional
+        Maximum temperature in K.  Inferred from ``reaction.tmax`` values when
+        not supplied.
+    nT : int, optional
+        Initial number of temperature grid points (default ``64``).  The
+        adaptive refinement may increase this significantly.
+    err_tol : float or None, optional
+        Maximum permitted relative interpolation error (default ``0.01``).
+        Pass ``None`` to skip adaptive refinement and return exactly ``nT``
+        points.
+    rate_min : float, optional
+        Small positive floor used in the relative-error denominator to avoid
+        division by zero for near-zero rates (default ``1e-30``).
+    rate_max : float, optional
+        Upper clamp applied to each rate before storing; prevents overflow in
+        log-rate arithmetic (default ``1e100``).
+    fast_log : bool, optional
+        If ``True``, the temperature grid is uniform in
+        :func:`~jaff.common.fast_log2` space instead of ``log10`` space
+        (default ``False``).
+    verbose : bool, optional
+        If ``True``, log the current grid size, worst-case error, and the
+        offending reaction and temperature after each refinement step
+        (default ``False``).
 
     Returns
     -------
-        temp : array, shape (nTemp)
-            gas temperatures at which rates are sampled
-        coeff : array, shape (nreact, nTemp)
-            tabulated reaction rate coefficients at temperatures temp
+    temp : numpy.ndarray, shape (nTemp,)
+        Temperature grid in K.
+    coeff : numpy.ndarray, shape (nReactions, nTemp)
+        Rate coefficients in cm^3 s^-1 (or the appropriate units for the
+        reaction type).  Entries for reactions that cannot be tabulated are
+        ``NaN``.
+
+    Raises
+    ------
+    ValueError
+        If ``T_min`` or ``T_max`` cannot be determined from the reaction list
+        and were not provided explicitly.
 
     Notes
     -----
-        1) By default temperature is sampled logarithmically in the
-        output, i.e., temp =
-        np.logspace(np.log10(T_min), np.log10(T_max), nTemp)
-        where nTemp is the number of temperatures in the output
-        table. If fast_log is set to True, then the outputs are
-        instead uniformly spaced in fast_log2 rather than the
-        true logarithm.
-        2) For reaction rates that depend on something other than
-        tgas, the results are computed at av = 0 and crate = 1;
-        rates that depend on any other quantities are not tabulated,
-        and the table entries for such reactions will be set to NaN.
-        3) Adaptive sampling is performed by comparing the results
-        of a logarithmic interpolation between each rate
-        coefficient at each pair of sampled temperature with
-        a calculation of the exact rate coefficient at a temperature
-        halfway between the two sample points; the errors is taken
-        to be abs((interp_value - exact_value) / (exact_value + rate_min)),
-        and nTemp is increased until the error for all coefficients
-        is below tolerance.
+    The log-expand trick (``expand_log(log(r))``) is applied before
+    :func:`sympy.lambdify` to keep intermediate values in a numerically safe
+    range.  The lambdified function is evaluated element-by-element in a Python
+    loop rather than with a vectorised NumPy call because SymPy (as of v1.13)
+    does not reliably generate broadcasting-safe expressions for all rate forms.
     """
 
     if logger is None:
         logger = JaffLogger().get_logger()
 
-    # Get min and max temperature if not provided
     if T_min is None:
         T_min = np.nanmin([r.tmin if r.tmin is not None else np.nan for r in reactions])
     if T_max is None:
@@ -393,50 +502,33 @@ def get_table(
             "reaction list; set T_min and T_max manually"
         )
 
-    # First step: for each reaction, create a sympy object we can
-    # use to substitute to get an expression in terms of the
-    # primitive variables
     react_sympy = [r.get_sympy() for r in reactions]
 
-    # Second step: set av = 0 and crate = 1
     react_subst = []
     for r in react_sympy:
         r = r.subs(symbols("av"), 0.0)
         r = r.subs(symbols("crate"), 1.0)
         react_subst.append(r)
 
-    # Third step: create numpy fucntions for each reaction
     react_func = []
     for i, r in enumerate(react_subst):
         if len(r.free_symbols) == 0:
-            # Reaction rates that are just constants; in this
-            # case just copy that constant to the list of functions
             react_func.append(np.log(float(r)))
         elif (
             (len(r.free_symbols) > 1)
             or (symbols("tgas") not in r.free_symbols)
             or ("Function" in srepr(r))
         ):
-            # For reaction rates that do not depend on temperature,
-            # that depend on variables other than temperature,
-            # or that contain arbitrary functions, we cannot
-            # tabulate, so just store None
             react_func.append(None)
         else:
-            # Case of reactions that depend only on temperature; to
-            # avoid overflows we will take the log of the rate function
-            # and expand it before converting to numpy, and then we will
-            # exponentiate at the very end
+            # log-expand before lambdify to avoid overflow; exponentiate at the end
             logr = expand_log(log(r))
             react_func.append(lambdify(symbols("tgas"), logr, "numpy"))
 
-    # Fourth step: generate rate coefficient table for initial guess
-    # table size
     nTemp = nT
     if not fast_log:
         temp = np.logspace(np.log10(T_min), np.log10(T_max), nTemp)
     else:
-        # Generate sample points that are uniformly sampled in fast_log2
         log_temp_min = fast_log2(T_min)
         log_temp_max = fast_log2(T_max)
         log_temp = np.linspace(log_temp_min, log_temp_max, nTemp)
@@ -479,8 +571,6 @@ def get_table(
                     log_rates_grow[i, 1::2] = np.nan
                     log_rates_approx[i, :] = np.nan
                 else:
-                    # See comment above about why we're using a list comprehension
-                    # here instead of a straight array operation
                     f_eval = np.array([f(t) for t in temp_grow[1::2]])
                     log_rates_grow[i, 1::2] = np.clip(
                         f_eval, a_min=None, a_max=np.log(rate_max)
@@ -489,18 +579,15 @@ def get_table(
                         log_rates_grow[i, :-1:2] + log_rates_grow[i, 2::2]
                     )
 
-            # Copy new estimates to current ones
             temp = temp_grow
             log_rates = log_rates_grow
 
-            # Make error estimate
             rel_err = np.abs(
                 (np.exp(log_rates_approx) - np.exp(log_rates[:, 1::2]))
                 / (np.exp(log_rates[:, 1::2]) + rate_min)
             )
             max_err = np.nanmax(rel_err)
 
-            # Print output if verbose
             if verbose:
                 idx_max = np.unravel_index(np.nanargmax(rel_err), rel_err.shape)
                 logger.info(
@@ -508,11 +595,9 @@ def get_table(
                     f"{reactions[idx_max[0]].get_verbatim()} at T = {temp[idx_max[1]]}"
                 )
 
-            # Check for convergence
             if max_err < err_tol:
                 break
 
-    # Return final table
     return temp, np.exp(log_rates)
 
 
@@ -533,65 +618,73 @@ def write_data_table(
     verbose=False,
 ):
     """
-    Write a tabulation of rate coefficients as a function of
-    temperature for all reactions.
+    Build a rate-coefficient table and write it to a text or HDF5 file.
+
+    Calls :func:`get_table` with the given sampling parameters and then
+    serializes the result in a format understood by the quokka hydro code.
+    When ``include_all=False`` (the default), reactions with any ``NaN``
+    entries or a completely flat rate curve are excluded from the output.
+
+    Supported output formats
+    ------------------------
+    ``txt``
+        A plain-text file with a header block describing the reactions followed
+        by the data in the quokka 1-D table layout::
+
+            1              # table dimensionality
+            <nReact>       # number of outputs per entry
+            2 or 3         # axis spacing (2 = log10, 3 = fast_log)
+            <nTemp>        # number of temperature points
+            <T_min> <T_max>
+            <coeff row 0>
+            ...
+
+    ``hdf5``
+        An HDF5 file structured as a quokka ``reaction_coeff`` group with
+        dataset attributes ``input_names``, ``input_units``, ``xlo``, ``xhi``,
+        and ``spacing``.
 
     Parameters
     ----------
-        fname : string
-            name of output file
-        T_min : float or None
-            minimum temperature for the tabulation; if left as None,
-            will be set to the minimum temperature over reactions in
-            the network
-        T_max : float or None
-            maximum temperature for the tabulation; if left as None,
-            will be set to the maximum temperature over reactions in
-            the network
-        nT : int
-            initial guess for number of sampling temperatures
-        err_tol : float or None
-            relative error tolerance for interpolation; if set to
-            None, adaptive resampling is disabled and the table size
-            will be exactly nT
-        rate_min : float
-            adaptive error tolerance is not applied to rates below
-            rate_min
-        rate_max : float
-            rates above rate_max are clipped to rate_max to prevent
-            overflow
-        fast_log : bool
-            if True, sample points are equally spaced in fast_log2(T)
-            rather than log(T)
-        format : 'auto' | 'txt' | 'hdf5'
-            output format; if set to 'auto', format will be guessed from
-            extension of fname, otherwise output will be set to either
-            text for hdf5 format
-        include_all : bool
-            if True, the output table will contain all reactions, with
-            entries for rate coefficients that cannot be tabulated
-            just as a function of temperature set to NaN; if False,
-            the output table only includes coefficients that can be
-            tabulated and are non-constant
-        verbose : bool
-            if True, produce verbose output while adaptively refining
-
-    Returns
-    -------
-        Nothing
+    reactions : Reactions
+        Iterable of :class:`~jaff.core.Reaction` objects.
+    logger : logging.Logger or None
+        Logger instance.  ``None`` creates a default :class:`JaffLogger`.
+    fname : str or pathlib.Path
+        Destination path.  The output format is deduced from the file
+        extension when ``format="auto"``.
+    label : str or None, optional
+        Human-readable network label written into the file header.  Defaults
+        to the file stem when ``None``.
+    T_min : float or None, optional
+        Minimum temperature in K.  See :func:`get_table`.
+    T_max : float or None, optional
+        Maximum temperature in K.  See :func:`get_table`.
+    nT : int, optional
+        Initial number of temperature grid points (default ``64``).
+    err_tol : float or None, optional
+        Adaptive refinement tolerance (default ``0.01``).
+    rate_min : float, optional
+        Error-denominator floor (default ``1e-30``).
+    rate_max : float, optional
+        Rate upper clamp (default ``1e100``).
+    fast_log : bool, optional
+        Use :func:`~jaff.common.fast_log2` spacing for the temperature axis
+        (default ``False``).
+    format : {"auto", "txt", "hdf5"}, optional
+        Output format.  ``"auto"`` (the default) infers the format from the
+        file extension (``.txt`` → text, ``.hdf`` / ``.hdf5`` → HDF5).
+    include_all : bool, optional
+        If ``True``, include all reactions in the output even if they contain
+        ``NaN`` values or have a constant rate.  Default ``False``.
+    verbose : bool, optional
+        Forward to :func:`get_table` for per-refinement-step logging.
 
     Raises
     ------
-        ValueError
-            if format is set to 'auto' and the extension is of fname
-            is not 'txt', 'hdf', or 'hdf5'
-        IOError
-            if the output fille cannot be opened
-
-    Notes
-    -----
-        See notes to get_table for details on how temperature sampling
-        and error tolerance is handled.
+    ValueError
+        If *format* is not one of the supported strings, or if ``format="auto"``
+        and the file extension is not recognised.
     """
     if logger is None:
         logger = JaffLogger().get_logger()
@@ -608,7 +701,6 @@ def write_data_table(
             f"Supported output formats are {', '.join(supported_formats)}"
         )
 
-    # Deduce output format
     if format in supported_formats and format != "auto":
         out_type = supported_formats[supported_formats.index(format)]
     elif format == "auto":
@@ -623,7 +715,6 @@ def write_data_table(
     if label is None:
         label = fname.stem
 
-    # Get rate coefficients
     temp, coef = get_table(
         reactions=reactions,
         logger=logger,
@@ -637,8 +728,6 @@ def write_data_table(
         verbose=verbose,
     )
 
-    # Remove from table reaction rates that are either constant
-    # or NaN
     if include_all:
         react_list = list(range(len(coef)))
     else:
@@ -649,8 +738,6 @@ def write_data_table(
             react_list.append(i)
     coef = coef[react_list]
 
-    # For the reactions that we are including, grab the reaction
-    # type and lists of reactants and products
     rtype = []
     reactants = []
     products = []
@@ -675,9 +762,8 @@ def write_data_table(
         products.append(products_)
 
     def to_text():
-        # Text output
+        """Write the table in quokka plain-text 1-D lookup format."""
         with open(fname) as fp:
-            # Write header
             fp.write("# JAFF auto-generated rate coefficient table\n")
             fp.write(f"# Network name: {label}\n")
             fp.write("# Reactions included\n")
@@ -702,6 +788,7 @@ def write_data_table(
                 fp.write("\n")
 
     def to_hdf5():
+        """Write the table as a quokka-compatible HDF5 ``reaction_coeff`` group."""
         output_names = []
         output_units = []
         for i, rt, r, p in zip(range(len(rtype)), rtype, reactants, products):

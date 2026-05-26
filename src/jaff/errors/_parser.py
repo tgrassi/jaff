@@ -1,7 +1,50 @@
+"""
+Custom exception classes for the JAFF parser and serialization subsystems.
+
+Classes
+-------
+:class:`ParserError`
+    Rich contextual error raised when the JAFF network file parser encounters
+    a malformed input (bad syntax, cyclic dependencies, unknown symbols, …).
+:class:`NotJaffFileError`
+    Raised when a file is supplied to a JAFF I/O function but does not have
+    a recognised ``.jaff`` extension.
+:class:`SympyJsonError`
+    Raised by the :mod:`~jaff.common._sympy_json` module when a SymPy
+    expression cannot be serialized or deserialized.
+"""
+
 from pathlib import Path
 
 
 class ParserError(Exception):
+    """
+    Contextual parser error with optional file, line, and function information.
+
+    When raised, the exception message is assembled from all available context
+    fields so that the traceback is human-readable without needing to inspect
+    the exception attributes separately.
+
+    Parameters
+    ----------
+    message : str
+        The primary error description.
+    line : str or None, optional
+        The raw source line that caused the error.
+    nline : int or None, optional
+        1-based line number within *fname*.  Requires *fname* to be set.
+    fname : str or pathlib.Path or None, optional
+        Path to the source file being parsed.
+    funcname : str or None, optional
+        Name of the function or parser routine that raised the error.
+
+    Raises
+    ------
+    AttributeError
+        If *nline* is provided but *fname* is ``None`` (a line number without
+        a file name is meaningless in a formatted error message).
+    """
+
     def __init__(
         self,
         message: str,
@@ -10,6 +53,26 @@ class ParserError(Exception):
         fname: str | Path | None = None,
         funcname: str | None = None,
     ):
+        """Construct the error, assembling a formatted message from all context.
+
+        Parameters
+        ----------
+        message : str
+            Primary error description.
+        line : str or None, optional
+            Raw source line that caused the error.
+        nline : int or None, optional
+            1-based line number within *fname*.
+        fname : str or Path or None, optional
+            Path to the source file being parsed.
+        funcname : str or None, optional
+            Name of the parser routine that raised the error.
+
+        Raises
+        ------
+        AttributeError
+            If *nline* is provided without *fname*.
+        """
         self.message = message
         self.line = line
         self.nline = nline
@@ -24,6 +87,15 @@ class ParserError(Exception):
         super().__init__(self.__format_message())
 
     def __format_message(self) -> str:
+        """
+        Build the full error message string from all available context fields.
+
+        Returns
+        -------
+        str
+            Multi-line error string with optional function name, file path,
+            line number, raw line, and the primary message.
+        """
         error_str: str = ""
 
         if self.funcname is not None:
@@ -44,11 +116,38 @@ class ParserError(Exception):
 
 
 class NotJaffFileError(Exception):
+    """
+    Raised when a path does not resolve to a valid JAFF network file.
+
+    Parameters
+    ----------
+    message : str
+        Human-readable description of the problem.
+    file : pathlib.Path or None, optional
+        The offending file path, appended to *message* when provided.
+    """
+
     def __init__(self, message: str, file: Path | None = None):
+        """Construct the error with an optional file path appended to the message.
+
+        Parameters
+        ----------
+        message : str
+            Human-readable description of the problem.
+        file : Path or None, optional
+            The offending file path, appended to *message* when provided.
+        """
         message = f"{message}\n{'File: {file}' if file is not None else ''}"
 
         super().__init__(message)
 
 
 class SympyJsonError(ValueError):
+    """
+    Raised by :mod:`~jaff.common._sympy_json` for serialization / deserialization errors.
+
+    Inherits from :exc:`ValueError` so callers can catch it alongside other
+    value-related errors when processing untrusted JSON input.
+    """
+
     pass

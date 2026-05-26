@@ -1,3 +1,36 @@
+"""Low-level reaction network file parser for multiple astrochemical formats.
+
+``NetworkParser`` reads a single network file and converts each reaction line
+into a format-independent ``parsedListProps`` dict with keys:
+
+- ``"r"``      — list of reactant name strings
+- ``"p"``      — list of product name strings
+- ``"tmin"``   — lower temperature bound in Kelvin, or ``None``
+- ``"tmax"``   — upper temperature bound in Kelvin, or ``None``
+- ``"rate"``   — rate expression as a Python/SymPy-compatible string
+- ``"string"`` — the original network-file line (for error reporting)
+
+Supported file formats
+----------------------
+The parser auto-detects the format from line patterns, in this priority order:
+
+1. **KROME** — comma-separated, declared via ``@format:`` header.
+   Variable aliases via ``@var:``.
+2. **PRIZMO** — arrow-notation (``->``) with optional temperature range in
+   ``[tmin, tmax]`` brackets.  Variables in a ``VARIABLES { }`` block.
+3. **UDFA** — colon-delimited, fixed-column database from the UMIST project.
+4. **UCLCHEM** — comma-separated with a ``NAN`` sentinel, includes grain
+   surface reactions.
+5. **KIDA** — fixed-width column format from the KIDA database.
+
+Rate normalization
+------------------
+After parsing, all rate strings are lower-cased.  Known format-specific
+symbols (``user_crflux``, ``user_av``, Fortran exponent notation ``d``,
+temperature shortcuts ``t32``, ``invtgas``, etc.) are replaced with canonical
+JAFF symbols before the strings are passed to SymPy for sympification.
+"""
+
 import logging
 import re
 from pathlib import Path
@@ -16,7 +49,39 @@ from ._typing import (
 
 
 class NetworkParser:
+    """Auto-detecting parser for astrochemical reaction network files.
+
+    On construction the file is read, reactions are extracted, and rate
+    strings are normalised.  Use as a context manager to ensure internal
+    pattern state is freed after use.
+
+    Parameters
+    ----------
+    file : str | Path
+        Path to the network file.
+    logger : logging.Logger | None, optional
+        Logger instance.  A new JAFF logger is created if ``None``.
+
+    Raises
+    ------
+    ValueError
+        If *file* is not a ``str`` or ``Path``.
+    FileNotFoundError
+        If *file* does not exist on disk.
+    ParserError
+        On syntax errors encountered while parsing the file.
+    """
+
     def __init__(self, file: str | Path, logger: logging.Logger | None = None):
+        """Parse *file* and prepare the internal parsed-reaction list.
+
+        Parameters
+        ----------
+        file : str | Path
+            Path to the network file.
+        logger : logging.Logger | None, optional
+            External logger.  Defaults to a new JAFF logger.
+        """
         if isinstance(file, str):
             file = Path(file)
         if not isinstance(file, (str, Path)):
@@ -30,16 +95,17 @@ class NetworkParser:
         self.__logger: logging.Logger = logger or JaffLogger().get_logger()
         self.__line: str = ""
         self.__nline: int = 0
-        self.__globals: dict[str, Basic] = {}  # Stores global custom variables
+        self.__globals: dict[str, Basic] = {}
         self.__matched_group: None | re.Match = None
         self.__local_pattern: None | re.Pattern = None
         self.__matched_handler: None | Callable[..., None] = None
+        # Pre-populate well-known Fortran/KROME shorthand symbols as SymPy aliases.
         self.__set_known_replacments()
 
         self.__format_props: networkFormatProps = {
             "prizmo": {"parse_vars": False},
             "krome": {
-                "format_nline": 0,
+                "format_nline": 0,  # line where @format was declared (0 = not yet seen)
                 "idx": True,
                 "nreact": 3,
                 "nprod": 4,
@@ -56,19 +122,43 @@ class NetworkParser:
         self.__globals = resolve_symbolic_dependencies(self.__globals, fname=self.__file)
 
     def __enter__(self) -> "NetworkParser":
+        """Return self when entering a ``with`` block.
+
+        Returns
+        -------
+        NetworkParser
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Free compiled regex patterns on context manager exit."""
         self.__valid_patterns.clear()
 
         return
 
     def get_parsed(self) -> tuple[list[parsedListProps], dict[str, Basic]]:
+        """Return the parsed reaction list and resolved global variable map.
+
+        Returns
+        -------
+        tuple[list[parsedListProps], dict[str, Basic]]
+            - ``list[parsedListProps]``: one dict per reaction with keys
+              ``"r"``, ``"p"``, ``"tmin"``, ``"tmax"``, ``"rate"``,
+              ``"string"``.
+            - ``dict[str, Basic]``: global symbolic constants defined in the
+              file (e.g. ``@var`` entries), with all inter-dependencies
+              resolved via SymPy substitution.
+        """
         return self.__parsed_list, resolve_symbolic_dependencies(
             dep_map=self.__globals, fname=self.__file
         )
 
     def __parse_file(self) -> None:
+        """Read the network file line-by-line and dispatch each line for parsing.
+
+        Iterates over every line of :attr:`__file`, advancing the line counter
+        and calling :meth:`__parse_line` for each.
+        """
         with open(self.__file, "r") as f:
             lines = f.readlines()
             for i, line in enumerate(
@@ -79,6 +169,12 @@ class NetworkParser:
                 self.__parse_line()
 
     def __parse_line(self) -> None:
+        """Match the current line against all known patterns and invoke the handler.
+
+        Iterates through :attr:`__valid_patterns` in priority order.  The first
+        global regex that matches determines the local regex and handler.  If no
+        pattern matches the line is silently skipped.
+        """
         if not self.__line.strip():
             return
         for _, pattern_dict in self.__valid_patterns.items():
@@ -95,9 +191,35 @@ class NetworkParser:
             self.__matched_handler = None
 
     def __raise_error(self, message: str, **kwargs) -> None:
+        """Raise a :exc:`~jaff.errors.ParserError` with current file/line context.
+
+        Parameters
+        ----------
+        message : str
+            Human-readable description of the error.
+        **kwargs
+            Extra keyword arguments forwarded to :class:`~jaff.errors.ParserError`.
+
+        Raises
+        ------
+        ParserError
+            Always raised.
+        """
         raise ParserError(message, self.__line, self.__nline, self.__file, **kwargs)
 
     def __handle_krome_format(self) -> None:
+        """Parse a KROME ``@format:`` header line and update the format descriptor.
+
+        Updates ``__format_props["krome"]`` with the field counts and flags
+        detected in the format declaration, then rebuilds ``__valid_patterns``
+        so subsequent reaction lines are matched with the correct column counts.
+
+        Raises
+        ------
+        ParserError
+            Via :meth:`__handle_krome_format_errors` if the format line is
+            malformed.
+        """
         assert self.__local_pattern is not None
         match = self.__local_pattern.match(self.__line)
         if not match:
@@ -116,6 +238,13 @@ class NetworkParser:
         self.__valid_patterns = self.__global_patterns_dict()
 
     def __handle_krome_format_errors(self):
+        """Raise a descriptive error for a malformed KROME ``@format:`` line.
+
+        Raises
+        ------
+        ParserError
+            With a message explaining the specific formatting problem detected.
+        """
         assert self.__matched_group is not None
         format = self.__matched_group.group("format")
         if format is None:
@@ -143,6 +272,17 @@ class NetworkParser:
         self.__raise_error("Invalid @format KROME declerative")
 
     def __handle_krome_var(self) -> None:
+        """Parse a KROME ``@var:`` directive and store the symbolic expression.
+
+        Logs a warning and skips the variable when the expression is not valid
+        SymPy syntax (rather than raising a hard error).
+
+        Raises
+        ------
+        ParserError
+            Via :meth:`__handle_krome_var_errors` if the line structure is
+            invalid before attempting SymPy evaluation.
+        """
         assert self.__local_pattern is not None
         match = self.__local_pattern.match(self.__line)
         if not match:
@@ -159,6 +299,13 @@ class NetworkParser:
             )
 
     def __handle_krome_var_errors(self):
+        """Raise a descriptive error for a malformed KROME ``@var:`` line.
+
+        Raises
+        ------
+        ParserError
+            With a message describing the specific structural problem detected.
+        """
         assert self.__matched_group is not None
         segment = self.__matched_group.group("segment")
 
@@ -192,6 +339,17 @@ class NetworkParser:
         self.__raise_error("Invalid KROME @var declerative")
 
     def __handle_prizmo_vars(self) -> None:
+        """Handle a PRIZMO ``VARIABLES { }`` block line or variable assignment.
+
+        Toggles ``__format_props["prizmo"]["parse_vars"]`` on ``VARIABLES {``
+        and ``}`` tokens, and stores a parsed SymPy expression for any
+        ``var = expr`` line encountered while inside the block.
+
+        Raises
+        ------
+        ParserError
+            Via :meth:`__handle_prizmo_vars_errors` if the line is malformed.
+        """
         assert self.__local_pattern is not None
         match = self.__local_pattern.match(self.__line)
         if not match:
@@ -224,6 +382,13 @@ class NetworkParser:
                 )
 
     def __handle_prizmo_vars_errors(self) -> None:
+        """Raise a descriptive error for a malformed PRIZMO variables section line.
+
+        Raises
+        ------
+        ParserError
+            With a message describing the specific structural problem detected.
+        """
         assert self.__matched_group is not None
         segment = self.__matched_group.group("segment")
         assignment = self.__matched_group.group("assignment")
@@ -252,6 +417,20 @@ class NetworkParser:
             self.__raise_error("Extra characters found after PRIZMO block declarative")
 
     def __handle_prizmo(self):
+        """Parse a PRIZMO-format reaction line and append it to the parsed list.
+
+        Extracts reactants, products, optional temperature bounds, and rate
+        expression from the ``R1 + R2 -> P1 + P2 [tmin, tmax] rate`` pattern.
+        Applies species-name normalisation (``HE`` → ``He``, ``E`` → ``e-``,
+        ``GRAIN0`` → ``GRAIN``) and converts ``user_crflux``/``user_av``
+        aliases to canonical JAFF symbols.
+
+        Raises
+        ------
+        ParserError
+            Via :meth:`__handle_prizmo_errors` if the line does not match
+            the expected PRIZMO format.
+        """
         assert self.__local_pattern is not None
         match = self.__local_pattern.match(self.__line)
         if not match:
@@ -303,9 +482,30 @@ class NetworkParser:
         )
 
     def __handle_prizmo_errors(self):
+        """Raise an error for a malformed PRIZMO reaction line.
+
+        Raises
+        ------
+        ParserError
+            Always raised with a generic PRIZMO-format error message.
+        """
         self.__raise_error("Invalid PRIZMO reaction detected")
 
     def __handler_krome(self):
+        """Parse a KROME-format reaction line and append it to the parsed list.
+
+        Extracts the index, reactants, products, temperature bounds, and rate
+        expression from the comma-delimited KROME format.  Applies species
+        normalisation (``E``/``e`` → ``e-``, ``g`` → empty, ``HE`` → ``He``)
+        and converts ``user_crflux``/``user_av`` aliases.  Fortran exponent
+        notation is converted to Python notation via :func:`~jaff.common.f90_convert`.
+
+        Raises
+        ------
+        ParserError
+            Via :meth:`__handle_krome_error` if the line structure is
+            inconsistent with the declared KROME format.
+        """
         assert self.__local_pattern is not None
         match = self.__local_pattern.match(self.__line)
         if not match:
@@ -396,6 +596,17 @@ class NetworkParser:
         )
 
     def __handle_krome_error(self):
+        """Raise a descriptive error for a malformed KROME reaction line.
+
+        Diagnoses the most likely cause (wrong field count, wrong reactant or
+        product count) before falling back to a generic error message.
+
+        Raises
+        ------
+        ParserError
+            With a message describing the detected inconsistency relative to
+            the declared KROME format.
+        """
         assert self.__matched_group is not None
 
         segment = self.__matched_group.group("segment").lower()
@@ -449,6 +660,20 @@ class NetworkParser:
         self.__raise_error("Invalid KROME reaction detected")
 
     def __handle_udfa(self):
+        """Parse a UDFA (UMIST)-format reaction line and append it to the parsed list.
+
+        Extracts the reaction type, reactants, products, rate parameters
+        (``ka``, ``kb``, ``kc``), and temperature bounds from the
+        colon-delimited UDFA format.  Constructs a rate expression based on
+        the reaction type: cosmic-ray (``"CR"``), photo-desorption (``"PH"``),
+        or standard Arrhenius.
+
+        Raises
+        ------
+        ParserError
+            Via :meth:`__handle_udfa_errors` if the line does not match the
+            expected UDFA format.
+        """
         assert self.__local_pattern is not None
         match = self.__local_pattern.match(self.__line)
         if not match:
@@ -502,9 +727,29 @@ class NetworkParser:
         )
 
     def __handle_udfa_errors(self):
+        """Raise an error for a malformed UDFA reaction line.
+
+        Raises
+        ------
+        ParserError
+            Always raised with a generic UDFA-format error message.
+        """
         self.__raise_error("Invalid UDFA reaction detected")
 
     def __handle_uclchem(self):
+        """Parse a UCLCHEM-format reaction line and append it to the parsed list.
+
+        Extracts reactants, products, rate parameters, temperature bounds, and
+        an extrapolation flag from the comma-delimited UCLCHEM format (identified
+        by the ``NAN`` sentinel column).  Species names are normalised via
+        :meth:`__normalize_uclchem_species`.
+
+        Raises
+        ------
+        ParserError
+            Via :meth:`__handle_uclchem_errors` if the line does not match the
+            expected UCLCHEM format.
+        """
         assert self.__local_pattern is not None
         match = self.__local_pattern.match(self.__line)
         if not match:
@@ -580,9 +825,29 @@ class NetworkParser:
         )
 
     def __handle_uclchem_errors(self):
+        """Raise an error for a malformed UCLCHEM reaction line.
+
+        Raises
+        ------
+        ParserError
+            Always raised with a generic UCLCHEM-format error message.
+        """
         self.__raise_error("Invalid UCLCHEM reaction detected")
 
     def __handle_kida(self):
+        """Parse a KIDA-format reaction line and append it to the parsed list.
+
+        Extracts reactants, products, rate parameters (``ka``, ``kb``, ``kc``),
+        temperature bounds, and formula index from the fixed-width KIDA column
+        format.  Rate expressions are selected from a formula dictionary keyed
+        by the integer formula index (1–5).
+
+        Raises
+        ------
+        ParserError
+            Via :meth:`__handle_kida_errors` if the line does not match the
+            expected KIDA format.
+        """
         assert self.__local_pattern is not None
         match = self.__local_pattern.match(self.__line)
         if not match:
@@ -642,10 +907,35 @@ class NetworkParser:
         )
 
     def __handle_kida_errors(self):
+        """Raise an error for a malformed KIDA reaction line.
+
+        Raises
+        ------
+        ParserError
+            Always raised with a generic KIDA-format error message.
+        """
         self.__raise_error("Invalid KIDA reaction detected")
 
     @staticmethod
     def __normalize_uclchem_species(s: str):
+        """Normalise a UCLCHEM species token to the JAFF canonical form.
+
+        Transformations applied:
+        - ``#X`` → ``X_DUST`` (grain-surface species prefix)
+        - ``@X`` → ``X_BULK`` (bulk ice species prefix)
+        - ``E-`` → ``e-`` (electron lower-case)
+        - ``HE`` → ``He``, ``SI`` → ``Si``, ``CL`` → ``Cl``, ``MG`` → ``Mg``
+
+        Parameters
+        ----------
+        s : str
+            Raw species token from the UCLCHEM file.
+
+        Returns
+        -------
+        str
+            Normalised species name.
+        """
         s = s.strip()
         if s.startswith("#"):
             s = s[1:] + "_DUST"
@@ -662,9 +952,16 @@ class NetworkParser:
         return s
 
     def __set_known_replacments(self) -> None:
-        # Some krome replacements
-        # Order matters here
-        # Expressions with dependencies must come first
+        """Pre-populate ``__globals`` with canonical JAFF symbol aliases.
+
+        Inserts SymPy expressions for common KROME/PRIZMO shorthand variables
+        such as ``t32``, ``te``, ``invtgas``, and ``sqrtgas`` so that they are
+        resolved automatically during rate normalization.
+        """
+        # Populate __globals with canonical SymPy aliases for common shorthand
+        # symbols found in KROME/PRIZMO files.  Order matters: compound aliases
+        # (invt32, invte) must be listed before the simpler ones they depend on
+        # so that resolve_symbolic_dependencies can substitute correctly.
         replacements = {
             "invt32": "1e0 / t32",
             "invte": "1e0 / te",
@@ -684,11 +981,29 @@ class NetworkParser:
             self.__globals[k] = parse_expr(v)
 
     def __normalize_rates(self):
+        """Lower-case all rate strings so SymPy ``parse_expr`` is case-insensitive."""
         for r in self.__parsed_list:
             assert isinstance(r["rate"], str)
             r["rate"] = r["rate"].lower()
 
     def __global_patterns_dict(self) -> dict[str, patternProps]:
+        """Build the ordered pattern dictionary used to identify reaction-line formats.
+
+        Each entry maps a format name to a ``patternProps`` dict with three keys:
+
+        - ``"global_re"``  — compiled regex for quick line classification.
+        - ``"local_re"``   — compiled regex for detailed field extraction.
+        - ``"handler"``    — bound method called when the global pattern matches.
+
+        The KROME local regex is rebuilt on every call so it reflects the
+        current ``__format_props["krome"]`` column counts.
+
+        Returns
+        -------
+        dict[str, patternProps]
+            Ordered pattern mapping in priority order (KROME format header
+            first, KIDA last).
+        """
         patterns: dict = {
             "krome_format": {
                 "global_re": r"^\s*@format\s*:(?P<format>.*?)$",

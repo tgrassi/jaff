@@ -1,9 +1,12 @@
-"""
-Element extraction and matrix generation for chemical reaction networks.
+"""Element extraction and composition matrices for chemical networks.
 
-This module provides utilities for extracting unique chemical elements from species
-in a reaction network and generating element-related matrices for conservation laws
-and stoichiometric analysis.
+This module provides two classes:
+
+- `Element`: a flyweight representing a single chemical element, loaded from
+  the JAFF mass dictionary (CGS units throughout).
+- `Elements`: an ordered, unique collection of elements derived from a list of
+  `Specie` objects, with helpers for building truth and density matrices used
+  in stoichiometry calculations.
 """
 
 from __future__ import annotations
@@ -19,15 +22,59 @@ if TYPE_CHECKING:
 
 
 class Element:
+    """A chemical element loaded from the JAFF mass dictionary.
+
+    Instances are flyweights: constructing ``Element("H")`` twice returns the
+    same object.  The first construction populates all attributes from the
+    mass dictionary; subsequent constructions are no-ops.
+
+    Attributes
+    ----------
+    symbol : str
+        Periodic-table symbol (e.g. ``"H"``, ``"He"``).
+    name : str
+        Full element name (e.g. ``"hydrogen"``).
+    mass : float
+        Mass of the most common isotope in grams (CGS).
+    atomic_mass : float
+        Standard atomic weight in atomic mass units.
+    protons : int
+        Number of protons (atomic number).
+    neutrons : int
+        Number of neutrons in the most common isotope.
+    electrons : int
+        Number of electrons in the neutral atom.
+    """
+
     _register: dict = {}
     _mass_dict: dict | None = None
 
     @classmethod
     def configure(cls, mass_dict: dict[str, ElementProps]) -> None:
+        """Override the mass dictionary used to instantiate elements.
+
+        Call this before creating any ``Element`` instances if you need a
+        custom mass table.  Calling it after elements have already been
+        registered has no effect on those existing instances.
+
+        Parameters
+        ----------
+        mass_dict : dict[str, ElementProps]
+            Mapping from element symbol to a dict with keys ``"name"``,
+            ``"mass"``, ``"atomic_mass"``, ``"protons"``, ``"neutrons"``,
+            ``"electrons"``.
+        """
         cls._mass_dict = mass_dict
 
     @classmethod
     def __get_mass_dict(cls) -> dict[str, ElementProps]:
+        """Return the mass dictionary, loading it on first access.
+
+        Returns
+        -------
+        dict[str, ElementProps]
+            Mapping from element symbol to its properties.
+        """
         if cls._mass_dict is None:
             from ..common import load_mass_dict
 
@@ -36,6 +83,21 @@ class Element:
         return cls._mass_dict
 
     def __new__(cls, symbol: str):
+        """Return the flyweight instance for *symbol*, creating it if absent.
+
+        Parameters
+        ----------
+        symbol : str
+            Periodic-table symbol (case-sensitive).
+
+        Returns
+        -------
+        Element
+            Existing cached instance, or a newly allocated one registered for
+            future calls.
+        """
+        # Return the cached instance if this element has already been built;
+        # otherwise create a fresh one and register it for future look-ups.
         if symbol in cls._register:
             return cls._register[symbol]
 
@@ -45,6 +107,18 @@ class Element:
         return instance
 
     def __init__(self, symbol: str):
+        """Initialise an Element from the mass dictionary.
+
+        Parameters
+        ----------
+        symbol : str
+            Periodic-table symbol of the element (case-sensitive, e.g. ``"He"``).
+
+        Raises
+        ------
+        KeyError
+            If *symbol* is not present in the mass dictionary.
+        """
         if getattr(self, "__initialized", False):
             return
 
@@ -63,12 +137,42 @@ class Element:
         self.__initialized = True
 
     def __repr__(self) -> str:
+        """Return detailed string representation of this element.
+
+        Returns
+        -------
+        str
+            String including symbol and full element name.
+        """
         return f"Element(symbol={self.symbol!r}, name={self.name!r}"
 
     def __str__(self) -> str:
+        """Return the periodic-table symbol.
+
+        Returns
+        -------
+        str
+            Element symbol (e.g. ``"He"``).
+        """
         return self.symbol
 
     def __eq__(self, other) -> bool:
+        """Check equality by comparing element symbols.
+
+        Parameters
+        ----------
+        other : Element
+            Element to compare against.
+
+        Returns
+        -------
+        bool
+
+        Raises
+        ------
+        TypeError
+            If *other* is not an ``Element`` instance.
+        """
         if not isinstance(other, Element):
             raise TypeError(
                 f"'==' not supported between instances of 'Element' and '{other}'"
@@ -77,6 +181,22 @@ class Element:
         return self.symbol == other.symbol
 
     def __lt__(self, other) -> bool:
+        """Compare elements lexicographically by symbol.
+
+        Parameters
+        ----------
+        other : Element
+            Element to compare against.
+
+        Returns
+        -------
+        bool
+
+        Raises
+        ------
+        TypeError
+            If *other* is not an ``Element`` instance.
+        """
         if not isinstance(other, Element):
             raise TypeError(
                 f"'<' not supported between instances of 'Element' and '{other}'"
@@ -85,21 +205,28 @@ class Element:
         return self.symbol < other.symbol
 
     def __hash__(self):
+        """Return hash based on the element symbol.
+
+        Returns
+        -------
+        int
+        """
         return hash(self.symbol)
 
 
 class Elements(Catalogue):
-    """
-    Extracts and manages chemical elements from a reaction network.
+    """Sorted, deduplicated collection of elements derived from a species list.
 
-    This class analyzes all species in a chemical reaction network to extract
-    unique chemical elements and provides methods to generate matrices that
-    describe element composition and presence across all species.
+    ``Elements`` is also a flyweight: instances with the same sorted species
+    set are reused.  The internal order follows alphabetical sort on element
+    symbol, which fixes the row order of the composition matrices.
 
-    Attributes:
-        net: The chemical reaction network to analyze.
-        elements: Sorted list of unique chemical element symbols found in the network.
-        count: Total number of unique elements in the network.
+    Attributes
+    ----------
+    species : list[Specie]
+        The input species whose atoms were used to populate this collection.
+    count : int
+        Number of unique elements present (inherited from ``Catalogue``).
     """
 
     _register: dict = {}
@@ -107,11 +234,25 @@ class Elements(Catalogue):
 
     @classmethod
     def configure(cls, mass_dict: dict[str, ElementProps]) -> None:
+        """Override the mass dictionary for both ``Elements`` and ``Element``.
+
+        Parameters
+        ----------
+        mass_dict : dict[str, ElementProps]
+            Custom mass dictionary forwarded to ``Element.configure`` as well.
+        """
         cls._mass_dict = mass_dict
         Element.configure(mass_dict)
 
     @classmethod
     def __get_mass_dict(cls) -> dict[str, ElementProps]:
+        """Return the mass dictionary for the ``Elements`` collection.
+
+        Returns
+        -------
+        dict[str, ElementProps]
+            Mapping from element symbol to its properties.
+        """
         if cls._mass_dict is None:
             from ..common import load_mass_dict
 
@@ -122,6 +263,7 @@ class Elements(Catalogue):
     def __get_species_list(
         species: Specie | list[Specie] | str | list[str],
     ) -> list[Specie]:
+        """Normalise the *species* argument to a ``list[Specie]``."""
         from .species import Specie as _Specie
 
         if isinstance(species, str):
@@ -136,6 +278,20 @@ class Elements(Catalogue):
         return species  # type: ignore
 
     def __new__(cls, species: Specie | list[Specie] | str | list[str]):
+        """Return the flyweight ``Elements`` instance for the given species set.
+
+        Parameters
+        ----------
+        species : Specie | list[Specie] | str | list[str]
+            Species whose atoms define the element set.
+
+        Returns
+        -------
+        Elements
+            Existing cached instance keyed by the sorted species serialization,
+            or a newly allocated one.
+        """
+        # Serialise the species set to a canonical key for flyweight look-up.
         _species = cls.__get_species_list(species)
         _serialized: str = "_".join(sorted(str(s) for s in _species))
         if _serialized in cls._register:
@@ -147,11 +303,13 @@ class Elements(Catalogue):
         return instance
 
     def __init__(self, species: Specie | list[Specie] | str | list[str]) -> None:
-        """
-        Initialize the Elements analyzer for a given reaction network.
+        """Build the element collection from *species*.
 
-        Args:
-            network: Chemical reaction network containing species to analyze.
+        Parameters
+        ----------
+        species : Specie | list[Specie] | str | list[str]
+            One or more species whose constituent atoms define the element set.
+            Plain strings are converted to ``Specie`` objects on the fly.
         """
         if getattr(self, "__initialized", False):
             return
@@ -162,53 +320,43 @@ class Elements(Catalogue):
         self.__initalized = True
 
     def __set_elements(self) -> None:
-        """
-        Extract unique chemical elements from all species in the network.
-
-        Returns:
-            List of unique element symbols (alphabetic characters only).
-        """
+        """Collect unique alphabetic atoms across all species and build indices."""
         elements: set[str] = set()
 
-        # Collect all elements from each species' exploded representation
         for specie in self.species:
-            # Union with the set of atoms in this species
             elements |= set(specie.exploded)  # type: ignore[arg-type]
 
-        # Filter to only alphabetic characters (element symbols) and convert to list
+        # Filter out charge tokens ('+', '-') — only real element symbols remain.
         _list = sorted(list({Element(e) for e in elements if e.isalpha()}))
 
         _by_name = {e.name: e for e in _list}
         _by_symbol = {e.symbol: e for e in _list}
 
         super().__init__(_list, _by_symbol)
+        # _by_serialized is reused here to store the name→Element mapping.
         self._by_serialized = _by_name
 
     @cache
     def truth_matrix(self) -> list[list[int]]:
+        """Binary element-presence matrix.
+
+        Returns
+        -------
+        list[list[int]]
+            A 2-D integer matrix of shape ``(n_elements, n_species)``.
+            Entry ``[i][j]`` is ``1`` if element *i* appears at least once in
+            species *j*, otherwise ``0``.
+
+        Notes
+        -----
+        The result is cached after the first call (via ``functools.cache``).
+        Row order matches the sorted element list; column order matches the
+        order of *species* passed to ``__init__``.
         """
-        Generate a binary matrix indicating element presence in each species.
-
-        Creates a matrix where entry [i][j] is 1 if element i is present in
-        species j, and 0 otherwise.
-
-        Returns:
-            2D matrix (count × nspecies) with binary values:
-            - 1 if the element is present in the species
-            - 0 if the element is absent from the species
-
-        Example:
-            For elements ['C', 'H', 'O'] and species ['CO', 'H2O', 'CH4']:
-            [[1, 0, 1],   # C present in CO and CH4
-             [0, 1, 1],   # H present in H2O and CH4
-             [1, 1, 0]]   # O present in CO and H2O
-        """
-        # Initialize matrix with zeros (count rows × nspecies columns)
         element_truth_matrix: list[list[int]] = [
             [0] * len(self.species) for _ in range(self.count)
         ]
 
-        # Populate matrix: 1 if element is in species, 0 otherwise
         for i, element in enumerate(self._list):
             for j, specie in enumerate(self.species):
                 element_truth_matrix[i][j] = int(element in specie.exploded)
@@ -217,61 +365,125 @@ class Elements(Catalogue):
 
     @cache
     def density_matrix(self) -> list[list[int]]:
+        """Atom-count matrix (stoichiometric composition matrix).
+
+        Returns
+        -------
+        list[list[int]]
+            A 2-D integer matrix of shape ``(n_elements, n_species)``.
+            Entry ``[i][j]`` is the number of atoms of element *i* contained
+            in species *j* (e.g. entry for H in H2O is ``2``).
+
+        Notes
+        -----
+        The result is cached after the first call (via ``functools.cache``).
         """
-        Generate a matrix showing element counts in each species.
-
-        Creates a matrix where entry [i][j] represents the number of atoms of
-        element i present in species j.
-
-        Returns:
-            2D matrix (count × nspecies) with integer counts representing
-            the number of atoms of each element in each species.
-
-        Example:
-            For elements ['C', 'H', 'O'] and species ['CO', 'H2O', 'CH4']:
-            [[1, 0, 1],   # C: 1 in CO, 0 in H2O, 1 in CH4
-             [0, 2, 4],   # H: 0 in CO, 2 in H2O, 4 in CH4
-             [1, 1, 0]]   # O: 1 in CO, 1 in H2O, 0 in CH4
-        """
-        # Initialize matrix with zeros (count rows × nspecies columns)
         element_density_matrix: list[list[int]] = [
             [0] * len(self.species) for _ in range(self.count)
         ]
 
-        # Populate matrix with element counts for each species
         for i, element in enumerate(self._list):
             for j, specie in enumerate(self.species):
-                # Count occurrences of this element in this species
                 element_density_matrix[i][j] = specie.exploded.count(element.symbol)
 
         return element_density_matrix
 
     def from_name(self, name: str) -> Element:
+        """Return the ``Element`` with the given full name (e.g. ``"hydrogen"``).
+
+        Parameters
+        ----------
+        name : str
+            Full element name as stored in the mass dictionary.
+
+        Returns
+        -------
+        Element
+        """
         return self._by_serialized[name]
 
     def from_symbol(self, symbol: str) -> Element:
+        """Return the ``Element`` with the given periodic-table symbol.
+
+        Parameters
+        ----------
+        symbol : str
+            Element symbol (e.g. ``"H"``).
+
+        Returns
+        -------
+        Element
+        """
         return self._by_name[symbol]
 
     def get_list(self) -> list[Element]:
+        """Return the underlying ordered list of ``Element`` objects.
+
+        Returns
+        -------
+        list[Element]
+        """
         return self._list
 
     def symbols(self) -> Vector[str]:
+        """Return a ``Vector`` of element symbols in sorted order.
+
+        Returns
+        -------
+        Vector[str]
+        """
         return Vector([e.symbol for e in self])
 
     def names(self) -> Vector[str]:
+        """Return a ``Vector`` of full element names in sorted order.
+
+        Returns
+        -------
+        Vector[str]
+        """
         return Vector([e.name for e in self])
 
     def masses(self) -> Vector[float]:
+        """Return a ``Vector`` of element masses in grams (CGS).
+
+        Returns
+        -------
+        Vector[float]
+        """
         return Vector([e.mass for e in self])
 
     def atomic_masses(self) -> Vector[float]:
+        """Return a ``Vector`` of standard atomic weights in atomic mass units.
+
+        Returns
+        -------
+        Vector[float]
+        """
         return Vector([e.atomic_mass for e in self])
 
     def protons(self) -> Vector[int]:
+        """Return a ``Vector`` of proton counts (atomic numbers).
+
+        Returns
+        -------
+        Vector[int]
+        """
         return Vector([e.protons for e in self])
 
     def neutrons(self) -> Vector[int]:
+        """Return a ``Vector`` of neutron counts for the most common isotope.
+
+        Returns
+        -------
+        Vector[int]
+        """
         return Vector([e.neutrons for e in self])
 
     def electrons(self) -> Vector[int]:
+        """Return a ``Vector`` of electron counts for the neutral atom.
+
+        Returns
+        -------
+        Vector[int]
+        """
         return Vector([e.electrons for e in self])

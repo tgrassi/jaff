@@ -25,29 +25,232 @@ nav = [
     "getting-started/concepts.md"
   ] },
   { "User Guide" = [
-    "user-guide/loading-networks.md",
-    "user-guide/network-formats.md",
-    "user-guide/species.md",
-    "user-guide/reactions.md",
-    "user-guide/builder.md",
-    "user-guide/template-syntax.md",
-    "user-guide/jaffgen-command.md",
-    "user-guide/code-generation.md"
+    { "Designing Networks" = [
+      "user-guide/designing-networks/index.md",
+      "user-guide/designing-networks/network-formats.md",
+      "user-guide/designing-networks/auxiliary-functions.md",
+      "user-guide/designing-networks/photochemistry.md"
+    ] },
+    { "Working with Networks" = [
+      "user-guide/working-with-networks/index.md",
+      "user-guide/working-with-networks/network.md",
+      "user-guide/working-with-networks/species.md",
+      "user-guide/working-with-networks/elements.md",
+      "user-guide/working-with-networks/reactions.md",
+      "user-guide/working-with-networks/jaffx.md"
+    ] },
+    { "Code Generation" = [
+      "user-guide/code-generation/index.md",
+      "user-guide/code-generation/template-syntax.md",
+      "user-guide/code-generation/jaff-toml.md",
+      "user-guide/code-generation/jaffgen.md"
+    ] },
+    { "Advanced Code Generation" = [
+      "user-guide/advanced-code-generation/index.md",
+      "user-guide/advanced-code-generation/builder.md",
+      "user-guide/advanced-code-generation/codegen.md"
+    ] }
   ] },
   { "API Reference" = [
     "api/index.md",
-    "api/network.md",
-    "api/species.md",
-    "api/reaction.md",
-    "api/codegen.md",
-    "api/jaff-types.md",
-    "api/file-parser.md",
-    "api/elements.md"
+    { "Core" = [
+      "api/core/index.md",
+      { "core.Network" = [
+        "api/core/network/check_isomers.md",
+        "api/core/network/check_recombinations.md",
+        "api/core/network/check_sink_sources.md",
+        "api/core/network/check_unique_reactions.md",
+        "api/core/network/compare_reactions.md",
+        "api/core/network/compare_species.md",
+        "api/core/network/free_symbols.md",
+        "api/core/network/index.md",
+        "api/core/network/sfluxes.md",
+        "api/core/network/sodes.md",
+        "api/core/network/sradodes.md",
+        "api/core/network/to_hdf5.md",
+        "api/core/network/to_jaff.md",
+        "api/core/network/to_txt.md",
+        "api/core/network/write_table.md"
+      ] },
+      { "core.Specie" = [
+        "api/core/specie/index.md",
+        "api/core/specie/configure.md",
+        "api/core/specie/get_fidx.md",
+        "api/core/specie/serialize.md",
+        "api/core/specie/latex.md",
+        "api/core/specie/parse.md"
+      ] },
+      { "core.Species" = [
+        "api/core/species/index.md",
+        "api/core/species/configure.md",
+        "api/core/species/add.md",
+        "api/core/species/from_serialized.md",
+        "api/core/species/from_name.md",
+        "api/core/species/get_list.md",
+        "api/core/species/names.md",
+        "api/core/species/masses.md",
+        "api/core/species/charges.md",
+        "api/core/species/exploded.md",
+        "api/core/species/latex.md",
+        "api/core/species/serialized.md",
+        "api/core/species/elements.md",
+        "api/core/species/e_idx.md",
+        "api/core/species/normalized_names.md",
+        "api/core/species/neutral.md",
+        "api/core/species/charged.md",
+        "api/core/species/charge_truths.md"
+      ] },
+      { "core.Reaction" = [
+        "api/core/reaction/index.md",
+        "api/core/reaction/species.md",
+        "api/core/reaction/elements.md",
+        "api/core/reaction/rtype.md",
+        "api/core/reaction/is_isomer_version.md",
+        "api/core/reaction/serialize_exploded.md",
+        "api/core/reaction/serialize.md",
+        "api/core/reaction/check.md",
+        "api/core/reaction/check_mass.md",
+        "api/core/reaction/check_charge.md",
+        "api/core/reaction/get_verbatim.md",
+        "api/core/reaction/get_latex.md",
+        "api/core/reaction/get_flux_expression.md",
+        "api/core/reaction/has_any_species.md",
+        "api/core/reaction/has_reactant.md",
+        "api/core/reaction/has_product.md",
+        "api/core/reaction/get_code.md",
+        "api/core/reaction/get_sympy.md",
+        "api/core/reaction/plot.md",
+        "api/core/reaction/plot_xsecs.md"
+      ] },
+      { "core.Reactions" = [
+        "api/core/reactions/index.md",
+        "api/core/reactions/add.md",
+        "api/core/reactions/from_serialized.md",
+        "api/core/reactions/from_verbatim.md",
+        "api/core/reactions/get_list.md",
+        "api/core/reactions/get.md",
+        "api/core/reactions/with_rtype.md",
+        "api/core/reactions/verbatim.md",
+        "api/core/reactions/rtypes.md",
+        "api/core/reactions/reactants.md",
+        "api/core/reactions/products.md",
+        "api/core/reactions/rates.md",
+        "api/core/reactions/tmins.md",
+        "api/core/reactions/tmaxes.md",
+        "api/core/reactions/dE.md",
+        "api/core/reactions/dRad.md",
+        "api/core/reactions/serialized.md",
+        "api/core/reactions/serialized_exploded.md",
+        "api/core/reactions/photo_reactions.md",
+        "api/core/reactions/photo_reaction_truths.md",
+        "api/core/reactions/photo_reaction_indices.md"
+      ] },
+      { "core.Element" = [
+        "api/core/element/index.md",
+        "api/core/element/configure.md"
+      ] },
+      { "core.Elements" = [
+        "api/core/elements/index.md",
+        "api/core/elements/configure.md",
+        "api/core/elements/truth_matrix.md",
+        "api/core/elements/density_matrix.md",
+        "api/core/elements/from_name.md",
+        "api/core/elements/from_symbol.md",
+        "api/core/elements/get_list.md",
+        "api/core/elements/symbols.md",
+        "api/core/elements/names.md",
+        "api/core/elements/masses.md",
+        "api/core/elements/atomic_masses.md",
+        "api/core/elements/protons.md",
+        "api/core/elements/neutrons.md",
+        "api/core/elements/electrons.md"
+      ] }
+    ] },
+    { "Codegen" = [
+      "api/codegen/index.md",
+      { "codegen.Builder" = [
+        "api/codegen/builder/index.md",
+        "api/codegen/builder/build.md"
+      ] },
+      { "codegen.Codegen" = [
+        "api/codegen/codegen/index.md",
+        "api/codegen/codegen/get_commons.md",
+        "api/codegen/codegen/get_indexed_rates.md",
+        "api/codegen/codegen/get_rates_str.md",
+        "api/codegen/codegen/get_indexed_flux_expressions.md",
+        "api/codegen/codegen/get_flux_expressions_str.md",
+        "api/codegen/codegen/get_indexed_ode_expressions.md",
+        "api/codegen/codegen/get_ode_expressions_str.md",
+        "api/codegen/codegen/get_dedt.md",
+        "api/codegen/codegen/get_indexed_odes.md",
+        "api/codegen/codegen/get_ode_str.md",
+        "api/codegen/codegen/get_indexed_rhs.md",
+        "api/codegen/codegen/get_rhs_str.md",
+        "api/codegen/codegen/get_indexed_radodes.md",
+        "api/codegen/codegen/get_radode_str.md",
+        "api/codegen/codegen/get_indexed_jacobian.md",
+        "api/codegen/codegen/get_jacobian_str.md",
+        "api/codegen/codegen/get_language_tokens.md",
+        "api/codegen/codegen/replace_y.md",
+        "api/codegen/codegen/resolve_dexpr.md",
+        "api/codegen/codegen/dfs.md"
+      ] },
+      { "codegen.Preprocessor" = [
+        "api/codegen/preprocessor/index.md",
+        "api/codegen/preprocessor/preprocess.md",
+        "api/codegen/preprocessor/preprocess_file.md"
+      ] }
+    ] },
+    { "Drivers" = [
+      "api/drivers/index.md",
+      { "drivers.csv" = [
+        "api/drivers/csv/csv_to_df.md",
+        "api/drivers/csv/csv_to_hdf5.md"
+      ] },
+      { "drivers.HDF5" = [
+        "api/drivers/hdf5/index.md",
+        "api/drivers/hdf5/to_dict.md",
+        "api/drivers/hdf5/from_dict.md",
+        "api/drivers/hdf5/to_csv.md"
+      ] },
+      { "drivers.Db" = [
+        "api/drivers/sqlite/db/index.md",
+        "api/drivers/sqlite/db/connect.md",
+        "api/drivers/sqlite/db/close.md",
+        "api/drivers/sqlite/db/delete.md",
+        "api/drivers/sqlite/db/get_tables.md",
+        "api/drivers/sqlite/db/get_table_names.md",
+        "api/drivers/sqlite/db/table.md",
+        "api/drivers/sqlite/db/table_from_dataframe.md",
+        "api/drivers/sqlite/db/table_from_csv.md",
+        "api/drivers/sqlite/db/query.md"
+      ] },
+      { "drivers.Table" = [
+        "api/drivers/sqlite/table/index.md",
+        "api/drivers/sqlite/table/all_rows.md",
+        "api/drivers/sqlite/table/rows.md",
+        "api/drivers/sqlite/table/insert_row.md",
+        "api/drivers/sqlite/table/insert_rows.md",
+        "api/drivers/sqlite/table/delete.md"
+      ] },
+      { "drivers.JaffDb" = ["api/drivers/sqlite/jaffdb/index.md"] },
+      { "drivers.Toml" = [
+        "api/drivers/toml/index.md",
+        "api/drivers/toml/get_key.md"
+      ] }
+    ] },
+    { "Physics" = [
+      "api/physics/index.md",
+      { "physics.Constants" = ["api/physics/constants/index.md"] }
+    ] }
   ] },
   { "Development" = [
     "development/installation.md",
+    "development/codebase-structure.md",
     "development/code-style.md",
-    "development/testing.md"
+    "development/testing.md",
+    "development/adding-parsers.md",
+    "development/adding-template-properties.md"
   ] },
   { "About" = ["about/license.md"] }
 ]
@@ -70,6 +273,7 @@ font.code = "JetBrains Mono"
 
 [project.theme.features]
 "navigation.tabs" = true
+"navigation.indexes" = true
 "navigation.instant" = true
 "navigation.instant.prefetch" = true
 "navigation.instant.progress" = true

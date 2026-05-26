@@ -7,21 +7,24 @@ The parser supports multiple programming languages and provides various
 commands for iterating over network components, substituting values and generating
 complex expressions for rates, ODEs, Jacobians and more.
 
-Supported JAFF Commands:
-    - SUB: Substitute token values (e.g., species count, network label)
-    - REPEAT: Iterate over network components (reactions, species, elements)
-    - REDUCE: Reduce expressions over properties (sum charges, masses, etc.)
-    - GET: Retrieve specific properties for entities (species index, mass, charge)
-    - HAS: Check for existence of entities in the network
-    - END: Mark the end of a parsing block
+Notes
+-----
+Supported JAFF commands:
 
-REPLACE Directive:
-    All commands (SUB, REPEAT, REDUCE, GET, HAS) support optional REPLACE directives
-    for regex-based text replacement in the generated output. Syntax:
-        COMMAND args [REPLACE pattern1 replacement1 [REPLACE pattern2 replacement2 ...]]
+- SUB: Substitute token values (e.g., species count, network label)
+- REPEAT: Iterate over network components (reactions, species, elements)
+- REDUCE: Reduce expressions over properties (sum charges, masses, etc.)
+- GET: Retrieve specific properties for entities (species index, mass, charge)
+- HAS: Check for existence of entities in the network
+- END: Mark the end of a parsing block
 
-    Multiple REPLACE directives can be chained, and patterns are applied sequentially
-    as regular expressions.
+All commands (SUB, REPEAT, REDUCE, GET, HAS) support optional REPLACE directives
+for regex-based text replacement in the generated output.  Syntax::
+
+    COMMAND args [REPLACE pattern1 replacement1 [REPLACE pattern2 replacement2 ...]]
+
+Multiple REPLACE directives can be chained, and patterns are applied sequentially
+as regular expressions.
 """
 
 from __future__ import annotations
@@ -61,37 +64,67 @@ class TemplateParser:
         reset when an END command is encountered, ensuring replacements only apply
         within their designated parsing block.
 
-    Attributes:
-        net: Network object
-        file: Path to the template file being parsed
-        parsing_enabled: Whether JAFF command parsing is currently active
-        parse_function: Function to call for processing subsequent lines
-        line: Current line being processed (stripped)
-        og_line: Original line including whitespace
-        modified: Text generated after parsing
-        indent: Indentation string for current line
-        cached_return: Cached return value from previous function calls
-        replace: Whether regex replacements should be applied to output
-        replacements: List of (pattern, replacement) tuples for regex substitution
-        cg: Code generator object for the target language
-        parser_dict: Dictionary mapping command names to their handlers
+    Attributes
+    ----------
+    net : Network
+        Network object.
+    file : Path
+        Path to the template file being parsed.
+    parsing_enabled : bool
+        Whether JAFF command parsing is currently active.
+    parse_function : callable or None
+        Function to call for processing subsequent lines.
+    line : str
+        Current line being processed (stripped).
+    og_line : str
+        Original line including whitespace.
+    modified : str
+        Text generated after parsing.
+    indent : str
+        Indentation string for current line.
+    cached_return : Any
+        Cached return value from previous function calls.
+    replace : bool
+        Whether regex replacements should be applied to output.
+    replacements : list of tuple of (str, str)
+        List of (pattern, replacement) tuples for regex substitution.
+    cg : Codegen
+        Code generator object for the target language.
+    parser_dict : dict
+        Dictionary mapping command names to their handlers.
 
-    Example:
-        >>> net = Network("networks/react_COthin")
-        >>> parser = Fileparser(net, Path("template.cpp"))
-        >>> output = parser.parse_file()
+    Examples
+    --------
+    >>> net = Network("networks/react_COthin")
+    >>> parser = Fileparser(net, Path("template.cpp"))
+    >>> output = parser.parse_file()
     """
 
     def __init__(
         self, network: Network, file: Path, default_lang: str | None = None
     ) -> None:
-        """
-        Initialize the file parser for a given network and template file.
+        """Initialise the file parser for a given network and template file.
 
-        Args:
-            network: Chemical reaction network to use for code generation
-            file: Path to template file to parse
-            default_lang: Default language to use if file extension is not recognized
+        The target language is inferred from the file extension.  If the
+        extension is not recognised and *default_lang* is ``None``, a
+        :class:`RuntimeError` is raised.
+
+        Parameters
+        ----------
+        network : Network
+            Chemical reaction network to use for code generation.
+        file : Path
+            Path to the template file to parse.
+        default_lang : str or None, optional
+            Fallback language identifier (e.g. ``"cxx"``) used when the file
+            extension is not in the built-in extension map.  ``None`` causes
+            an error for unsupported extensions.
+
+        Raises
+        ------
+        RuntimeError
+            If the file extension is not supported and *default_lang* is
+            ``None``.
         """
         self.net = network
         self.file = file
@@ -145,8 +178,10 @@ class TemplateParser:
         Reads the template file line by line, processes JAFF directives and
         generates output based on the chemical reaction network.
 
-        Returns:
-            Generated code as a string with all JAFF directives expanded
+        Returns
+        -------
+        str
+            Generated code as a string with all JAFF directives expanded.
         """
         with open(self.file, "r") as f:
             for nline, line in enumerate(f, start=1):
@@ -163,8 +198,10 @@ class TemplateParser:
         Detects JAFF directives (lines starting with comment + "$JAFF") and
         either executes active parse functions or processes new commands.
 
-        Args:
-            line: Line of text to parse
+        Parameters
+        ----------
+        line : str
+            Line of text to parse.
         """
         valid_comments: set[str] = {
             self.cg.get_language_tokens()[lang]["comment"]
@@ -215,8 +252,10 @@ class TemplateParser:
         Deactivates the parser and clears any cached return values and replacement
         patterns that were set during the current parsing block.
 
-        Args:
-            _: Unused parameter (END command takes no arguments)
+        Parameters
+        ----------
+        _ : str
+            Unused parameter (END command takes no arguments).
         """
         self.__set_parser_inactive()
         if self.cached_return:
@@ -233,14 +272,18 @@ class TemplateParser:
         like $nspec$, $label$, etc. with their actual values from the network.
         Optionally supports REPLACE directive for regex-based text replacement.
 
-        Syntax:
-            SUB token1, token2, ... [REPLACE pattern1 replacement1 ...]
+        Syntax: ``SUB token1, token2, ... [REPLACE pattern1 replacement1 ...]``
 
-        Args:
-            rest: Comma-separated list of tokens to substitute, optionally followed
-                   by REPLACE directives with space-separated pattern-replacement pairs
+        Parameters
+        ----------
+        rest : str
+            Comma-separated list of tokens to substitute, optionally followed
+            by REPLACE directives with space-separated pattern-replacement pairs.
 
-        Example:
+        Examples
+        --------
+        ::
+
             // $JAFF SUB nspec, label [REPLACE old_name new_name]
             const int NUM = $nspec$;  // Will also replace old_name -> new_name
             // $JAFF END
@@ -262,27 +305,32 @@ class TemplateParser:
         all species, reactions, elements, etc., generating code for each item.
         Optionally supports REPLACE directive for regex-based text replacement.
 
-        Vertical Expansion (with idx):
-            If idx is present in the variable list, items are expanded vertically
-            (one per line). The number of idx variables used inline must equal
-            the dimension of the array.
+        If ``idx`` is present in the variable list, items are expanded vertically
+        (one per line).  The number of ``idx`` variables used inline must equal
+        the dimension of the array.  If ``idx`` is absent, items are expanded
+        horizontally in a format like ``{"$specie_charge$", }`` with braces,
+        optional quotes, and separators.
 
-        Horizontal Expansion (without idx):
-            If idx is not present, items are expanded horizontally in a format like
-            {"$specie_charge$", } with braces, optional quotes, and separators.
+        Syntax: ``REPEAT var1, var2 IN property [extras]``
+        where extras can include: ``SORT``, ``CSE TRUE/FALSE``,
+        ``REPLACE pattern replacement``.
 
-        Syntax:
-            REPEAT var1, var2 IN property [extras]
-            Where extras can include: SORT, CSE TRUE/FALSE, REPLACE pattern replacement
+        Parameters
+        ----------
+        rest : str
+            Command parameters in format ``"vars IN property [extras]"``.
 
-        Args:
-            rest: Command parameters in format "vars IN property [extras]"
+        Raises
+        ------
+        ParserError
+            If the IN keyword is missing or arguments are invalid.
+        ParserError
+            If REPLACE syntax is invalid.
 
-        Raises:
-            ParserError: If IN keyword is missing or arguments are invalid
-            ParserError: If REPLACE syntax is invalid
+        Examples
+        --------
+        ::
 
-        Example:
             // $JAFF REPEAT idx, specie IN species [REPLACE old new]
             species[$idx$] = "$specie$";  // Will also replace old -> new
             // $JAFF END
@@ -328,14 +376,17 @@ class TemplateParser:
         a specific species, or similar queries for mass, charge, etc.
         Optionally supports REPLACE directive for regex-based text replacement.
 
-        Syntax:
-            GET prop1, prop2 FOR entity [REPLACE pattern1 replacement1 ...]
+        Syntax: ``GET prop1, prop2 FOR entity [REPLACE pattern1 replacement1 ...]``
 
-        Args:
-            rest: Command parameters in format "props FOR entity [extras]"
+        Parameters
+        ----------
+        rest : str
+            Command parameters in format ``"props FOR entity [extras]"``.
 
+        Examples
+        --------
+        ::
 
-        Example:
             // $JAFF GET specie_idx FOR CO [REPLACE CO Carbon_Monoxide]
             int idx = $specie_idx$;  // Will also replace CO -> Carbon_Monoxide
             // $JAFF END
@@ -364,17 +415,23 @@ class TemplateParser:
         returning 1 if it exists, 0 otherwise. Optionally supports REPLACE
         directive for regex-based text replacement.
 
-        Syntax:
-            HAS identity entity [REPLACE pattern1 replacement1 ...]
+        Syntax: ``HAS identity entity [REPLACE pattern1 replacement1 ...]``
 
-        Args:
-            rest: Command parameters specifying entity type and name, optionally
-                 followed by REPLACE directives
+        Parameters
+        ----------
+        rest : str
+            Command parameters specifying entity type and name, optionally
+            followed by REPLACE directives.
 
-        Raises:
-            ParserError: If REPLACE syntax is invalid
+        Raises
+        ------
+        ParserError
+            If REPLACE syntax is invalid.
 
-        Example:
+        Examples
+        --------
+        ::
+
             // $JAFF HAS specie CO [REPLACE 1 true]
             bool has_co = $specie$;  // Will also replace 1 -> true
             // $JAFF END
@@ -400,13 +457,17 @@ class TemplateParser:
         these properties. Optionally supports REPLACE directive for regex-based
         text replacement.
 
-        Syntax:
-            REDUCE var1, var2 IN prop1, prop2 [REPLACE pattern1 replacement1 ...]
+        Syntax: ``REDUCE var1, var2 IN prop1, prop2 [REPLACE pattern1 replacement1 ...]``
 
-        Args:
-            rest: Command parameters in format "vars IN properties [extras]"
+        Parameters
+        ----------
+        rest : str
+            Command parameters in format ``"vars IN properties [extras]"``.
 
-        Example:
+        Examples
+        --------
+        ::
+
             // $JAFF REDUCE charge IN specie_charges [REPLACE + plus]
             double total = $()$;  // Will also replace + -> plus
             // $JAFF END
@@ -456,16 +517,22 @@ class TemplateParser:
         using regex substitution. Patterns are compiled as regular expressions,
         allowing for powerful text transformations.
 
-        Args:
-            text: The text to apply replacements to
+        Parameters
+        ----------
+        text : str
+            The text to apply replacements to.
 
-        Returns:
-            Text with all replacements applied
+        Returns
+        -------
+        str
+            Text with all replacements applied.
 
-        Example:
-            With replacements = [("old", "new"), (r",", " ")]:
-            - "old text" -> "new text"
-            - "new  text" -> "new text" (collapses whitespace)
+        Examples
+        --------
+        With ``replacements = [("old", "new"), (r",", " ")]``:
+
+        - ``"old text"`` → ``"new text"``
+        - ``"new  text"`` → ``"new text"`` (collapses whitespace)
         """
         if not self.replacements:
             raise ParserError(
@@ -488,23 +555,29 @@ class TemplateParser:
 
         Searches for "REPLACE" keywords in the extras list and extracts
         (pattern, replacement) pairs that follow each REPLACE keyword.
-        Sets self.replace flag and self.replacements list if valid
+        Sets ``self.replace`` flag and ``self.replacements`` list if valid
         replacements are found.
 
-        Args:
-            extras: List of extra arguments extracted from dollar-bracket notation.
-                   May contain REPLACE keywords followed by pattern-replacement pairs.
-                   This list is modified in-place to remove REPLACE tokens.
+        Parameters
+        ----------
+        extras : list of str
+            List of extra arguments extracted from dollar-bracket notation.
+            May contain REPLACE keywords followed by pattern-replacement pairs.
+            This list is modified in-place to remove REPLACE tokens.
 
-        Raises:
-            ParserError: If REPLACE keyword is not followed by both pattern and
-                        replacement strings (missing arguments).
+        Raises
+        ------
+        ParserError
+            If REPLACE keyword is not followed by both pattern and replacement
+            strings (missing arguments).
 
-        Example:
-            extras = ["REPLACE", "old", "new", "REPLACE", "foo", "bar"]
-            After call: self.replacements = [("old", "new"), ("foo", "bar")]
-                       self.replace = True
-                       extras = []  # REPLACE tokens removed
+        Examples
+        --------
+        >>> extras = ["REPLACE", "old", "new", "REPLACE", "foo", "bar"]
+        >>> # After call:
+        >>> # self.replacements == [("old", "new"), ("foo", "bar")]
+        >>> # self.replace == True
+        >>> # extras == []  (REPLACE tokens removed)
         """
         # Find all positions where "REPLACE" keyword appears
         repl_pos: list[int] = [i for i, extra in enumerate(extras) if extra == "REPLACE"]
@@ -533,30 +606,38 @@ class TemplateParser:
         Extract extras from dollar-bracket notation in command arguments.
 
         Parses command strings that may contain extras in dollar-bracket notation,
-        e.g., "SUB nspec $[REPLACE old new]$" or "REPEAT idx IN species $[SORT TRUE]$".
+        e.g., ``"SUB nspec $[REPLACE old new]$"`` or
+        ``"REPEAT idx IN species $[SORT TRUE]$"``.
         Extracts and returns the main command arguments separately from the extras.
 
-        Args:
-            line: Command argument string, possibly containing $[...]$ extras
+        Parameters
+        ----------
+        line : str
+            Command argument string, possibly containing ``$[...]$`` extras.
 
-        Returns:
-            Tuple of (main_args, extras_list) where:
-                - main_args: Command arguments with brackets removed and stripped
-                - extras_list: List of space-separated tokens from within brackets,
-                              empty list if no brackets present
+        Returns
+        -------
+        tuple of (str, list of str)
+            A 2-tuple ``(main_args, extras_list)`` where *main_args* is the
+            command arguments with brackets removed and stripped, and
+            *extras_list* is a list of space-separated tokens from within the
+            brackets (empty list if no brackets are present).
 
-        Examples:
-            >>> __get_extras("nspec, nreact $[REPLACE old new]$")
-            ("nspec, nreact", ["REPLACE", "old", "new"])
+        Notes
+        -----
+        Only handles a single ``$[...]$`` block.  Multiple brackets will use
+        the first pair.
 
-            >>> __get_extras("idx IN species $[SORT CSE TRUE]$")
-            ("idx IN species", ["SORT", "CSE", "TRUE"])
+        Examples
+        --------
+        >>> __get_extras("nspec, nreact $[REPLACE old new]$")
+        ("nspec, nreact", ["REPLACE", "old", "new"])
 
-            >>> __get_extras("specie_idx FOR H+")
-            ("specie_idx FOR H+", [])
+        >>> __get_extras("idx IN species $[SORT CSE TRUE]$")
+        ("idx IN species", ["SORT", "CSE", "TRUE"])
 
-        Note:
-            Only handles single $[...]$ block. Multiple brackets will use first pair.
+        >>> __get_extras("specie_idx FOR H+")
+        ("specie_idx FOR H+", [])
         """
         # No brackets present - return entire line and empty extras
         if "$[" not in line and "]$" not in line:
@@ -577,18 +658,25 @@ class TemplateParser:
 
         This method handles REDUCE commands that aggregate property values across
         network components. It expands reduction expressions from the template syntax
-        $(...$var$...)$ into explicit sum expressions by iterating over property values.
+        ``$(...$var$...)$`` into explicit sum expressions by iterating over property
+        values.
 
-        Example transformation:
+        Example transformation::
+
             Template: const double TOTAL_CHARGE = $($specie_charge$)$;
             Output:   const double TOTAL_CHARGE = -1.0 + 1.0 + 0.0;
 
-        Args:
-            vars: List of variable names that should be reduced (e.g., ["specie_charge"])
-            props: List of property names to reduce over (e.g., ["specie_charges"])
+        Parameters
+        ----------
+        vars : list of str
+            Variable names that should be reduced (e.g., ``["specie_charge"]``).
+        props : list of str
+            Property names to reduce over (e.g., ``["specie_charges"]``).
 
-        Returns:
-            None. Modifies self.modified by appending the expanded line.
+        Returns
+        -------
+        None
+            Modifies ``self.modified`` by appending the expanded line.
         """
         line = self.line
 
@@ -654,9 +742,12 @@ class TemplateParser:
         """
         Get the truth value (0 or 1) for entity existence.
 
-        Args:
-            identity: Type of entity (specie, reaction, element)
-            entity: Name of the entity to check
+        Parameters
+        ----------
+        identity : str
+            Type of entity (``specie``, ``reaction``, or ``element``).
+        entity : str
+            Name of the entity to check.
         """
         self.__substitute_tokens([identity], "HAS", entity)
 
@@ -671,14 +762,19 @@ class TemplateParser:
         Execute iterable REPEAT commands (species, reactions, elements, etc.).
 
         Iterates over lists of network components and generates code for each item.
-        Supports vertical mode (with indices) if idx is present in list of variables
-        and horizontal mode (inline arrays) otherwise.
+        Supports vertical mode (with indices) if ``idx`` is present in the list of
+        variables and horizontal mode (inline arrays) otherwise.
 
-        Args:
-            vars: Variables specified in the REPEAT command
-            func: Function that returns the IndexedList to iterate over
-            extras: Additional command modifiers (e.g., SORT)
-            expected_vars: Variables expected by the command
+        Parameters
+        ----------
+        vars : list of str
+            Variables specified in the REPEAT command.
+        func : callable
+            Function that returns the IndexedList to iterate over.
+        extras : list of str
+            Additional command modifiers (e.g., ``SORT``).
+        expected_vars : list of str
+            Variables expected by the command.
         """
         # Raise error if invalid variable is provided
         if any(var not in expected_vars for var in vars):
@@ -873,11 +969,15 @@ class TemplateParser:
         """
         Recursively determine the dimensionality of a list.
 
-        Args:
-            items: List or nested list structure to analyze
+        Parameters
+        ----------
+        items : Any
+            List or nested list structure to analyze.
 
-        Returns:
-            Dimension count (1 for flat list, 2 for list of lists, etc.)
+        Returns
+        -------
+        int
+            Dimension count (1 for flat list, 2 for list of lists, etc.).
         """
         dim: int = 0
         if isinstance(items, list):
@@ -892,13 +992,18 @@ class TemplateParser:
         """
         Substitute tokens in the current line with their values.
 
-        Replaces tokens like $nspec$, $label$, $specie_idx$ with actual values
-        from the network. Supports arithmetic operations like $nspec+1$.
+        Replaces tokens like ``$nspec$``, ``$label$``, ``$specie_idx$`` with
+        actual values from the network. Supports arithmetic operations like
+        ``$nspec+1$``.
 
-        Args:
-            tokens: List of token names to substitute
-            command: Command type (SUB, GET, HAS) to determine value source
-            *args: Additional arguments passed to token value functions
+        Parameters
+        ----------
+        tokens : list of str
+            List of token names to substitute.
+        command : str
+            Command type (``SUB``, ``GET``, or ``HAS``) to determine value source.
+        *args : Any
+            Additional arguments passed to token value functions.
         """
         pattern_str: str = "|".join(re.escape(token) for token in tokens)
         # Compile regex to match tokens with optional arithmetic (e.g., $var+1$)
@@ -950,27 +1055,35 @@ class TemplateParser:
         Extract CSE (Common Subexpression Elimination) variable name from template line.
 
         When CSE is enabled in REPEAT commands, this method identifies the variable name
-        that surrounds the $idx$ token to use as the CSE variable prefix. The variable
-        name is extracted from non-whitespace characters adjacent to the index token.
+        that surrounds the ``$idx$`` token to use as the CSE variable prefix. The
+        variable name is extracted from non-whitespace characters adjacent to the index
+        token.
 
-        Example transformations:
+        Example transformations::
+
             Template: "const double cse_var$idx$ = $cse$;"
-            -> cse_var: "cse_var" (characters before $idx$)
+            -> cse_var: "cse_var"   (characters before $idx$)
 
             Template: "temp$idx$_value = $cse$;"
-            -> cse_var: "temp_value" (characters before and after $idx$)
+            -> cse_var: "temp_value"  (characters before and after $idx$)
 
             Template: "$idx$x = $cse$;"
-            -> cse_var: "x" (single character before $idx$)
+            -> cse_var: "x"   (single character after $idx$)
 
-        Args:
-            var: The variable name being processed (typically "cse")
-            present: Whether CSE is enabled for this REPEAT command
+        Parameters
+        ----------
+        var : str
+            The variable name being processed (typically ``"cse"``).
+        present : bool
+            Whether CSE is enabled for this REPEAT command.
 
-        Returns:
-            Dictionary with:
-                - "use_cse": Boolean indicating if CSE should be used
-                - "cse_var": Extracted variable name prefix for CSE temporaries
+        Returns
+        -------
+        dict
+            Dictionary with keys:
+
+            - ``"use_cse"`` : bool -- whether CSE should be used.
+            - ``"cse_var"`` : str -- extracted variable name prefix for CSE temporaries.
         """
         # Find position of $idx$ token(s) in the current line
         idx_span = self.__find_idx_span(text=self.line)["span"]
@@ -1005,7 +1118,8 @@ class TemplateParser:
         simple and multi-dimensional indices, applies arithmetic offsets, and replaces
         placeholder tokens with actual values.
 
-        Example transformation:
+        Example transformation::
+
             Template: "J($idx$, $idx$) = $expr$;"
             IndexedList: [
                 IndexedValue([0, 0], "2*x"),
@@ -1013,22 +1127,29 @@ class TemplateParser:
                 IndexedValue([0, 2], "sin(z)")
             ]
             Output:
-                "J(0, 0) = 2*x;\n"
-                "J(0, 1) = y**2;\n"
-                "J(0, 2) = sin(z);\n"
+                "J(0, 0) = 2*x;\\n"
+                "J(0, 1) = y**2;\\n"
+                "J(0, 2) = sin(z);\\n"
 
-        With arithmetic offsets:
+        With arithmetic offsets::
+
             Template: "array[$idx+1$] = $expr$;"
             IndexedValue([0], "value")
-            Output: "array[1] = value;\n"
+            Output: "array[1] = value;\\n"
 
-        Args:
-            items: IndexedList containing (indices, expression) pairs to iterate over
-            input: Template string with $idx$ and expression placeholders
-            replacement: Token to replace with expression (e.g., "$expr$", "$cse$")
+        Parameters
+        ----------
+        items : IndexedList
+            IndexedList containing (indices, expression) pairs to iterate over.
+        input : str
+            Template string with ``$idx$`` and expression placeholders.
+        replacement : str
+            Token to replace with expression (e.g., ``"$expr$"``, ``"$cse$"``).
 
-        Returns:
-            Generated code string with all template lines expanded and substituted
+        Returns
+        -------
+        str
+            Generated code string with all template lines expanded and substituted.
         """
         output = ""
         # Find all $idx$ tokens in the template line and extract their positions/offsets
@@ -1075,12 +1196,16 @@ class TemplateParser:
 
         Locates index placeholders and extracts their positions and offsets.
 
-        Args:
-            text: Text to search for index tokens
+        Parameters
+        ----------
+        text : str
+            Text to search for index tokens.
 
-        Returns:
-            Dictionary with 'offset' list (integer offsets) and 'span' list
-            (start/end positions of each token)
+        Returns
+        -------
+        IdxSpanResult
+            Dictionary with ``'offset'`` (list of integer offsets) and ``'span'``
+            (list of (start, end) position tuples for each token).
         """
         # Match $idx$, $idx+N$, or $idx-N$ patterns
         idx_regex: re.Pattern[str] = re.compile(r"\$idx([+-]\d+)?\$")
@@ -1098,12 +1223,17 @@ class TemplateParser:
         """
         Find the start and end positions of a word in text.
 
-        Args:
-            text: Text to search
-            word: Word to find
+        Parameters
+        ----------
+        text : str
+            Text to search.
+        word : str
+            Word to find.
 
-        Returns:
-            Tuple of (start_position, end_position)
+        Returns
+        -------
+        tuple of (int, int)
+            ``(start_position, end_position)`` of the word in *text*.
         """
         begin: int = text.find(word)
         end: int = begin + len(word)
@@ -1117,17 +1247,26 @@ class TemplateParser:
         """
         Split a string into tokens and strip whitespace from each.
 
-        Args:
-            tokens: String to split
-            sep: Separator character (default: comma)
-            maxsplit: Maximum number of splits to perform (default: -1 for no limit)
+        Parameters
+        ----------
+        tokens : str
+            String to split.
+        sep : str, optional
+            Separator character.  Default is ``","`` (comma).
+        maxsplit : int, optional
+            Maximum number of splits to perform.  Default is ``-1`` (no limit).
 
-        Returns:
-            List of stripped token strings
+        Returns
+        -------
+        list of str
+            List of stripped token strings.
 
-        Example:
-            __get_stripped_tokens("a, b, c") -> ["a", "b", "c"]
-            __get_stripped_tokens("a b c", " ", 1) -> ["a", "b c"]
+        Examples
+        --------
+        >>> __get_stripped_tokens("a, b, c")
+        ["a", "b", "c"]
+        >>> __get_stripped_tokens("a b c", " ", 1)
+        ["a", "b c"]
         """
         return [token.strip() for token in tokens.strip().split(sep, maxsplit)]
 
@@ -1140,8 +1279,10 @@ class TemplateParser:
         to their handler functions and property definitions. This defines all
         available JAFF directives and their behaviors.
 
-        Returns:
-            Dictionary mapping command names to CommandProps structures
+        Returns
+        -------
+        dict of str to CommandProps
+            Dictionary mapping command names to CommandProps structures.
         """
         cg: Codegen = self.cg
 
@@ -1509,17 +1650,21 @@ class TemplateParser:
         """
         Get dictionary of special variable handlers for REPEAT commands.
 
-        Returns a configuration dictionary mapping special variable names (like "cse", "DEDT")
-        to their processing functions. Each handler has two components:
-        - "kwargs": Function to build kwargs for the codegen function call
-        - "func": Function to process and generate code for that variable
+        Returns a configuration dictionary mapping special variable names (such as
+        ``"cse"`` and ``"USE_DEDT"``) to their processing functions. Each handler
+        has two components: ``"kwargs"`` (a callable to build kwargs for the codegen
+        function call) and ``"func"`` (an optional callable to process and generate
+        code for that variable).
 
-        Returns:
-            Dictionary with structure:
+        Returns
+        -------
+        dict of str to dict
+            Dictionary with structure::
+
                 {
                     "var_name": {
-                        "kwargs": Callable for generating function kwargs,
-                        "func": Optional callable for processing the variable
+                        "kwargs": Callable,  # generates function kwargs
+                        "func": Callable     # optional: processes the variable
                     }
                 }
         """

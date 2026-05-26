@@ -1,3 +1,24 @@
+"""
+JAFF logging and progress-bar infrastructure.
+
+This module sets up a single :class:`JaffLogger` singleton backed by Rich's
+:class:`~rich.logging.RichHandler` (or a plain :class:`~logging.StreamHandler`
+inside Jupyter notebooks).  It also provides :class:`JaffProgress`, a subclass
+of :class:`~rich.progress.Progress` that adapts its rendering strategy based on
+whether the process is running inside a Jupyter kernel, another interactive
+Python session, or a plain terminal.
+
+Module-level singletons
+-----------------------
+``jaff_console``
+    The shared :class:`~rich.console.Console` instance used for all Rich output.
+``jaff_progress``
+    The global :class:`JaffProgress` bar.  It is started automatically at
+    import time and registered with :func:`atexit.register` to stop cleanly
+    when the interpreter exits (except in Jupyter / interactive sessions where
+    the lifecycle is managed differently).
+"""
+
 import atexit
 import logging
 import os
@@ -22,6 +43,18 @@ from rich.traceback import install
 
 
 def _is_jupyter() -> bool:
+    """
+    Return ``True`` when running inside a Jupyter (ZMQ) kernel.
+
+    Detection is based on the class name of the active IPython shell; a
+    :exc:`NameError` (``get_ipython`` not defined) means we are in a plain
+    Python interpreter.
+
+    Returns
+    -------
+    bool
+        ``True`` iff the current process is a Jupyter kernel.
+    """
     try:
         shell = get_ipython().__class__.__name__  # type: ignore
         return shell == "ZMQInteractiveShell"
@@ -42,6 +75,17 @@ _PROGRESS_KWARGS = dict(
 
 
 def _make_progress_columns():
+    """
+    Return the default tuple of Rich progress columns used across JAFF.
+
+    Columns (in order): spinner, description text, bar, M-of-N counter,
+    elapsed time.
+
+    Returns
+    -------
+    tuple
+        A tuple of :class:`~rich.progress.ProgressColumn` instances.
+    """
     return (
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -52,6 +96,25 @@ def _make_progress_columns():
 
 
 def _make_progress(console: Console, auto_refresh: bool = True) -> Progress:
+    """
+    Construct a standalone :class:`~rich.progress.Progress` bar.
+
+    Used internally to create a *temporary* progress context (e.g. inside
+    Jupyter / interactive sessions) separate from the global
+    :data:`jaff_progress` singleton.
+
+    Parameters
+    ----------
+    console : rich.console.Console
+        The Rich console to render into.
+    auto_refresh : bool, optional
+        Whether the progress bar refreshes automatically (default ``True``).
+
+    Returns
+    -------
+    rich.progress.Progress
+        A new Progress instance configured with the default JAFF columns.
+    """
     return Progress(
         *_make_progress_columns(),
         console=console,
@@ -61,8 +124,46 @@ def _make_progress(console: Console, auto_refresh: bool = True) -> Progress:
 
 
 class JaffProgress(Progress):
+    """
+    Environment-aware Rich progress bar for JAFF.
+
+    Extends :class:`~rich.progress.Progress` with two improvements:
+
+    * :meth:`indeterminate` -- a context manager for tasks of unknown length
+      that gracefully degrades in Jupyter and CI environments.
+    * :meth:`track` -- overrides the parent implementation to handle the
+      Jupyter / interactive-shell rendering quirks (Jupyter does not support
+      in-place terminal overwrites, so a fresh :class:`~rich.progress.Progress`
+      context is spun up for each iteration instead of mutating the global bar).
+
+    In non-interactive terminal sessions the global progress bar is kept alive
+    for the lifetime of the process via :func:`atexit.register`.
+    """
+
     @contextmanager
     def indeterminate(self, description: str):
+        """
+        Context manager for a spinner task with unknown total work.
+
+        Adapts to the execution environment:
+
+        * **Jupyter / interactive** -- creates a temporary :class:`Progress`
+          context so each indeterminate task gets its own isolated bar.
+        * **Jupyter env without a kernel** (e.g. CI with ``JPY_PARENT_PID``) --
+          yields ``None`` and does nothing.
+        * **Terminal** -- adds the task to the shared global progress bar and
+          removes it on exit.
+
+        Parameters
+        ----------
+        description : str
+            Human-readable label shown next to the spinner.
+
+        Yields
+        ------
+        TaskID or None
+            The Rich task identifier, or ``None`` in silent environments.
+        """
         if IN_JUPYTER or _IN_INTERACTIVE:
             with _make_progress(self.console) as p:
                 task_id = p.add_task(description, total=None)
@@ -86,6 +187,43 @@ class JaffProgress(Progress):
         update_period: float = 0.1,
         **kwargs,
     ) -> Iterable[ProgressType]:
+        """
+        Iterate over *sequence* while rendering a progress bar.
+
+        Overrides :meth:`rich.progress.Progress.track` to handle three
+        environments:
+
+        * **Jupyter / interactive** -- creates a temporary
+          :class:`~rich.progress.Progress` with ``auto_refresh=False`` and
+          throttles refreshes to *update_period* seconds.
+        * **Jupyter env (no kernel)** -- silently yields each value with no
+          rendering.
+        * **Terminal** -- uses the global shared progress bar, cleaning up
+          finished tasks before adding a new one.
+
+        Parameters
+        ----------
+        sequence : Sequence or Iterable
+            The collection to iterate over.
+        total : float or None, optional
+            Total number of items.  Inferred from ``len(sequence)`` when
+            ``None`` and the sequence supports it.
+        task_id : TaskID or None, optional
+            Existing task ID to update instead of creating a new one.
+        description : str, optional
+            Label displayed next to the progress bar (default ``"Working..."``).
+        update_period : float, optional
+            Minimum number of seconds between display refreshes
+            (default ``0.1``).
+        **kwargs
+            Additional keyword arguments (accepted but unused; present for
+            API compatibility with the parent class).
+
+        Yields
+        ------
+        ProgressType
+            Each item from *sequence* in order.
+        """
         if IN_JUPYTER or _IN_INTERACTIVE:
             with _make_progress(self.console, auto_refresh=False) as p:
                 if total is None and hasattr(sequence, "__len__"):
@@ -150,9 +288,28 @@ if not _IN_JUPYTER_ENV and not _IN_INTERACTIVE:
 
 
 class _StripMarkupFormatter(logging.Formatter):
-    """Strip Rich markup tags from log messages for plain-text output."""
+    """
+    Logging formatter that strips Rich markup tags from messages.
+
+    Used as the formatter for the plain :class:`~logging.StreamHandler` that
+    handles output in Jupyter environments, where Rich's terminal escape codes
+    would appear as raw text.
+    """
 
     def format(self, record: logging.LogRecord) -> str:
+        """
+        Format *record*, removing any Rich markup before serialization.
+
+        Parameters
+        ----------
+        record : logging.LogRecord
+            The log record to format.
+
+        Returns
+        -------
+        str
+            The formatted log string with Rich markup stripped.
+        """
         original_msg, original_args = record.msg, record.args
         record.msg = Text.from_markup(record.getMessage()).plain
         record.args = None
@@ -162,7 +319,33 @@ class _StripMarkupFormatter(logging.Formatter):
 
 
 class JaffLogger:
+    """
+    Factory and wrapper for the named JAFF :class:`~logging.Logger`.
+
+    Configures the logger on first access with either a
+    :class:`~rich.logging.RichHandler` (terminal) or a plain
+    :class:`~logging.StreamHandler` with markup stripping (Jupyter).
+    Subsequent instantiations with the same *name* reuse the existing handler
+    set because :func:`logging.getLogger` returns the same object.
+
+    Parameters
+    ----------
+    name : str, optional
+        Logger name (default ``"JAFF"``).
+    level : int, optional
+        Initial log level (default :data:`logging.INFO`).
+    """
+
     def __init__(self, name: str = "JAFF", level: int = logging.INFO):
+        """Configure and cache the named JAFF logger.
+
+        Parameters
+        ----------
+        name : str, optional
+            Logger name, by default ``"JAFF"``.
+        level : int, optional
+            Initial log level, by default :data:`logging.INFO`.
+        """
         self.logger = logging.getLogger(name)
 
         if not self.logger.handlers:
@@ -182,5 +365,13 @@ class JaffLogger:
         self.logger.setLevel(level)
         self.logger.propagate = False
 
-    def get_logger(self):
+    def get_logger(self) -> logging.Logger:
+        """
+        Return the underlying :class:`~logging.Logger` instance.
+
+        Returns
+        -------
+        logging.Logger
+            The configured logger.
+        """
         return self.logger

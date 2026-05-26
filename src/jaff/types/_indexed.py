@@ -1,10 +1,33 @@
 """
-Type definitions for indexed expressions in code generation.
+Indexed expression containers for code generation.
 
 This module provides data structures for representing indexed mathematical
-expressions and collections thereof, used primarily in the Codegen class
-for organizing CSE (common subexpression elimination) results and array
-assignments.
+expressions (array assignments) and collections thereof.  They are used
+throughout the :mod:`jaff.codegen` package, particularly during common
+subexpression elimination (CSE) and array-assignment code emission.
+
+Classes
+-------
+IndexedValue
+    Immutable two-element tuple of ``(indices, value)`` representing a
+    single array assignment such as ``array[i][j] = expression``.
+IndexedList
+    Type-safe :class:`list` subclass that only accepts :class:`IndexedValue`
+    elements.  Supports three structural modes (``normal``, ``nested``,
+    ``flattened``) and provides conversion methods between them.
+
+Structural modes
+----------------
+normal
+    All :class:`IndexedValue` objects have single-element index lists and
+    scalar (non-iterable, non-``IndexedValue``) values.
+nested
+    Each :class:`IndexedValue` value may itself be an :class:`IndexedList`
+    of :class:`IndexedValue` objects, representing a 2-D structure.
+flattened
+    All :class:`IndexedValue` objects have multi-element index lists (e.g.
+    ``[i, j]``) and scalar values.  This is the canonical form for
+    generating nested array-access code such as ``k[i][j] = expr``.
 """
 
 from functools import cached_property
@@ -66,9 +89,23 @@ class IndexedValue(tuple):
         return self[1]
 
     def __repr__(self):
+        """Return detailed string representation of this IndexedValue.
+
+        Returns
+        -------
+        str
+            String including indices and value.
+        """
         return f"IndexedValue(indices={self.indices!r}, value={self.value!r})"
 
     def __str__(self):
+        """Return human-readable string representation showing the index mapping.
+
+        Returns
+        -------
+        str
+            String of form ``"[i] -> value"``.
+        """
         if isinstance(self.value, list):
             value_str = "[" + ", ".join(str(v) for v in self.value) + "]"
         else:
@@ -153,13 +190,33 @@ class IndexedList(list):
 
     @cached_property
     def _logger(self) -> logging.Logger:
+        """Lazy-loaded JAFF logger for warning messages.
+
+        Returns
+        -------
+        logging.Logger
+        """
         from ..io._logger import JaffLogger
         return JaffLogger().get_logger()
 
     def __repr__(self):
+        """Return detailed string representation of this IndexedList.
+
+        Returns
+        -------
+        str
+            Wraps the standard list repr in ``"IndexedList(...)"``
+        """
         return f"IndexedList({list.__repr__(self)})"
 
     def __str__(self):
+        """Return multi-line human-readable string of all indexed entries.
+
+        Returns
+        -------
+        str
+            Each entry on its own line, enclosed in ``"IndexedList[...]"``.
+        """
         return "IndexedList[\n" + "\n".join(str(x) for x in self) + "\n]"
 
     def append(self, item: IndexedValue):
