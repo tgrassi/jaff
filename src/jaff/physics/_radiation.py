@@ -288,16 +288,20 @@ class Radiation:
             return
 
         E = sp.Symbol("E")
-        # Total cross section integrated over the full spectrum (cm²·erg),
-        # stored on the reaction for later reference (e.g. in output tables).
-        xsec_tot = smart_integrate(xsec, E, (self.bands[0], self.bands[-1]))
-        reaction.rad_xsecs = xsec_tot
 
-        # Photon-number spectrum: n(E) ∝ E^(α-2)
+        # Photon-number spectrum: n(E) ∝ E^(α-2) used for weighing the cross-section
         # where α = powerlaw_idx.  The factor E^(α-2) arises from
         # n(E) = u(E)/E and u(E) ∝ E^(α-1).
         n_profile = E ** (self.powerlaw_idx - 2)
+        n_tot = smart_integrate(n_profile, E, (self.bands[0], self.bands[-1]))
         k_tot = sp.Float(0.0)  # Accumulates total rate coefficient over all bands
+
+        # Total cross section integrated over the full spectrum (cm²),
+        # stored on the reaction for later reference (e.g. in output tables).
+        xsec_tot = (
+            smart_integrate(xsec * n_profile, E, (self.bands[0], self.bands[-1])) / n_tot
+        )
+        reaction.rad_xsecs = xsec_tot
 
         # Symbolic radiation density variable: energy density (erg/cm³) or
         # photon number density (cm⁻³), depending on the mode.
@@ -315,9 +319,6 @@ class Radiation:
             # <σ>_i = ∫ σ(E) n(E) dE / ∫ n(E) dE
             xsec_avg = smart_integrate(xsec * n_profile, E, (lower, upper)) / n_tot
 
-            # Total cross section integrated over the band (cm²·erg).
-            band_xsec = smart_integrate(xsec, E, (lower, upper))
-
             # Integral of the user-supplied radiation source/sink dRad
             # over the band (erg/cm³/s per band).
             delta_rad_band = smart_integrate(reaction.dRad, E, (lower, upper))
@@ -328,8 +329,8 @@ class Radiation:
 
             self.groups[i].props[reaction] = {
                 "k": k,
-                "xsec": band_xsec,
-                "xsec_frac": band_xsec / xsec_tot,  # fraction of total cross section
+                "xsec": xsec_avg,
+                "xsec_frac": xsec_avg / xsec_tot,  # fraction of total cross section
                 "delta_rad": delta_rad_band,
             }
 
@@ -371,9 +372,8 @@ class Radiation:
 
         Notes
         -----
-        ``dRad`` must be expressed in units of eV (as stated in the
-        original code comment) and the symbol ``E`` must be used as the
-        integration variable.
+        ``dRad`` must be expressed in units of eV  and the symbol ``E`` must be
+        used as the integration variable.
 
         If the total ``dRad`` integral evaluates to zero (e.g. the
         reaction has no radiation coupling), all band fractions are set to
