@@ -289,7 +289,8 @@ class Network:
             )
             rate_expr = resolve_dependencies(rate_expr, local_subs_dict, aux_funcs)
 
-            # deltarad{i}: photon absorption/emission rate per band for the moment-0 equations
+            # deltarad{i}: radiation energy emission per photon energy (eV)
+            # per reaction added to the moment-0 equations at codegen time
             deltaRad: Basic = Float(0.0)
             if aux_delta_rad in aux_funcs:
                 deltaRad = aux_funcs[aux_delta_rad]["def"]
@@ -398,8 +399,10 @@ class Network:
             r.rate = self.__standardize_symbols(r.rate, replace_nH)
 
             dE_dt = r.dE * r.rate  # type: ignore
+            dRad_dt = r.dRad * r.rate  # type: ignore
             for s in r.reactants:
                 dE_dt *= nden[self.species[s.name].index]
+                dRad_dt *= nden[self.species[s.name].index]
             self.dEdt_chem += dE_dt
             self.dRad_dt_extra += r.dRad  # type: ignore
         self.dEdt_chem = self.__standardize_symbols(self.dEdt_chem, replace_nH)

@@ -246,7 +246,7 @@ def get_sradodes(
             rrate = props["k"]
             # Accumulate any user-supplied radiation source/sink terms
             # (e.g. heating/cooling from custom reactions).  Units: erg/cm³/s.
-            group_dRad_dt_extra += props["delta_rad"]
+            group_dRad_dt_extra += rrate * props["delta_rad"]  # type: ignore
             # Multiply by all reactant number densities (mass-action kinetics)
             for reactant in reaction.reactants:
                 rrate *= nden[Idx(species[str(reactant)].index)]

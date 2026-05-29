@@ -297,7 +297,7 @@ class Radiation:
         k_tot = sp.Float(0.0)  # Accumulates total rate coefficient over all bands
 
         # Total cross section integrated over the full spectrum (cm²),
-        # stored on the reaction for later reference (e.g. in output tables).
+        # stored on the reaction for later reference
         xsec_tot = (
             smart_integrate(xsec * n_profile, E, (self.bands[0], self.bands[-1])) / n_tot
         )
@@ -319,8 +319,8 @@ class Radiation:
             # <σ>_i = ∫ σ(E) n(E) dE / ∫ n(E) dE
             xsec_avg = smart_integrate(xsec * n_profile, E, (lower, upper)) / n_tot
 
-            # Integral of the user-supplied radiation source/sink dRad
-            # over the band (erg/cm³/s per band).
+            # Integral of the user-supplied radiation energy source per reaction
+            # per photon energy dRad over the band (erg per band).
             delta_rad_band = smart_integrate(reaction.dRad, E, (lower, upper))
 
             # Symbolic rate coefficient: k_i = c · den[i] · <σ>_i
@@ -372,7 +372,7 @@ class Radiation:
 
         Notes
         -----
-        ``dRad`` must be expressed in units of eV  and the symbol ``E`` must be
+        ``dRad`` must be expressed per unit eV  and the symbol ``E`` must be
         used as the integration variable.
 
         If the total ``dRad`` integral evaluates to zero (e.g. the

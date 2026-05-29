@@ -76,8 +76,8 @@ class Reaction:
     dE : Basic
         SymPy expression for the energy released per reaction event (erg).
     dRad: Basic
-        SymPy expression for the photon absorption/emission rate contribution
-        to the radiation moment equations.
+        SymPy expression for the radiation energy emission per photon
+        energy (eV) per reaction
     verbatim : str
         Human-readable string ``"R1 + R2 -> P1 + P2"``.
     index : int
@@ -129,7 +129,7 @@ class Reaction:
         dE : Basic
             Energy change per event (erg), as a SymPy expression.
         dRad : Basic
-            Radiation rate contribution (erg s⁻¹), as a SymPy expression.
+            Radiation energy emission per photon energy, as a SymPy expression.
         original_string : str
             The raw network-file line that produced this reaction.
         index : int
