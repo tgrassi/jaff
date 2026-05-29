@@ -41,7 +41,7 @@ from ..common import to_jsonable as sympy_to_jsonable
 from ..drivers.hdf5 import HDF5
 from ..errors import NotJaffFileError
 from ..types import HDF5Dict
-from ._logger import JaffLogger
+from ._logger import JaffLogger, jaff_progress
 
 if TYPE_CHECKING:
     from .. import Network, Reaction, Specie, Species
@@ -511,7 +511,7 @@ def get_table(
         react_subst.append(r)
 
     react_func = []
-    for i, r in enumerate(react_subst):
+    for r in jaff_progress.track(react_subst, description="Compiling rate functions"):
         if len(r.free_symbols) == 0:
             react_func.append(np.log(float(r)))
         elif (
@@ -534,7 +534,9 @@ def get_table(
         log_temp = np.linspace(log_temp_min, log_temp_max, nTemp)
         temp = inverse_fast_log2(log_temp)
     log_rates = np.zeros((len(react_func), nTemp))
-    for i, f in enumerate(react_func):
+    for i, f in jaff_progress.track(
+        list(enumerate(react_func)), description="Evaluating rates"
+    ):
         if isinstance(f, float):
             log_rates[i, :] = f
         elif f is None:
@@ -549,54 +551,55 @@ def get_table(
 
     # Fifth step: do adaptive growth of table
     if err_tol is not None:
-        while True:
-            # Compute estimates at half-way points
-            nTemp = 2 * nTemp - 1
-            temp_grow = np.zeros(nTemp)
-            temp_grow[::2] = temp
-            if not fast_log:
-                temp_grow[1::2] = np.sqrt(temp[1:] * temp[:-1])
-            else:
-                log_temp_lo = fast_log2(temp[:-1])
-                log_temp_hi = fast_log2(temp[1:])
-                temp_grow[1::2] = inverse_fast_log2(0.5 * (log_temp_lo + log_temp_hi))
-            log_rates_grow = np.zeros((len(react_func), nTemp))
-            log_rates_grow[:, ::2] = log_rates
-            log_rates_approx = np.zeros((len(react_func), (nTemp - 1) // 2))
-            for i, f in enumerate(react_func):
-                if isinstance(f, float):
-                    log_rates_grow[i, 1::2] = f
-                    log_rates_approx[i, :] = f
-                elif f is None:
-                    log_rates_grow[i, 1::2] = np.nan
-                    log_rates_approx[i, :] = np.nan
+        with jaff_progress.indeterminate("Refining rate table"):
+            while True:
+                # Compute estimates at half-way points
+                nTemp = 2 * nTemp - 1
+                temp_grow = np.zeros(nTemp)
+                temp_grow[::2] = temp
+                if not fast_log:
+                    temp_grow[1::2] = np.sqrt(temp[1:] * temp[:-1])
                 else:
-                    f_eval = np.array([f(t) for t in temp_grow[1::2]])
-                    log_rates_grow[i, 1::2] = np.clip(
-                        f_eval, a_min=None, a_max=np.log(rate_max)
-                    )
-                    log_rates_approx[i, :] = 0.5 * (
-                        log_rates_grow[i, :-1:2] + log_rates_grow[i, 2::2]
-                    )
+                    log_temp_lo = fast_log2(temp[:-1])
+                    log_temp_hi = fast_log2(temp[1:])
+                    temp_grow[1::2] = inverse_fast_log2(0.5 * (log_temp_lo + log_temp_hi))
+                log_rates_grow = np.zeros((len(react_func), nTemp))
+                log_rates_grow[:, ::2] = log_rates
+                log_rates_approx = np.zeros((len(react_func), (nTemp - 1) // 2))
+                for i, f in enumerate(react_func):
+                    if isinstance(f, float):
+                        log_rates_grow[i, 1::2] = f
+                        log_rates_approx[i, :] = f
+                    elif f is None:
+                        log_rates_grow[i, 1::2] = np.nan
+                        log_rates_approx[i, :] = np.nan
+                    else:
+                        f_eval = np.array([f(t) for t in temp_grow[1::2]])
+                        log_rates_grow[i, 1::2] = np.clip(
+                            f_eval, a_min=None, a_max=np.log(rate_max)
+                        )
+                        log_rates_approx[i, :] = 0.5 * (
+                            log_rates_grow[i, :-1:2] + log_rates_grow[i, 2::2]
+                        )
 
-            temp = temp_grow
-            log_rates = log_rates_grow
+                temp = temp_grow
+                log_rates = log_rates_grow
 
-            rel_err = np.abs(
-                (np.exp(log_rates_approx) - np.exp(log_rates[:, 1::2]))
-                / (np.exp(log_rates[:, 1::2]) + rate_min)
-            )
-            max_err = np.nanmax(rel_err)
-
-            if verbose:
-                idx_max = np.unravel_index(np.nanargmax(rel_err), rel_err.shape)
-                logger.info(
-                    f"nTemp = {nTemp}, max_err = {max_err} in reaction "
-                    f"{reactions[idx_max[0]].get_verbatim()} at T = {temp[idx_max[1]]}"
+                rel_err = np.abs(
+                    (np.exp(log_rates_approx) - np.exp(log_rates[:, 1::2]))
+                    / (np.exp(log_rates[:, 1::2]) + rate_min)
                 )
+                max_err = np.nanmax(rel_err)
 
-            if max_err < err_tol:
-                break
+                if verbose:
+                    idx_max = np.unravel_index(np.nanargmax(rel_err), rel_err.shape)
+                    logger.info(
+                        f"nTemp = {nTemp}, max_err = {max_err} in reaction "
+                        f"{reactions[idx_max[0]].get_verbatim()} at T = {temp[idx_max[1]]}"
+                    )
+
+                if max_err < err_tol:
+                    break
 
     return temp, np.exp(log_rates)
 
