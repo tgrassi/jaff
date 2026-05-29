@@ -688,7 +688,8 @@ class Reaction:
             return
 
         if ax is None:
-            _, ax = plt.subplots()
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
 
         clight = constants.cgs.c  # cm/s
         hplanck = constants.cgs.h  # erg s
@@ -721,8 +722,7 @@ class Reaction:
         ax.set_title(self.get_latex())
         ax.grid()
 
-        if ax is None:
-            plt.show()
+        plt.show()
 
 
 class Reactions(Catalogue[Reaction]):
