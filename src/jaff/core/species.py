@@ -337,8 +337,12 @@ class Specie:
         latex = self.name.strip()
         for i in range(0, 10):
             latex = latex.replace(str(i), "_{" + str(i) + "}")
-        latex = latex.replace("+", "^{+}")
-        latex = latex.replace("-", "^{-}")
+        latex = re.sub(
+            r"\++", lambda m: f"^{{{len(m.group()) if len(m.group()) > 1 else ''}+}}", latex
+        )
+        latex = re.sub(
+            r"-+", lambda m: f"^{{{len(m.group()) if len(m.group()) > 1 else ''}-}}", latex
+        )
         if "_ORTHO" in latex:
             latex = "o" + latex.replace("_ORTHO", "")
         if "_PARA" in latex:
