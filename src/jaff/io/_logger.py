@@ -62,7 +62,31 @@ def _is_jupyter() -> bool:
         return False
 
 
+def _is_marimo() -> bool:
+    """
+    Return ``True`` when running inside a marimo notebook UI.
+
+    Detection uses :func:`marimo.running_in_notebook`, which is ``True`` only
+    when executing under the marimo editor/server (``marimo edit`` or
+    ``marimo run``).  Running an exported marimo notebook as a plain script
+    (``python notebook.py`` -> ``app.run()``) returns ``False``, so progress
+    rendering falls back to the terminal strategy in that case.
+
+    Returns
+    -------
+    bool
+        ``True`` iff the current process is rendering inside a marimo notebook.
+    """
+    try:
+        import marimo as mo
+
+        return mo.running_in_notebook()
+    except ImportError:
+        return False
+
+
 IN_JUPYTER = _is_jupyter()
+IN_MARIMO = _is_marimo()
 _IN_JUPYTER_ENV = IN_JUPYTER or "JPY_PARENT_PID" in os.environ
 _IN_INTERACTIVE = hasattr(sys, "ps1")
 
@@ -147,6 +171,8 @@ class JaffProgress(Progress):
 
         Adapts to the execution environment:
 
+        * **marimo notebook** -- uses :func:`marimo.status.spinner` so the
+          spinner renders natively in the marimo UI.
         * **Jupyter / interactive** -- creates a temporary :class:`Progress`
           context so each indeterminate task gets its own isolated bar.
         * **Jupyter env without a kernel** (e.g. CI with ``JPY_PARENT_PID``) --
@@ -164,6 +190,13 @@ class JaffProgress(Progress):
         TaskID or None
             The Rich task identifier, or ``None`` in silent environments.
         """
+        if IN_MARIMO:
+            import marimo as mo
+
+            with mo.status.spinner(title=description):
+                yield None
+            return
+
         if IN_JUPYTER or _IN_INTERACTIVE:
             with _make_progress(self.console) as p:
                 task_id = p.add_task(description, total=None)
@@ -190,9 +223,11 @@ class JaffProgress(Progress):
         """
         Iterate over *sequence* while rendering a progress bar.
 
-        Overrides :meth:`rich.progress.Progress.track` to handle three
+        Overrides :meth:`rich.progress.Progress.track` to handle several
         environments:
 
+        * **marimo notebook** -- delegates to :func:`marimo.status.progress_bar`
+          so the bar renders natively in the marimo UI.
         * **Jupyter / interactive** -- creates a temporary
           :class:`~rich.progress.Progress` with ``auto_refresh=False`` and
           throttles refreshes to *update_period* seconds.
@@ -224,6 +259,20 @@ class JaffProgress(Progress):
         ProgressType
             Each item from *sequence* in order.
         """
+        if IN_MARIMO:
+            import marimo as mo
+
+            if total is None and hasattr(sequence, "__len__"):
+                total = len(sequence)  # type: ignore
+            if total is not None:
+                yield from mo.status.progress_bar(
+                    sequence, title=description, total=total
+                )
+            else:
+                with mo.status.spinner(title=description):
+                    yield from sequence
+            return
+
         if IN_JUPYTER or _IN_INTERACTIVE:
             with _make_progress(self.console, auto_refresh=False) as p:
                 if total is None and hasattr(sequence, "__len__"):
@@ -282,7 +331,7 @@ jaff_progress = JaffProgress(
     *_make_progress_columns(), console=jaff_console, **_PROGRESS_KWARGS
 )
 
-if not _IN_JUPYTER_ENV and not _IN_INTERACTIVE:
+if not _IN_JUPYTER_ENV and not _IN_INTERACTIVE and not IN_MARIMO:
     jaff_progress.start()
     atexit.register(jaff_progress.stop)
 
@@ -349,7 +398,7 @@ class JaffLogger:
         self.logger = logging.getLogger(name)
 
         if not self.logger.handlers:
-            if _IN_JUPYTER_ENV:
+            if _IN_JUPYTER_ENV or IN_MARIMO:
                 handler: logging.Handler = logging.StreamHandler(sys.stdout)
                 handler.setFormatter(_StripMarkupFormatter("%(levelname)-8s %(message)s"))
             else:
