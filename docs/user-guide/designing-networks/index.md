@@ -11,7 +11,7 @@ This section covers everything you need to know to write and structure chemical 
 
 <div class="grid cards" markdown>
 
-- :lucide-file-text:{ .lg .middle } **Network Formats**
+- :lucide-file-text:{ .sm .middle } **Network Formats**
 
     ***
 
@@ -19,7 +19,7 @@ This section covers everything you need to know to write and structure chemical 
 
     [:octicons-arrow-right-24: Network Formats](network-formats.md)
 
-- :lucide-function-square:{ .lg .middle } **Auxiliary Function Files**
+- :lucide-function-square:{ .sm .middle } **Auxiliary Function Files**
 
     ***
 
@@ -27,7 +27,7 @@ This section covers everything you need to know to write and structure chemical 
 
     [:octicons-arrow-right-24: Auxiliary Functions](auxiliary-functions.md)
 
-- :lucide-sun:{ .lg .middle } **Photochemistry**
+- :lucide-sun:{ .sm .middle } **Photochemistry**
 
     ***
 

@@ -492,10 +492,10 @@ Don't be shy! We're happy to help new contributors.
 
 ## Recognition
 
-Contributors are recognized:
+Contributors are recognized in the following ways:
 
 - Mentioned in release notes
-- GitHub contributions graph
+- Listed in the GitHub contributions graph
 
 ## License
 

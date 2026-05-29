@@ -8,7 +8,7 @@ tags:
 
 `jaff.core.elements.Element`
 
-A chemical element loaded from the JAFF mass dictionary. Instances are flyweights: constructing `Element("H")` twice returns the same object. All fields are populated on first construction; subsequent constructions are no-ops.
+The `Element` class represents a chemical element loaded from the JAFF mass dictionary. It uses the flyweight pattern: constructing `Element("H")` twice returns the same object, with all fields populated only on the first construction.
 
 ## Constructor
 

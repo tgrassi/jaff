@@ -7,4 +7,4 @@ tags:
 
 `#!python delete()`
 
-Drops the table from the database.
+Permanently drops the table and all its data from the database using `DROP TABLE`. This cannot be undone. After calling this, the `Table` object is no longer usable.

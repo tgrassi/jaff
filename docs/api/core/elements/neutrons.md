@@ -8,9 +8,9 @@ tags:
 
 `#!python neutrons()`
 
-Returns the neutron counts for all elements.
+Returns the number of neutrons in the most common isotope for each element. Values are in the same order as `symbols()`.
 
 **Returns**
 
 _Vector[int]_
-: Neutron counts.
+: Neutron count per element.

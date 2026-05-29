@@ -8,11 +8,11 @@ icon: lucide/rocket
 
 ## Analysing networks
 
-Let's load and explore a chemical reaction network and check out how we can extract properties of the network. A `Network` forms the backbone of **JAFF** and it represents all the chemical reactions taking place in a specified scenerio along with thier associated properties.
+Let's load and explore a chemical reaction network and see how we can extract its properties. A `Network` forms the backbone of **JAFF** and represents all the chemical reactions taking place in a specified scenario along with their associated properties.
 
 ### Step 1: Loading a Network
 
-Loading a network requires a network file. Currently JAFF supports network files of the format: `KIDA`, `KROME`, `PRIZMO`, `UCLCHEM` and `UDFA`
+Loading a network requires a network file. Currently JAFF supports network files in the following formats: `KIDA`, `KROME`, `PRIZMO`, `UCLCHEM`, and `UDFA`.
 
 ```python
 from jaff import Network
@@ -21,7 +21,7 @@ from jaff import Network
 net = Network("networks/demos/demo1.jet")
 ```
 
-Once the network is loaded, different properties of the network can be accessed using then `net` object.
+Once the network is loaded, different properties of the network can be accessed using the `net` object.
 
 ```python
 # Display basic information
@@ -40,7 +40,7 @@ Number of reactions: 15
 
 ### Step 2: Exploring Species
 
-The network contains a species attribute which contains information related to all the species taking part in the reaction network.
+The network contains a species attribute that holds information about all the species taking part in the reaction network.
 
 ```python
 # List first 5 species
@@ -58,9 +58,9 @@ for i, species in enumerate(net.species[:5]):
 4: C+ (mass=1.99447e-23 gm, charge=1)
 ```
 
-### Step 3: Exploreing Reactions
+### Step 3: Exploring Reactions
 
-The network also contains a reactions attribute which contains information related to all reactions which are part of the network.
+The network also contains a reactions attribute that holds information about all reactions that are part of the network.
 
 ```python
 # Display first 3 reactions
@@ -76,15 +76,15 @@ for i, reaction in enumerate(net.reactions[:3]):
 2: C -> C+ + e-
 ```
 
-A detailed overview of the network and it's attributes and methods is provided by the [user guide](../user-guide/loading-networks.md) and the [api reference](../api/index.md)
+A detailed overview of the network and its attributes and methods is provided by the [user guide](../user-guide/loading-networks.md) and the [api reference](../api/index.md).
 
 ## Generating Code
 
-Now let's generate code for solving the chemical network
+Now let's generate code for solving the chemical network.
 
 ### Step 1: Creating a Template
 
-A template is a file which contains `JAFF directives` which can be later processed by jaff. Create a file named `rates.cpp`:
+A template is a file that contains `JAFF directives` which are later processed by JAFF. Create a file named `rates.cpp`:
 
 ```cpp
 // rates_template.cpp
@@ -109,13 +109,13 @@ const char* reaction_names[$idx$] = "$reaction$";
 
 ### Step 2: Generating Code
 
-Once the template is ready, you can use the `jaffgen` command to generate the code
+Once the template is ready, you can use the `jaffgen` command to generate the code.
 
 ```bash
 jaffgen --network networks/demos/demo1.jet --files path/to/rates.cpp
 ```
 
-The generated file will be located in the `generated` folder at the root of the project
+The generated file will be located in the `generated` folder at the root of the project.
 
 ### Step 3: View Generated Code
 

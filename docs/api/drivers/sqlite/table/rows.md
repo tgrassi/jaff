@@ -20,4 +20,4 @@ Fetches rows with optional WHERE filtering.
 **Returns**
 
 _list_
-: Matching rows from the table.
+: Rows matching the conditions as `sqlite3.Row` objects. Returns all rows when `conditions` is empty.

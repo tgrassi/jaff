@@ -8,7 +8,7 @@ tags:
 
 `jaff.codegen.builder.Builder`
 
-High-level build orchestrator that generates a complete, ready-to-run solver directory from a network and a named plugin template.
+The `Builder` class generates a complete, ready-to-run solver directory from a `Network` and a named plugin template. It is the high-level entry point for code generation in JAFF.
 
 ## Constructor
 

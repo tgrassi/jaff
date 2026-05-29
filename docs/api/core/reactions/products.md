@@ -8,9 +8,9 @@ tags:
 
 `#!python products()`
 
-Returns the product collections for all reactions.
+Returns the product `Species` collection for every reaction in the catalogue, in catalogue order.
 
 **Returns**
 
 _Vector[Species]_
-: Product collections for all reactions.
+: `Species` collection of products for each reaction, in the same order as the catalogue.

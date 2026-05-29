@@ -7,9 +7,9 @@ tags:
 
 `#!python get_tables()`
 
-Returns raw `sqlite3.Row` objects for each table in the database.
+Queries the SQLite schema and returns one `sqlite3.Row` per table, giving you direct access to the raw metadata columns (e.g. `type`, `name`, `sql`). Prefer `get_table_names()` if you only need the table names.
 
 **Returns**
 
 _list_
-: Raw `sqlite3.Row` objects for each table.
+: One raw `sqlite3.Row` object per table in the database, in the order returned by the SQLite schema query.

@@ -8,7 +8,7 @@ tags:
 
 `#!python get_indexed_jacobian(use_dedt=False, use_cse=True, cse_var="cse")`
 
-Computes the analytical Jacobian matrix (∂f_i/∂y_j) using symbolic differentiation and optional CSE.
+Computes the analytical Jacobian matrix for the chemical network $\left(\dfrac{\partial f_i}{\partial y_j}\right)$ using symbolic differentiation and optional CSE.
 
 **Parameters**
 

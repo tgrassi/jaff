@@ -11,14 +11,14 @@ icon: lucide/chart-no-axes-gantt
 JAFF supports Python 3.9 and higher. Write code that is compatible with Python 3.9+.
 
 ```python
-# Good - use modern type hints
+# Good - use typing module for compatibility
 from typing import List, Dict, Optional
 
 def process(items: List[str]) -> Dict[str, int]:
     pass
 
-# Avoid - Python 3.8 syntax
-def process(items: list[str]) -> dict[str, int]:  # Requires 3.9+
+# Avoid - built-in generic syntax requires Python 3.10+
+def process(items: list[str]) -> dict[str, int]:
     pass
 ```
 
@@ -35,7 +35,6 @@ ruff format --check src/
 
 # Format specific file
 ruff format src/jaff/network.py
-## Code Formatting
 ```
 
 ## Naming Conventions

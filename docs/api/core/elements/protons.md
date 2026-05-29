@@ -8,9 +8,9 @@ tags:
 
 `#!python protons()`
 
-Returns the proton counts for all elements.
+Returns the atomic number (number of protons) for each element. Values are in the same order as `symbols()`.
 
 **Returns**
 
 _Vector[int]_
-: Proton counts.
+: Atomic number per element.

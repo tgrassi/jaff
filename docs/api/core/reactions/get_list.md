@@ -8,7 +8,7 @@ tags:
 
 `#!python get_list()`
 
-Returns the an ordered list of reactions.
+Returns an ordered list of all reactions in the catalogue.
 
 **Returns**
 

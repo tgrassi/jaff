@@ -8,9 +8,9 @@ tags:
 
 `#!python atomic_masses()`
 
-Returns the standard atomic masses for all elements.
+Returns the standard atomic weight in atomic mass units (amu) for each element, in the same sorted order as `symbols()`. This differs from `masses()`, which returns masses in CGS grams.
 
 **Returns**
 
 _Vector[float]_
-: Standard atomic masses.
+: Standard atomic weight per element in atomic mass units.

@@ -7,7 +7,7 @@ icon: lucide/braces
 
 # jaff.codegen
 
-This section provides the details of the classes for generating optimized code from chemical reaction networks.
+The `jaff.codegen` subpackage contains the classes for generating solver source code from a chemical reaction network.
 
 ## Classes
 

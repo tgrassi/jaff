@@ -8,7 +8,7 @@ tags:
 
 `jaff.codegen.codegen.Codegen`
 
-Multi-language code generator for chemical reaction networks. Generates rate coefficients, flux calculations, ODE right-hand sides, and analytical Jacobians using SymPy with optional common subexpression elimination (CSE).
+The `Codegen` class generates source code for chemical reaction networks in multiple target languages. It produces rate coefficients, flux expressions, ODE right-hand sides, and analytical Jacobians using SymPy, with optional common subexpression elimination (CSE).
 
 Supported languages: C++ (`cxx`, `cpp`, `c++`), C (`c`), Fortran 90 (`f90`, `fortran`), Python (`py`, `python`), Rust (`rust`, `rs`), Julia (`julia`, `jl`), R (`r`).
 
@@ -39,15 +39,15 @@ Supported languages: C++ (`cxx`, `cpp`, `c++`), C (`c`), Fortran 90 (`f90`, `for
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `net` | `Network` | The reaction network |
-| `lang` | `str` | Normalized language id (e.g. `"cxx"`) |
-| `lb`, `rb` | `str` | Left/right brackets for 1D arrays |
-| `mlb`, `mrb` | `str` | Left/right brackets for 2D arrays |
-| `matrix_sep` | `str` | Separator for 2D indices (e.g. `"]["` or `", "`) |
-| `assignment_op` | `str` | Assignment operator |
-| `line_end` | `str` | Statement terminator (`";"` or `""`) |
-| `code_gen` | `Callable` | SymPy code generation function |
-| `ioff` | `int` | Default index offset (0 or 1) |
-| `comment` | `str` | Comment prefix (`"//"`, `"!!"`, `"#"`) |
-| `types` | `dict` | Type declaration strings |
-| `extras` | `dict` | Additional language-specific attributes |
+| `net` | `Network` | The reaction network being code-generated |
+| `lang` | `str` | Canonical language identifier (e.g. `"cxx"`, `"fortran"`, `"python"`) |
+| `lb`, `rb` | `str` | Left and right bracket characters for 1-D array indexing (e.g. `"["` and `"]"`) |
+| `mlb`, `mrb` | `str` | Left and right bracket characters for 2-D array indexing |
+| `matrix_sep` | `str` | Index separator for 2-D arrays (e.g. `"]["` for C-style, `", "` for Fortran) |
+| `assignment_op` | `str` | Assignment operator for the target language (`"="` for most, `"<-"` for R) |
+| `line_end` | `str` | Statement terminator for the target language (`";"` for C/C++/Rust, `""` for others) |
+| `code_gen` | `Callable` | SymPy printer function used to serialise symbolic expressions |
+| `ioff` | `int` | Default array index offset (`0` for C/C++/Python/Rust, `1` for Fortran/Julia/R) |
+| `comment` | `str` | Single-line comment prefix for the target language (`"//"`, `"!!"`, or `"#"`) |
+| `types` | `dict` | Mapping from generic type names to language-specific spellings (e.g. `{"double": "double "}` for C++) |
+| `extras` | `dict` | Additional language-specific tokens such as type qualifiers and class specifiers |

@@ -8,7 +8,7 @@ tags:
 
 `#!python get_indexed_rhs(use_cse=True, cse_var="cse")`
 
-Generates the full right-hand side including the energy equation as the last element.
+Generates the full right-hand side including the energy equation as the last element. Radiation equations are appended after the internal energy equation if radiation codegen is enabled.
 
 **Parameters**
 

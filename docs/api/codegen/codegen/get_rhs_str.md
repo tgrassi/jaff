@@ -6,17 +6,17 @@ tags:
 
 # get_rhs_str
 
-`#!python get_rhs_str(idx_offset=0, use_cse=True, cse_var="cse", ode_var="f", brac_format="", def_prefix="", assignment_op="", line_end="")`
+`#!python get_rhs_str(idx_offset=0, use_cse=True, cse_var="cse", ode_var="f", brac_format="", def_prefix="", assignment_op="", line_end="", specific_eint=False, norm=0, radiation=False, rad_order=0)`
 
-Generates the complete RHS code block (ODE system + energy equation). The energy equation is assigned to `ode_var[n_species]`.
+Generates the complete RHS code block (ODE system + energy equation). The energy equation is assigned to `ode_var[n_species]` and the radiation equations are appended after that if radiation code generation in enabled.
 
 **Parameters**
 
 **idx_offset** : _int, optional_
-: Starting index. Default `0`.
+: Base index for the output array subscripts. Default `0`. Negative values use the language default (`0` for C/C++/Python/Rust, `1` for Fortran/Julia/R).
 
 **use_cse** : _bool, optional_
-: Apply common subexpression elimination. Default `True`.
+: Enable joint CSE across all RHS equations. Default `True`.
 
 **cse_var** : _str, optional_
 : CSE variable prefix. Default `"cse"`.
@@ -25,18 +25,57 @@ Generates the complete RHS code block (ODE system + energy equation). The energy
 : Output array name. Default `"f"`.
 
 **brac_format** : _str, optional_
-: Override bracket format. Default `""`.
+: Override 1-D bracket pair. Empty string uses the language default (`"[]"` for most languages, `"()"` for Fortran). Valid values: `"()"`, `"{}"`, `"[]"`, `"<>"`. Default `""`.
 
 **def_prefix** : _str, optional_
-: Prefix for CSE variable declarations. Default `""`.
+: Type declaration prefix for CSE temporaries. Empty string uses the language default (`"const double "` for C/C++, `"const f64 "` for Rust, `"const Float64 "` for Julia, empty for Python/Fortran/R). Default `""`.
 
 **assignment_op** : _str, optional_
-: Override assignment operator. Default `""`.
+: Assignment operator override. Empty string uses the language default (`"="` for most, `"<-"` for R). Default `""`.
 
 **line_end** : _str, optional_
-: Override statement terminator. Default `""`.
+: Line terminator override. Empty string uses the language default (`";"` for C/C++/Rust, empty for Python/Fortran/Julia/R). Default `""`.
+
+**specific_eint** : _bool, optional_
+: Normalise the energy derivative by total density to yield a specific internal-energy rate. Default `False`.
+
+**norm** : _int, optional_
+: Density normalisation convention when `specific_eint=True`. `0` normalises by mass density (Σ m_i · nden[i]); `1` normalises by number density (Σ nden[i]). Ignored when `specific_eint=False`. Default `0`.
+
+**radiation** : _bool, optional_
+: Include radiation moment ODEs after the energy equation. Default `False`.
+
+**rad_order** : _int, optional_
+: Radiation moment closure order (passed to `get_indexed_radodes`). Valid values: `0`, `1`, `2`, `3`. Default `0`.
 
 **Returns**
 
 _str_
 : Complete RHS code block including the energy equation.
+
+### Example
+
+For a network with two species and two reactions (binding energy `deltae0 = -7.17e-12` erg), default settings produce:
+
+```python
+f[0] = -1.5e-10*tgas**(-0.5)*y[H]*y[H2]
+f[1] = 1.5e-10*tgas**(-0.5)*y[H]*y[H2]
+f[2] = -1.076e-21*tgas**(-0.5)*y[H]*y[H2]
+```
+
+`f[2]` is the energy equation assigned to index `n_species`.
+
+For C++ (`lang="cxx"`) with `def_prefix="const double "`:
+
+```python
+rhs = cg.get_rhs_str(def_prefix="const double ")
+```
+
+**Output**
+
+```cpp
+const double cse0 = pow(tgas, -0.5);
+f[0] = -1.5e-10*cse0*y[H]*y[H2];
+f[1] = 1.5e-10*cse0*y[H]*y[H2];
+f[2] = -1.076e-21*cse0*y[H]*y[H2];
+```

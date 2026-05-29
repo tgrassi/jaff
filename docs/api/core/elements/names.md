@@ -8,9 +8,9 @@ tags:
 
 `#!python names()`
 
-Returns the full names for all elements.
+Returns the full element names as stored in the mass dictionary, in the same sorted order as `symbols()`.
 
 **Returns**
 
 _Vector[str]_
-: Element full names.
+: Full element names (e.g. `["carbon", "hydrogen", "oxygen"]`).

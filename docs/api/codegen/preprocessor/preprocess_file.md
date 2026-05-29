@@ -8,7 +8,14 @@ tags:
 
 `#!python preprocess_file(fname, dictionary, comment="!!", add_header=True, path_build=None)`
 
-Preprocesses a single template file, substituting pragma blocks and writing to `path_build`. Comment style is auto-detected from extension when `comment="auto"`: `.cpp`/`.hpp`/`.h` → `"//"`, `.f90`/`.f` → `"!!"`, `.py` → `"#"`, `.cmake` → `"#"`.
+Preprocesses a single template file, substituting pragma blocks and writing to `path_build`. Comment style is auto-detected from extension when `comment="auto"`:
+
+| Extension            | Comment prefix |
+| -------------------- | -------------- |
+| `.cpp`, `.hpp`, `.h` | `"//"`         |
+| `.f90`, `.f`         | `"!!"`         |
+| `.py`                | `"#"`          |
+| `.cmake`             | `"#"`          |
 
 **Parameters**
 

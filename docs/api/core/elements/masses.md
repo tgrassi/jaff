@@ -8,9 +8,9 @@ tags:
 
 `#!python masses()`
 
-Returns the atomic masses for all elements in grams (CGS).
+Returns the mass of the most abundant natural isotope, in grams (CGS), for every element in the collection. The order matches the alphabetically sorted element list returned by `get_list()`.
 
 **Returns**
 
 _Vector[float]_
-: Masses of the most common isotope for each element (CGS, grams).
+: Mass of the most common isotope in grams (CGS) for each element, in alphabetical-symbol order.

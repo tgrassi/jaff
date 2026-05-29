@@ -19,7 +19,7 @@ python --version
 
 <!-- prettier-ignore -->
 !!! tip "Managing virtual environments"
-    Although JAFF can be installed in a variety of ways, it is encouraged to use [uv](https://docs.astral.sh/uv/) to install jaff and manage it's virtual environment
+    Although JAFF can be installed in a variety of ways, it is encouraged to use [uv](https://docs.astral.sh/uv/) to install JAFF and manage its virtual environment.
 
 ### Install from Source
 

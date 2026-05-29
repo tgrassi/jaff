@@ -8,9 +8,9 @@ tags:
 
 `#!python normalized_names()`
 
-Returns lowercase species names with `"+"` replaced by `"p"` and `"-"` replaced by `"n"`, useful for variable name generation.
+Returns a normalized identifier string for every species in the collection, in catalogue order. Each name is lowercased and has `"+"` replaced by `"p"` and `"-"` replaced by `"n"`, producing strings that are valid variable names in C, Fortran, and Python. For example `"HCO+"` becomes `"hcop"` and `"e-"` becomes `"en"`.
 
 **Returns**
 
 _Vector[str]_
-: Normalized species names.
+: Normalized, code-safe identifier string for each species, in catalogue order.

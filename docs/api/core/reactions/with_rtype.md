@@ -8,12 +8,12 @@ tags:
 
 `#!python with_rtype(rtype)`
 
-Returns all reactions matching the given type.
+Filters the catalogue and returns every reaction whose type label matches *rtype*, preserving their relative catalogue order.
 
 **Parameters**
 
 **rtype** : _str_
-: Reaction type, e.g. `"photo"`, `"cosmic_ray"`.
+: Reaction-type label to match, e.g. `"photo"`, `"cosmic_ray"`. Must be one of the type strings stored in `Reaction.metadata["type"]`.
 
 **Returns**
 

@@ -8,7 +8,7 @@ tags:
 
 `jaff.codegen.preprocessor.Preprocessor`
 
-Pragma-based template preprocessor. Replaces `PREPROCESS_KEY` pragma blocks in template files with values from a dictionary, then writes the result to a build directory. Files not in `fnames` are copied unchanged.
+The `Preprocessor` class fills marked sections of template source files with generated content before they are compiled or used. Placeholder blocks are defined in templates using pragma comments, and the preprocessor replaces them with the values provided. Any files not listed in `fnames` are passed through untouched.
 
 **Pragma syntax** (configurable comment prefix):
 
@@ -17,7 +17,7 @@ Pragma-based template preprocessor. Replaces `PREPROCESS_KEY` pragma blocks in t
 !! PREPROCESS_END
 ```
 
-Content between `PREPROCESS_RATES` and `PREPROCESS_END` is replaced with `dictionary["RATES"]`.
+Everything between `PREPROCESS_RATES` and `PREPROCESS_END` gets replaced with `dictionary["RATES"]`.
 
 ## Constructor
 

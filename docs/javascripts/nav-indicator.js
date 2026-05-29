@@ -1,4 +1,7 @@
 (function () {
+    // Listeners from the previous page (instant navigation re-runs init).
+    let tocCleanup = null;
+
     function createElements(containerEl) {
         containerEl.querySelector(".jaff-nav-indicator")?.remove();
         containerEl.querySelector(".jaff-nav-track")?.remove();
@@ -57,8 +60,7 @@
         svg.style.height = containerEl.offsetHeight + "px";
     }
 
-    function updateIndicator(containerEl, navEl, indicator, animate) {
-        const active = navEl.querySelector(".md-nav__link--active");
+    function updateIndicator(containerEl, active, indicator, animate) {
         if (!active) {
             indicator.style.opacity = "0";
             return;
@@ -73,24 +75,22 @@
         const left = activeRect.left - cRect.left + 0.75 - 10 - PILL_WIDTH / 2;
 
         if (!animate) {
+            // Snap to position with no slide, and crucially without flashing
+            // opacity (that caused a visible blink on every TOC auto-scroll).
             indicator.style.transition = "none";
-            indicator.style.opacity = "0";
-        }
-
-        requestAnimationFrame(() => {
             indicator.style.top    = top  + "px";
             indicator.style.left   = left + "px";
             indicator.style.height = barH + "px";
-
-            if (!animate) {
-                requestAnimationFrame(() => {
-                    indicator.style.transition = "";
-                    indicator.style.opacity = "1";
-                });
-            } else {
-                indicator.style.opacity = "1";
-            }
-        });
+            indicator.style.opacity = "1";
+            requestAnimationFrame(() => {
+                indicator.style.transition = "";
+            });
+        } else {
+            indicator.style.top    = top  + "px";
+            indicator.style.left   = left + "px";
+            indicator.style.height = barH + "px";
+            indicator.style.opacity = "1";
+        }
     }
 
     function setup(sidebarSelector, navSelector) {
@@ -100,28 +100,115 @@
         const navEl = sidebar.querySelector(navSelector);
         if (!navEl) return;
 
+        // Tear down the previous page's listeners and clear any stale highlight.
+        if (tocCleanup) tocCleanup();
+        navEl.querySelectorAll(".jaff-toc-active")
+            .forEach(el => el.classList.remove("jaff-toc-active"));
+
         // Attach to sidebar (not nav) — avoids scrollwrap overflow clipping
         const { indicator, svg } = createElements(sidebar);
 
+        // Map each TOC link to the heading it points at, in document order.
+        const entries = [...navEl.querySelectorAll("a.md-nav__link[href*='#']")]
+            .map(link => {
+                const id = decodeURIComponent((link.hash || "").slice(1));
+                const heading = id ? document.getElementById(id) : null;
+                return { link, heading };
+            })
+            .filter(e => e.heading);
+
+        // Clicking a TOC link pins it active until the next manual scroll, so
+        // the clicked link wins even if the page lands at the bottom.
+        let locked = null;
+
+        // Active section by scroll position.
+        //  - top (scrollY 0): no heading passed the trigger → first link
+        //  - middle: the section currently under the trigger line
+        //  - bottom: trailing headings too short to ever reach the trigger are
+        //    distributed across the remaining scroll, so the last link becomes
+        //    active exactly at the page bottom — without skipping the others.
+        const TRIGGER = 130; // px from viewport top (clears header + tabs)
+        function resolveActive() {
+            if (!entries.length) return null;
+
+            const scrollY = window.scrollY;
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            // Absolute doc scroll at which each heading reaches the trigger line.
+            const targets = entries.map(
+                e => e.heading.getBoundingClientRect().top + scrollY - TRIGGER);
+
+            // Last heading that has reached the trigger at the current scroll.
+            let idx = 0;
+            for (let i = 0; i < targets.length; i++) {
+                if (targets[i] <= scrollY + 1) idx = i; else break;
+            }
+
+            // Trailing headings whose target exceeds maxScroll can never reach
+            // the trigger. Spread them over the leftover scroll past the last
+            // reachable heading so they still light up on the way to the bottom.
+            if (maxScroll > 0) {
+                let lastReach = 0;
+                for (let i = 0; i < targets.length; i++) {
+                    if (targets[i] <= maxScroll + 1) lastReach = i; else break;
+                }
+                if (lastReach < entries.length - 1) {
+                    const startScroll = targets[lastReach];
+                    const span = maxScroll - startScroll;
+                    if (span > 0 && scrollY > startScroll) {
+                        const frac = Math.min(1, (scrollY - startScroll) / span);
+                        const remaining = (entries.length - 1) - lastReach;
+                        idx = Math.max(idx, lastReach + Math.round(frac * remaining));
+                    }
+                }
+            }
+            return entries[Math.min(idx, entries.length - 1)].link;
+        }
+
         function refresh(animate) {
             updateTrack(sidebar, navEl, svg);
-            updateIndicator(sidebar, navEl, indicator, animate);
+            const active = locked || resolveActive();
+            // Clear any stale highlight anywhere, then mark the single active.
+            document.querySelectorAll(".jaff-toc-active")
+                .forEach(el => { if (el !== active) el.classList.remove("jaff-toc-active"); });
+            if (active) active.classList.add("jaff-toc-active");
+            updateIndicator(sidebar, active, indicator, animate);
         }
 
         refresh(false);
 
-        const observer = new MutationObserver(() => refresh(true));
-        observer.observe(navEl, {
-            subtree: true,
-            attributes: true,
-            attributeFilter: ["class"],
-        });
+        // Recompute on scroll/resize since viewport-relative rects change.
+        let ticking = false;
+        const onScroll = () => {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(() => {
+                refresh(true);
+                ticking = false;
+            });
+        };
 
-        // Recompute on scroll since viewport-relative rects change
-        const scrollwrap = sidebar.querySelector(".md-sidebar__scrollwrap");
-        if (scrollwrap) {
-            scrollwrap.addEventListener("scroll", () => refresh(false));
-        }
+        const controller = new AbortController();
+        const { signal } = controller;
+        // Capture phase catches scroll from whichever element actually scrolls
+        // the page (window, body, or an inner wrapper) — scroll doesn't bubble.
+        document.addEventListener("scroll", onScroll, { capture: true, passive: true, signal });
+        window.addEventListener("resize", onScroll, { passive: true, signal });
+
+        // Pin the clicked link; release on the next manual scroll input so the
+        // programmatic smooth-scroll doesn't immediately unlock it.
+        navEl.addEventListener("click", (e) => {
+            const link = e.target.closest("a.md-nav__link[href*='#']");
+            if (link && entries.some(en => en.link === link)) {
+                locked = link;
+                refresh(true);
+            }
+        }, { signal });
+        const release = () => { if (locked) { locked = null; onScroll(); } };
+        window.addEventListener("wheel", release, { passive: true, signal });
+        window.addEventListener("touchmove", release, { passive: true, signal });
+        window.addEventListener("keydown", release, { signal });
+
+        tocCleanup = () => controller.abort();
     }
 
     function setupHighlight(sidebarSelector, navSelector) {

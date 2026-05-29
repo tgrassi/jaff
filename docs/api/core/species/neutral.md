@@ -8,19 +8,19 @@ tags:
 
 `#!python neutral(attr="")`
 
-Returns neutral species or one of their attributes.
+Filters the catalogue to species with a net charge of zero and returns either the `Specie` objects or a chosen attribute of each. Preserves the relative catalogue order of the surviving species.
 
 **Parameters**
 
 **attr** : _str, optional_
-: If given, returns the named attribute of each neutral species instead of the `Specie` object itself.
+: Name of a `Specie` attribute to extract. If given, returns that attribute value for each neutral species instead of the `Specie` object itself. Leave empty (default) to return the `Specie` objects.
 
 Supported attributes are: `charge` `elements` `exploded` `fidx` `index` `mass` `name` `serialized`
 
 **Returns**
 
 _Vector[Specie or any]_
-: Neutral species, or the specified attribute of each.
+: Neutral `Specie` objects in catalogue order, or the value of *attr* for each neutral species if *attr* was given.
 
 **Raises**
 

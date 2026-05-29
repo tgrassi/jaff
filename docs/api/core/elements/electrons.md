@@ -8,9 +8,9 @@ tags:
 
 `#!python electrons()`
 
-Returns the electron counts for all elements.
+Returns the number of electrons in the neutral atom for each element. Values are in the same order as `symbols()`.
 
 **Returns**
 
 _Vector[int]_
-: Electron counts.
+: Number of electrons per element (equals the atomic number for neutral atoms).

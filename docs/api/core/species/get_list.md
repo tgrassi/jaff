@@ -8,7 +8,7 @@ tags:
 
 `#!python get_list()`
 
-Returns the an ordered list of `Specie` objects.
+Returns an ordered list of all `Specie` objects in the catalogue.
 
 **Returns**
 

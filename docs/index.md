@@ -24,25 +24,25 @@ JAFF is a comprehensive library for working with astrochemical reaction networks
 
 <div class="grid cards" markdown>
 
-- :lucide-atom:{ .lg .middle } **Multi-format support**
+- :lucide-atom:{ .sm .middle } **Multi-format support**
 
     ***
 
     Parses `KIDA`, `UDFA`, `PRIZMO`, `KROME` and `UCLCHEM` networks with automatic format detection.
 
-- :lucide-chart-spline:{ .lg .middle } **Validation and Analysis**
+- :lucide-chart-spline:{ .sm .middle } **Validation and Analysis**
 
     ***
 
     Automatically validates mass and charge conservation, and extracts elemental composition.
 
-- :lucide-code:{ .lg .middle } **Code Generation**
+- :lucide-code:{ .sm .middle } **Code Generation**
 
     ***
 
     Generates optimized code for rates, ODEs, Jacobians, and fluxes `C`, `C++`, `Fortran`, `Python`, `Rust`, `Julia`, and `R` with optional CSE.
 
-- :lucide-chart-no-axes-gantt:{ .lg .middle } **Template System**
+- :lucide-chart-no-axes-gantt:{ .sm .middle } **Template System**
 
     ***
 
@@ -97,7 +97,7 @@ Products: H+, e-
 
 <div class="grid cards" markdown>
 
-- :lucide-rocket:{ .lg .middle } **Getting Started**
+- :lucide-rocket:{ .sm .middle } **Getting Started**
 
     ***
 
@@ -105,7 +105,7 @@ Products: H+, e-
 
     [:octicons-arrow-right-24: Installation Guide](getting-started/installation.md)
 
-- :lucide-book-open:{ .lg .middle } **User Guide**
+- :lucide-book-open:{ .sm .middle } **User Guide**
 
     ***
 
@@ -113,7 +113,7 @@ Products: H+, e-
 
     [:octicons-arrow-right-24: User Guide](user-guide/designing-networks/index.md)
 
-- :lucide-braces:{ .lg .middle } **Code Generation**
+- :lucide-braces:{ .sm .middle } **Code Generation**
 
     ***
 
@@ -121,7 +121,7 @@ Products: H+, e-
 
     [:octicons-arrow-right-24: Code Generation Guide](user-guide/code-generation.md)
 
-- :lucide-folder-kanban:{ .lg .middle } **API Reference**
+- :lucide-folder-kanban:{ .sm .middle } **API Reference**
 
     ***
 

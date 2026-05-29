@@ -6,7 +6,7 @@ icon: lucide/layers
 
 # Basic Concepts
 
-The main aim of jaff is to provide a common interface for all common chemical network formats and it doubles down as a code generator. It is also the first code to completely support explicit photochemistry code generation
+The main aim of JAFF is to provide a common interface for all common chemical network formats while also serving as a multi-language code generator. It is also the first tool to completely support explicit photochemistry code generation.
 
 ## Core Components
 
@@ -16,7 +16,7 @@ A **chemical network** describes a system of chemical species and the reactions 
 
 **Example Network:**
 
-The following network describes a simple collisonal hydrogen ionization and recommbination network
+The following network describes a simple collisional hydrogen ionization and recombination network
 
 ```text
 H -> H+ + e-
@@ -40,7 +40,7 @@ $$ r = k\ [A]^{\alpha} [B]^{\beta} $$
 
 where $k$ is the rate coefficient and $[A]$ and $[B]$ represents the concentrations of $A$ and $B$ respectively.
 
-In astrophysics, reactions can occur due to a lot of reasons. For example, a reaction can occur due to thermal collisions, collisions with cosmic ray particles, photons from various astrophysical sources or simply a spontaenous decay. All these reactions typically have different characterstic and rates and the cause of the reaction can significantly alter the environment.
+In astrophysics, reactions can occur due to a lot of reasons. For example, a reaction can occur due to thermal collisions, collisions with cosmic ray particles, photons from various astrophysical sources, or simply a spontaneous decay. All these reactions typically have different characteristics and rates, and the cause of the reaction can significantly alter the environment.
 
 ### 2. Network Object
 
@@ -108,7 +108,7 @@ print(f"Rate: {k}")
 
 - `reactants`: Species consumed in the reaction
 - `products`: Species created in the reaction
-- `rate`: Formula for calculating reaction speed as a sympy expresssion
+- `rate`: Formula for calculating reaction speed as a SymPy expression
 - `rtype`: Classification (e.g. photo)
 - `tmin`: Minimum temperature for reaction cutoff
 - `tmax`: Maximum temperature for reaction cutoff

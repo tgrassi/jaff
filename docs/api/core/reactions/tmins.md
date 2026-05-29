@@ -8,9 +8,9 @@ tags:
 
 `#!python tmins()`
 
-Returns the lower temperature bounds for all reactions.
+Returns the minimum valid gas temperature for every reaction in the catalogue, in catalogue order. Reactions without a lower bound yield `None`.
 
 **Returns**
 
 _Vector[float or None]_
-: Lower temperature bounds in Kelvin, or `None` when no lower bound is set.
+: Lower temperature bound in Kelvin for each reaction, or `None` when no lower bound is defined. One entry per reaction, in catalogue order.

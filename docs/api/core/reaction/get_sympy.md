@@ -8,9 +8,9 @@ tags:
 
 `#!python get_sympy()`
 
-Returns the rate expression as a SymPy object.
+Returns the symbolic rate-coefficient expression as a SymPy object. This is the same object stored in `Reaction.rate` and can be passed directly to SymPy's codegen or differentiation routines.
 
 **Returns**
 
 _sympy.Basic_
-: The symbolic rate expression.
+: Symbolic rate-coefficient expression for this reaction.

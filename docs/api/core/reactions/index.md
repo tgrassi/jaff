@@ -8,7 +8,7 @@ tags:
 
 `jaff.core.reaction.Reactions`
 
-Typed, ordered `Catalogue` of `Reaction` objects with dictionary-style lookup by verbatim string or serialized key, and vector accessors for bulk property retrieval.
+The `Reactions` class is a typed, ordered `Catalogue` of `Reaction` objects. It supports dictionary-style lookup by verbatim string or serialized key, and provides vector accessors for bulk retrieval of reaction properties.
 
 ## Attributes
 

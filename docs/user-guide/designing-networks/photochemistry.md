@@ -22,63 +22,22 @@ $$
 The reaction rate per unit volume is
 
 $$
-\mathcal{R} = n_\text{species} \int_0^\infty \sigma(E)\, c\, n_\gamma(E)\, dE
+\mathcal{R} = \prod_i {n_i}^{\alpha} \int_0^\infty \sigma(E_\nu)\, c\, \dfrac{ \partial n_\gamma}{\partial E_\nu}\, dE_{\nu}
 $$
 
-where $\sigma(E)$ is the reaction cross section (cm²), $c$ is the speed of light (cm s⁻¹), and $n_\gamma(E)$ is the photon number density per unit energy (cm⁻³ erg⁻¹).
+where $\sigma(E_\nu)$ is the reaction cross section ($\text{cm}^2$), $c$ is the speed of light ($\text{cm s}^{-1}$), and $n_\gamma$ is the photon number density ($\text{cm}^{-3}$). The subscript $\gamma$ signifies the local radiation field and a subscript of $\nu$ signifies the frequency of the photon
 
-JAFF replaces the continuous integral with a sum over discrete **radiation frequency bands**:
+When the radiation energy density per band is calculated, JAFF replaces the continuous integral with a sum over discrete **radiation frequency bands**:
 
 $$
-\mathcal{R} = n_\text{species} \sum_i k_i \cdot \rho_i
+\mathcal{R} = \prod_i {n_i}^{\alpha} \sum_i k_i \cdot \rho_i
 $$
 
 where $\rho_i$ is the radiation energy or photon density in band $i$ and $k_i$ is a pre-computed rate coefficient for that band.
 
----
-
-## Marking a Reaction as Photochemical
-
-In the JAFF native `.jet` format, append `PHOTO` followed by the energy threshold (eV) instead of a rate expression:
-
-```text
-H -> H+ + E    []    PHOTO, 13.60
-```
-
-JAFF will look up the matching cross-section file in the Leiden database and integrate it over the configured radiation bands.
-
----
-
-## Cross-Section Data — Leiden Database
-
-JAFF ships with photoionisation and photodissociation cross sections from the **Leiden Observatory PDR database** (van Dishoeck et al.).
-
-### File-naming convention
-
-Cross-section files live in `src/jaff/data/xsecs/` and follow the pattern:
-
-```text
-Reactant1_Reactant2__Product1_Product2.dat
-```
-
-The double underscore `__` separates reactants from products. Species names are sorted alphabetically on each side.
-
-### File format
-
-The last `#`-prefixed comment line in each file is the column header. Two columns are required:
-
-| Column name contains | Content |
-| -------------------- | ------- |
-| `wave`               | Wavelength in nanometres (nm) |
-| `ion` **or** `dis`   | Cross section in cm² (selection depends on the reaction's charge balance) |
-
-### Energy conversion
-
-Wavelengths are converted to photon energies in erg:
-
-$$
-E \;[\text{erg}] = \frac{h \cdot c}{\lambda \;[\text{nm}] \times 10^{-7}}
-$$
+<!-- prettier-ignore -->
+!!! tip "Radiation source terms"
+    If a reaction adds photons to the local radiation field, it can be specified using a custom `deltaRad<N>` function. Details are mentioned in [Auxiliary functions file](auxiliary-functions.md)
 
 ---
 
@@ -102,14 +61,14 @@ $$
 n(E) \propto E^{\alpha - 2}
 $$
 
-where $\alpha$ is `power_law_index`. Setting $\alpha = 0$ gives $n(E) \propto E^{-2}$, i.e. equal energy per logarithmic interval.
+where $\alpha$ is `power_law_index`. Setting $\alpha = 0$ gives $n(E) \propto E^{-2}$, i.e. equal energy per logarithmic bin which is the default assumption.
 
 ### Band-averaged cross section
 
 For band $i$ spanning $[E_\text{lo}, E_\text{hi}]$:
 
 $$
-\langle\sigma\rangle_i = \frac{\displaystyle\int_{E_\text{lo}}^{E_\text{hi}} \sigma(E)\, n(E)\, dE}{\displaystyle\int_{E_\text{lo}}^{E_\text{hi}} n(E)\, dE}
+\langle\sigma\rangle_i = \frac{\displaystyle\int_{E_\text{lo}}^{E_\text{hi}} \sigma(E_\nu)\, \dfrac{ \partial n_\gamma}{\partial E_\nu}\, dE_\nu}{\displaystyle\int_{E_\text{lo}}^{E_\text{hi}} \dfrac{ \partial n_\gamma}{\partial E_\nu}\, dE_\nu}
 $$
 
 ### Rate coefficient
@@ -135,10 +94,61 @@ where $\langle E\rangle_i$ is the photon-number–weighted average energy in the
 After band integration, each photochemical reaction contributes one term per band to the ODE right-hand side:
 
 $$
-\frac{d[\text{Species}]}{dt} \supset -n_\text{species} \sum_i k_i \cdot \rho_i
+\frac{dn_i}{dt} \supset -\prod_i {n_i}^{\alpha} \sum_i k_i \cdot \rho_i
 $$
 
 The generated code uses the radiation density array `den[i]` as the runtime variable for $\rho_i$. The ODE for the radiation field itself can be obtained from `#!python Network.sradodes()`.
+
+---
+
+## Marking a Reaction as Photochemical
+
+In the `PRIZMO` format, append `PHOTO` followed by the energy threshold (eV) instead of a rate expression:
+
+```text
+H -> H+ + E    []    PHOTO, 13.60
+```
+
+JAFF will look up the matching cross-section file in the Leiden database and integrate it over the configured radiation bands.
+
+---
+
+## Cross-Section Data — Leiden Database
+
+JAFF ships with photoionisation and photodissociation cross sections from the **Leiden Observatory PDR database** ([van Dishoeck et al.](https://home.strw.leidenuniv.nl/~ewine/photo/)).
+
+### File-naming convention
+
+Cross-section files live in `src/jaff/data/xsecs/` and follow the pattern:
+
+```text
+Reactant1_Reactant2__Product1_Product2.dat
+```
+
+which is the [serialized form of the reaction](../../api/core/reaction/index.md)
+
+The double underscore `__` separates reactants from products. Species names are sorted alphabetically on each side.
+
+### File format
+
+The last `#`-prefixed comment line in each file is the column header. Two columns are required:
+
+| Column name contains | Content                                                                   |
+| -------------------- | ------------------------------------------------------------------------- |
+| `wave`               | Wavelength in nanometres (nm)                                             |
+| `ion` **or** `dis`   | Cross section in cm² (selection depends on the reaction's charge balance) |
+
+### Energy conversion
+
+Wavelengths are converted to photon energies in erg:
+
+$$
+E \;[\text{erg}] = \frac{h \cdot c}{\lambda \;[\text{nm}] \times 10^{-7}}
+$$
+
+<!-- prettier-ignore -->
+!!! note "Threshold energy"
+    For the Leiden cross-sections, the `PHOTO, <eV>` threshold in the `.jet` file is used to select which cross-section file to load and which band edges apply to this reaction. Reactions whose threshold lies above the upper edge of a band are not assigned a rate coefficient for that band.
 
 ---
 
@@ -163,7 +173,3 @@ for rxn in photo:
 # Symbolic radiation ODEs
 print(net.sradodes())
 ```
-
-<!-- prettier-ignore -->
-!!! note "Threshold energy"
-    The `PHOTO, <eV>` threshold in the `.jet` file is used to select which cross-section file to load and which band edges apply to this reaction. Reactions whose threshold lies above the upper edge of a band are not assigned a rate coefficient for that band.

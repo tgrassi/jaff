@@ -12,10 +12,10 @@ Creates a table from a pandas DataFrame. Drops any existing table with the same 
 **Parameters**
 
 **name** : _str_
-: New table name.
+: Name to assign to the new table. Any existing table with this name is dropped first.
 
 **df** : _pandas.DataFrame_
-: Source data.
+: Source data used to populate the new table. Column dtypes determine the SQLite column types: integer columns become `INTEGER`, float columns become `REAL`, and all others become `TEXT`.
 
 **Returns**
 

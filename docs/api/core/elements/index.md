@@ -8,7 +8,7 @@ tags:
 
 `jaff.core.elements.Elements`
 
-Sorted, deduplicated `Catalogue` of elements derived from a species list. Also a flyweight: instances with the same sorted species set are reused. The internal order follows alphabetical sort on element symbol, which fixes the row order of the composition matrices (`truth_matrix`, `density_matrix`).
+The `Elements` class is a sorted, deduplicated `Catalogue` of chemical elements derived from a set of species. Like `Element`, it is a flyweight: instances built from the same sorted species set are reused. Elements are ordered alphabetically by symbol, which fixes the row order of the composition matrices (`truth_matrix`, `density_matrix`).
 
 ## Constructor
 
@@ -21,7 +21,7 @@ Sorted, deduplicated `Catalogue` of elements derived from a species list. Also a
 
 ## Attributes
 
-| Attribute | Type           | Description                      |
-| --------- | -------------- | -------------------------------- |
-| `species` | `list[Specie]` | Species provided at construction |
-| `count`   | `int`          | Number of unique elements found  |
+| Attribute | Type           | Description                                                               |
+| --------- | -------------- | ------------------------------------------------------------------------- |
+| `species` | `list[Specie]` | The species provided at construction, stored as a list of `Specie` objects |
+| `count`   | `int`          | Number of distinct chemical elements found across all provided species     |

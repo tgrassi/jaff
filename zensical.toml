@@ -7,14 +7,14 @@ copyright = "Copyright &copy; 2025 JAFF Team"
 docs_dir = "docs"
 site_dir = "site"
 dev_addr = "localhost:8000"
-extra_css = ["stylesheets/extra.css"]
+extra_css = ["stylesheets/extra.css?v=13"]
 repo_url = "https://github.com/tgrassi/jaff"
 repo_name = "tgrassi/jaff"
 repo = "fontawesome/brands/git-alt"
 extra_javascript = [
   "javascripts/mathjax.js",
   "https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js",
-  "javascripts/nav-indicator.js",
+  "javascripts/nav-indicator.js?v=6",
   "javascripts/page-transition.js"
 ]
 nav = [
@@ -28,6 +28,7 @@ nav = [
     { "Designing Networks" = [
       "user-guide/designing-networks/index.md",
       "user-guide/designing-networks/network-formats.md",
+      "user-guide/designing-networks/predefined-networks.md",
       "user-guide/designing-networks/auxiliary-functions.md",
       "user-guide/designing-networks/photochemistry.md"
     ] },
@@ -191,9 +192,6 @@ nav = [
         "api/codegen/codegen/get_indexed_jacobian.md",
         "api/codegen/codegen/get_jacobian_str.md",
         "api/codegen/codegen/get_language_tokens.md",
-        "api/codegen/codegen/replace_y.md",
-        "api/codegen/codegen/resolve_dexpr.md",
-        "api/codegen/codegen/dfs.md"
       ] },
       { "codegen.Preprocessor" = [
         "api/codegen/preprocessor/index.md",

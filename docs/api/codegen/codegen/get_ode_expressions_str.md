@@ -13,7 +13,7 @@ Generates a code block for ODE right-hand sides expressed in terms of fluxes.
 **Parameters**
 
 **idx_offset** : _int, optional_
-: Index offset. Default `-1`.
+: Base index for flux array subscripts. Default `-1`, which uses the language default (`0` for C/C++/Python/Rust, `1` for Fortran/Julia/R).
 
 **flux_var** : _str, optional_
 : Flux array name. Default `"flux"`.
@@ -22,24 +22,46 @@ Generates a code block for ODE right-hand sides expressed in terms of fluxes.
 : Species array name. Default `"y"`.
 
 **idx_prefix** : _str, optional_
-: Prefix for species index names. Default `""`.
+: Prefix prepended to each species index name, e.g. `"idx_"` yields `dy[idx_H]`. Default `""`.
 
 **derivative_prefix** : _str, optional_
-: Prefix for derivative variable name. Default `"d"`.
+: Prefix prepended to `species_var` to form the derivative variable name when `derivative_var` is not given. Default `"d"` (yields `"dy"`).
 
 **derivative_var** : _str or None, optional_
-: Override full derivative array name. Default `None`.
+: Explicit name for the derivative array (overrides `derivative_prefix` + `species_var`). Default `None`.
 
 **brac_format** : _str, optional_
-: Override bracket format. Default `""`.
+: Override 1-D bracket pair. Empty string uses the language default (`"[]"` for most languages, `"()"` for Fortran). Valid values: `"()"`, `"{}"`, `"[]"`, `"<>"`. Default `""`.
 
 **assignment_op** : _str, optional_
-: Override assignment operator. Default `""`.
+: Assignment operator override. Empty string uses the language default (`"="` for most, `"<-"` for R). Default `""`.
 
 **line_end** : _str, optional_
-: Override statement terminator. Default `""`.
+: Line terminator override. Empty string uses the language default (`";"` for C/C++/Rust, empty for Python/Fortran/Julia/R). Default `""`.
 
 **Returns**
 
 _str_
 : ODE right-hand side code block.
+
+### Example
+
+For a network with two species and two reactions, default settings produce:
+
+```python
+dy[H] = -flux[0] + flux[1]
+dy[H2] = +flux[0] - flux[1]
+```
+
+For C++ (`lang="cxx"`) with `idx_prefix="idx_"`:
+
+```python
+ode = cg.get_ode_expressions_str(idx_prefix="idx_")
+```
+
+**Output**
+
+```cpp
+dy[idx_H] = -flux[0] + flux[1];
+dy[idx_H2] = +flux[0] - flux[1];
+```

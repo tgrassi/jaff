@@ -22,31 +22,31 @@ print(f"Elements:  {net.elements.count}")
 
 <div class="grid cards" markdown>
 
-- :lucide-flask-conical:{ .lg .middle } **Network**
+- :lucide-flask-conical:{ .sm .middle } **Network**
 
     ***
 
-    Top-level `Network` object: constructor options, key attributes, export methods, and stoichiometry matrices.
+    Top-level `Network` class: constructor options, key attributes, export methods, and stoichiometry matrices.
 
     [:octicons-arrow-right-24: Network](network.md)
 
-- :lucide-dna:{ .lg .middle } **Species**
+- :lucide-dna:{ .sm .middle } **Species**
 
     ***
 
-    Work with individual `Specie` objects and the `Species` collection: lookup, filtering, mass, charge, and elemental composition.
+    Work with individual `Specie` objects and the `Species` catalogue: lookup, filtering, mass, charge, and elemental composition.
 
     [:octicons-arrow-right-24: Species](species.md)
 
-- :lucide-periodic-table:{ .lg .middle } **Elements**
+- :lucide-atom:{ .sm .middle } **Elements**
 
     ***
 
-    Query the element catalogue derived from all species: density matrices, truth matrices, atomic properties.
+    Query the `Elements` catalogue derived from all species: density matrices, truth matrices, atomic properties.
 
     [:octicons-arrow-right-24: Elements](elements.md)
 
-- :lucide-zap:{ .lg .middle } **Reactions**
+- :lucide-zap:{ .sm .middle } **Reactions**
 
     ***
 
@@ -54,7 +54,7 @@ print(f"Elements:  {net.elements.count}")
 
     [:octicons-arrow-right-24: Reactions](reactions.md)
 
-- :lucide-terminal:{ .lg .middle } **jaffx CLI**
+- :lucide-terminal:{ .sm .middle } **jaffx CLI**
 
     ***
 

@@ -8,7 +8,7 @@ tags:
 
 `jaff.core.species.Specie`
 
-Represents a single chemical specie — atom, molecule, ion, or grain. Parses the name to determine elemental composition, mass, charge, and LaTeX formatting.
+The `Specie` class represents a single chemical species — atom, molecule, ion, or grain. It parses the species name to determine elemental composition, total mass, net charge, and LaTeX formatting.
 
 ## Constructor
 

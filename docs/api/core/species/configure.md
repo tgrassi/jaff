@@ -8,7 +8,7 @@ tags:
 
 `#!python configure(mass_dict)`
 
-Class-level method. Propagates `mass_dict` to `Specie.configure`.
+Class-level method. Updates the mass dictionary used by all `Specie` instances by delegating to `Specie.configure`. This is called automatically by `Network.__init__`, so you only need it if you are working with a custom mass table outside of a `Network`.
 
 **Parameters**
 

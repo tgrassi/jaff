@@ -9,16 +9,16 @@ icon: lucide/cpu
 
 JAFF exposes two programmatic interfaces for code generation that bypass the template-file workflow entirely. Both accept a parsed `Network` and produce target-language code directly in Python.
 
-| Interface | Use when |
-| --------- | -------- |
-| [`Builder`](builder.md) | You want a complete, runnable solver project in one call using a built-in template plugin |
+| Interface               | Use when                                                                                     |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
+| [`Builder`](builder.md) | You want a complete, runnable solver project in one call using a built-in template plugin    |
 | [`Codegen`](codegen.md) | You need fine-grained control over individual output strings: rates, fluxes, ODEs, Jacobians |
 
 ---
 
 <div class="grid cards" markdown>
 
-- :lucide-box:{ .lg .middle } **Builder**
+- :lucide-box:{ .sm .middle } **Builder**
 
     ***
 
@@ -26,7 +26,7 @@ JAFF exposes two programmatic interfaces for code generation that bypass the tem
 
     [:octicons-arrow-right-24: Builder](builder.md)
 
-- :lucide-settings:{ .lg .middle } **Codegen**
+- :lucide-settings:{ .sm .middle } **Codegen**
 
     ***
 

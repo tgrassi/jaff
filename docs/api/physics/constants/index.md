@@ -7,9 +7,9 @@ tags:
 
 `jaff.physics.constants.Constants`
 
-Frozen dataclass holding physical and astronomical constants in a consistent unit system.
+Frozen dataclass holding physical and astronomical constants in a consistent unit system. All values follow CODATA 2018 recommended values where applicable.
 
-Two pre-built instances are available: `constants.cgs` (CGS) and `constants.si` (SI).
+Four pre-built instances are available: `constants.cgs` (CGS-ESU), `constants.si` (SI), `constants.gaussian` (Gaussian CGS), and `constants.natural` (natural units, ℏ = c = 1).
 
 ## Constructor
 
@@ -54,24 +54,43 @@ All fields are required. The instance is frozen (immutable) after creation.
 | Attribute | Type | Description |
 |-----------|------|-------------|
 | `sigma_sb` | `float` | Stefan-Boltzmann constant |
-| `a_rad` | `float` | Radiation constant |
-| `alpha` | `float` | Fine structure constant |
-| `sigma_T` | `float` | Thomson cross section |
-| `lambda_C` | `float` | Compton wavelength |
+| `a_rad` | `float` | Radiation constant (a = 4σ/c) |
+| `alpha` | `float` | Fine-structure constant (dimensionless, ≈ 1/137) |
+| `sigma_T` | `float` | Thomson scattering cross section |
+| `lambda_C` | `float` | Compton wavelength of the electron |
 | `a0` | `float` | Bohr radius |
-| `Ry_hc` | `float` | Rydberg constant × hc |
-| `Ry` | `float` | Rydberg energy |
+| `Ry_hc` | `float` | Rydberg energy in the unit system's energy units |
+| `Ry` | `float` | Rydberg energy in eV (always 13.605693 eV) |
+
+**Gas/plasma astrophysics**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
 | `r_e` | `float` | Classical electron radius |
-| `gyro_coeff` | `float` | Cyclotron frequency coefficient |
+| `gyro_coeff` | `float` | Gyration-frequency coefficient (charge/mass or equivalent) |
 
 **Astrochemistry**
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `ev_to_erg` | `float` | eV to erg conversion |
-| `mu_H` | `float` | Mean molecular weight of atomic hydrogen |
-| `mu_H2` | `float` | Mean molecular weight of H2 |
+| `ev_to_erg` | `float` | 1 eV expressed in the unit system's energy unit |
+| `mu_H` | `float` | Mean mass of a hydrogen atom |
+| `mu_H2` | `float` | Mean mass of a hydrogen molecule |
 | `kb_ev` | `float` | Boltzmann constant in eV/K |
-| `T_cmb` | `float` | CMB temperature |
-| `T_1ev` | `float` | Temperature corresponding to 1 eV |
-| `nH_ref` | `float` | Reference hydrogen number density |
+| `T_cmb` | `float` | CMB temperature in Kelvin (2.725 K) |
+| `T_1ev` | `float` | Temperature equivalent of 1 eV |
+| `nH_ref` | `float` | Reference hydrogen number density (1 H atom per unit volume) |
+
+**Cross sections**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `barn` | `float` | 1 barn in the unit system's area unit |
+| `mbarn` | `float` | 1 megabarn in the unit system's area unit |
+
+**Reference**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `n_A` | `float` | Avogadro constant (dimensionless) |
+| `R_gas` | `float` | Molar gas constant (k_b × N_A) |

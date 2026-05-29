@@ -17,4 +17,4 @@ Fetches all rows, optionally selecting specific columns.
 **Returns**
 
 _list_
-: All rows from the table.
+: All rows as `sqlite3.Row` objects, supporting both index and column-name access.

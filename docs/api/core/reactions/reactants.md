@@ -8,9 +8,9 @@ tags:
 
 `#!python reactants()`
 
-Returns the reactant collections for all reactions.
+Returns the reactant `Species` collection for every reaction in the catalogue, in catalogue order.
 
 **Returns**
 
 _Vector[Species]_
-: Reactant collections for all reactions.
+: `Species` collection of reactants for each reaction, in the same order as the catalogue.

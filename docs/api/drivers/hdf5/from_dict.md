@@ -7,12 +7,14 @@ tags:
 
 `#!python from_dict(h5file, h5dict)`
 
-Writes a dictionary to an HDF5 file in append mode, creating groups and datasets as needed.
+Writes an `HDF5Dict` (or a plain Python dict with the same structure) to an HDF5 file. The file is opened in append mode, so existing groups and datasets are preserved; only keys present in `h5dict` are written or overwritten. Plain `dict` objects are automatically wrapped in an `HDF5Dict` before writing.
+
+See the [`HDF5Dict` structure](index.md#the-hdf5dict-structure) for the expected dictionary layout.
 
 **Parameters**
 
 **h5file** : _str or Path_
-: Output HDF5 file path.
+: Path to the output HDF5 file. Created if it does not exist; opened in append mode if it does.
 
 **h5dict** : _dict or HDF5Dict_
-: Data to write. Nested dicts become HDF5 groups. Entries with a `"_kind"` key are written as datasets.
+: Data to write. Nested plain dicts become HDF5 groups. Any dict containing a `"_kind"` key is treated as a dataset leaf and written as an HDF5 dataset.

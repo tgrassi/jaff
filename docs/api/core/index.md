@@ -7,7 +7,7 @@ icon: lucide/git-compare-arrows
 
 # jaff.core
 
-The core classes focus on loading, parsing, and representing chemical reaction networks.
+The `jaff.core` subpackage contains the primary data-model classes for loading, parsing, and representing chemical reaction networks.
 
 ## Classes
 

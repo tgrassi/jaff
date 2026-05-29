@@ -8,7 +8,7 @@ tags:
 
 `jaff.core.network.Network`
 
-Loads, parses, and manages a chemical reaction network from file. Auto-detects format, validates mass/charge conservation, and builds species/reaction indices.
+The `Network` class is the most important class in JAFF. It reads a reaction network file, auto-detects its format, validates mass and charge conservation, and assembles the full species and reaction catalogues along with stoichiometry matrices. It also handles optional radiation transport, photochemistry cross-sections, and auxiliary function files.
 
 ## Constructor
 
@@ -17,7 +17,7 @@ Loads, parses, and manages a chemical reaction network from file. Auto-detects f
 **Parameters**
 
 **fname** : _str or Path_
-: Path to network file. Supported formats: KIDA, UDFA, PRIZMO, KROME, UCLCHEM, .jaff.
+: Path to network file. Supported formats: KIDA, UDFA, PRIZMO, KROME, UCLCHEM, a combination of the above and the `.jaff` file (Refer to [to_jaff](to_jaff.md) for more details).
 
 **errors** : _bool, optional_
 : Exit on validation errors. Default `False`.
@@ -52,14 +52,14 @@ _FileNotFoundError_
 
 | Attribute         | Type                | Description                                                                                  |
 | ----------------- | ------------------- | -------------------------------------------------------------------------------------------- |
-| `label`           | `str`               | Network identifier                                                                           |
-| `file_name`       | `Path`              | Resolved path to source file                                                                 |
-| `species`         | `Species`           | All species in the network                                                                   |
-| `reactions`       | `Reactions`         | All reactions                                                                                |
-| `elements`        | `Elements`          | Element analyzer                                                                             |
-| `reactant_matrix` | `ndarray`           | Shape (n_reactions, n_species) reactant stoichiometry                                        |
-| `product_matrix`  | `ndarray`           | Shape (n_reactions, n_species) product stoichiometry                                         |
-| `mass_dict`       | `dict`              | Element mass dictionary                                                                      |
+| `label`           | `str`               | Human-readable network identifier; defaults to the source file stem                          |
+| `file_name`       | `Path`              | Resolved absolute path to the source network file                                            |
+| `species`         | `Species`           | Ordered catalogue of all species in the network                                              |
+| `reactions`       | `Reactions`         | Ordered catalogue of all reactions in the network                                            |
+| `elements`        | `Elements`          | Element catalogue derived from all species; used for composition matrices                    |
+| `reactant_matrix` | `ndarray`           | Shape (n_reactions, n_species) stoichiometry matrix for reactants                            |
+| `product_matrix`  | `ndarray`           | Shape (n_reactions, n_species) stoichiometry matrix for products                             |
+| `mass_dict`       | `dict`              | Mapping from element symbol to mass properties, used for conservation checks                 |
 | `dEdt_chem`       | `sympy.Basic`       | Total chemical heating/cooling rate (erg cm⁻³ s⁻¹), accumulated over all reactions           |
 | `dEdt_other`      | `sympy.Basic`       | Additional heating/cooling rate from the `heatingcoolingrate` auxiliary function, if present |
 | `dRad_dt_extra`   | `sympy.Basic`       | Extra radiation moment source terms from `@function` definitions                             |

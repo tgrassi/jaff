@@ -1,6 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
 :root {
+    /* Soft cool off-white (not pure #fff) so the indigo gradient reads */
+    --md-default-bg-color: #f4f6fa;
+
     --jaff-grid-primary: rgba(75, 85, 99, 0.04);
     --jaff-grid-secondary: rgba(55, 65, 81, 0.05);
     --jaff-grid: rgba(75, 85, 99, 0.1);
@@ -12,9 +15,26 @@
     /* Solid black for card headings in light mode */
     --jaff-card-heading: #000000;
     --jaff-code-titlebar: rgba(0, 0, 0, 0.03);
+
+    /* Distinct shade of accent for API type pills (deeper than link accent) */
+    --jaff-pill-accent: color-mix(in srgb, var(--md-accent-fg-color) 65%, var(--md-heading-color) 35%);
+
+    /* Param name chip color (full accent in light mode) */
+    --jaff-name-accent: var(--md-accent-fg-color);
+
+    /* Background glow/vignette strengths (stronger in light: indigo on white
+       reads faint) */
+    --jaff-glow-strength: 34%;
+    --jaff-vignette-strength: 11%;
+
+    /* Floating header tint — light grey so it isn't near-white */
+    --jaff-header-bg: rgba(231, 232, 236, 0.72);
 }
 
 [data-md-color-scheme="slate"] {
+    /* Lift dark background off near-black to a neutral charcoal */
+    --md-default-bg-color: #141518;
+
     --jaff-grid-primary: rgba(255, 255, 255, 0.05);
     --jaff-grid-secondary: rgba(255, 255, 255, 0.05);
     --jaff-grid: rgba(255, 255, 255, 0.1);
@@ -26,6 +46,19 @@
     /* Solid white for card headings in dark mode */
     --jaff-card-heading: #ffffff;
     --jaff-code-titlebar: rgba(0, 0, 0, 0.18);
+
+    /* Distinct shade of accent for API type pills (lighter than link accent) */
+    --jaff-pill-accent: color-mix(in srgb, var(--md-accent-fg-color) 65%, var(--md-heading-color) 35%);
+
+    /* Dimmer param name chip in dark mode (orange accent runs too bright) */
+    --jaff-name-accent: color-mix(in srgb, var(--md-accent-fg-color) 72%, #000 28%);
+
+    /* Subtler glow in dark mode (orange on charcoal already reads well) */
+    --jaff-glow-strength: 7%;
+    --jaff-vignette-strength: 3%;
+
+    /* Floating header tint — translucent charcoal */
+    --jaff-header-bg: color-mix(in srgb, var(--md-default-bg-color) 70%, transparent);
 }
 
 code,
@@ -91,6 +124,25 @@ body,
     font-size: 0.825rem;
     line-height: 1.6;
     font-weight: 400;
+}
+
+/* Viewport-wide subtle depth: top-right accent corner glow + center vignette
+   lift. Layers ride on the solid bg-color (transparent stops let it show). */
+body {
+    background-color: var(--md-default-bg-color);
+    background-image:
+        radial-gradient(
+            55rem 55rem at 100% 0%,
+            color-mix(in srgb, var(--md-accent-fg-color) var(--jaff-glow-strength), transparent),
+            transparent 60%
+        ),
+        radial-gradient(
+            130% 95% at 50% 22%,
+            color-mix(in srgb, var(--md-heading-color) var(--jaff-vignette-strength), transparent),
+            transparent 55%
+        );
+    background-repeat: no-repeat;
+    background-attachment: fixed;
 }
 
 /* Paragraph breathing room */
@@ -170,7 +222,8 @@ body,
 .md-main__inner {
     position: relative;
     max-width: 1436px;
-    background-color: var(--md-default-bg-color);
+    /* transparent so the viewport-wide bg layers on <body> show through */
+    background-color: transparent;
 }
 
 .md-content {
@@ -195,6 +248,12 @@ table {
 table,
 .grid.cards > ul > li {
     border-radius: 0.5rem !important;
+}
+
+/* Translucent table background so the page gradient shows through (theme sets
+   a solid --md-default-bg-color, which painted an opaque patch over the glow) */
+.md-typeset table:not([class]) {
+    background-color: color-mix(in srgb, var(--md-default-bg-color) 35%, transparent);
 }
 
 /* Slightly tint the background of the grid cards */
@@ -275,14 +334,35 @@ table,
     opacity: 1 !important;
 }
 
-/* TOC sidebar: active link matches accent color with fade-in */
+/* TOC sidebar: active color is instant. A color transition here caused the
+   previous active link's code to linger mid-fade (visible tint) and read as a
+   blink; the moving pill already provides the animated cue. */
 .md-sidebar--secondary .md-nav__link,
 .md-sidebar--secondary .md-nav__link * {
-    transition: color 0.3s ease;
+    transition: none;
 }
 
+/* Highlight is driven by the viewport-entry scrollspy (jaff-toc-active),
+   not Material's scroll-past --active. Neutralize the theme's --active styling
+   so only the entry-based class shows. */
 .md-sidebar--secondary .md-nav__link--active,
-.md-sidebar--secondary .md-nav__link--active * {
+.md-sidebar--secondary .md-nav__link--active *,
+.md-sidebar--secondary .md-nav__link--passed,
+.md-sidebar--secondary .md-nav__link--passed * {
+    /* Neutralize Material's scrollspy states (--active brightens, --passed
+       dims) so the TOC is uniform; the entry-based jaff-toc-active is the only
+       highlight. !important beats the theme's more specific `--active code`. */
+    color: inherit !important;
+}
+
+/* Remove only the link's own accent background — not descendants', or inline
+   code loses its tinted box */
+.md-sidebar--secondary .md-nav__link--active {
+    background: transparent !important;
+}
+
+.md-sidebar--secondary .jaff-toc-active,
+.md-sidebar--secondary .jaff-toc-active * {
     color: var(--md-accent-fg-color) !important;
 }
 
@@ -310,12 +390,12 @@ table,
     padding-bottom: 0.075rem !important;
 }
 
-.md-nav--secondary .md-nav .md-nav__link:not(.md-nav__link--active) .md-typeset {
+.md-nav--secondary .md-nav .md-nav__link:not(.jaff-toc-active) .md-typeset {
     opacity: 0.65;
     transition: opacity 0.2s ease;
 }
 
-.md-nav--secondary .md-nav .md-nav__link:not(.md-nav__link--active):hover .md-typeset {
+.md-nav--secondary .md-nav .md-nav__link:not(.jaff-toc-active):hover .md-typeset {
     opacity: 0.9;
 }
 
@@ -415,6 +495,149 @@ table,
 
 [data-md-color-scheme="slate"] .md-sidebar--primary .md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* -------------------------------------------------------------------------- */
+/* API parameter / return def-lists: accent name chips + type pills           */
+/* All def-lists in the docs live under /api/, so these rules only affect      */
+/* API reference pages. Markup per item:                                       */
+/*   <dt><strong>name</strong> : <em>type, optional</em></dt>  (parameters)    */
+/*   <dt><em>type</em></dt>                                    (returns/raises)*/
+/* -------------------------------------------------------------------------- */
+
+/* Parameter rows (name + type): lay name and type pill on one line and hide
+   the literal " : " text node between them via font-size:0 (children below
+   re-set their own size). */
+.md-typeset dl:has(dt > strong + em) dt {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 1.2em;
+    font-size: 0;
+}
+
+/* Param name -> accent monospace chip, echoing the signature block above */
+.md-typeset dl dt > strong {
+    font-size: 0.72rem;
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 600;
+    color: var(--jaff-name-accent);
+    background-color: var(--jaff-grid-primary);
+    border: 1px solid var(--jaff-grid);
+    border-radius: 0.3em;
+    padding: 0.1em 0.45em;
+}
+
+/* Type annotation -> soft accent-tinted pill (covers both param and
+   return/raises type-only def-lists for a consistent look) */
+.md-typeset dl dt > em {
+    font-size: 0.66rem;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--jaff-pill-accent);
+    background-color: color-mix(in srgb, var(--jaff-pill-accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--jaff-pill-accent) 22%, transparent);
+    border-radius: 9999px;
+    padding: 0.15em 0.7em;
+    letter-spacing: 0.01em;
+}
+
+/* Description sits directly under its term, lightly indented */
+.md-typeset dl dd {
+    font-size: 0.73rem;
+    margin-top: 0.35em;
+    margin-left: 0.1em;
+}
+
+/* Center the tab cluster */
+.md-tabs__list {
+    justify-content: center;
+}
+
+.md-tabs__link {
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.md-tabs__link:hover {
+    opacity: 1;
+    color: var(--md-accent-fg-color);
+}
+
+/* Floating, rounded top header (page title + search + repo info) */
+.md-header {
+    /* Centered floating pill: caps at content width, gap on the sides of wide
+       screens so it reads as floating inside the container */
+    width: calc(100% - 1.4rem);
+    max-width: 42rem;
+    margin: 0.55rem auto;
+    top: 0.55rem;
+    border-radius: 9999px;
+    border: 1px solid var(--jaff-grid);
+    overflow: hidden;
+    background-color: var(--jaff-header-bg);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.1),
+        0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Replace theme's bottom hairline (shown on scroll) with the floating shadow */
+.md-header--shadow {
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.1),
+        0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Tighten internal spacing of the floating header.
+   Drop the .md-grid 61rem max-width so content spans the full pill instead of
+   being centered in a narrow column (which left huge side gaps). */
+.md-header__inner {
+    max-width: none;
+    padding: 0 0.8rem;
+}
+
+.md-header__title {
+    margin-left: 0.35rem;
+    margin-right: 0.35rem;
+}
+
+/* Repo/source: shrink to content (theme reserves a fixed 11.5rem, leaving a
+   gap before the pill edge) and sit close to the right boundary */
+.md-header__source {
+    width: auto;
+    max-width: none;
+    margin-left: 0.6rem;
+    margin-right: 0.6rem;
+}
+
+/* Don't truncate the repo name with an ellipsis */
+.md-header__source .md-source__repository {
+    max-width: none;
+}
+
+/* TOC "On this page" sticky title: translucent + blurred so the page gradient
+   shows through instead of a solid opaque (white in light mode) bar */
+.md-sidebar--secondary .md-nav__title {
+    background: transparent;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+}
+
+/* Link hover preview popup (.md-tooltip2) must sit above sidebars (z-index
+   200) and the floating header — theme only gives it z-index 4, so it was
+   rendering behind them. */
+.md-tooltip2,
+.md-tooltip2--active {
+    z-index: 9999 !important;
+}
+
+/* Code block action cluster (select-toggle + copy buttons): theme gives it
+   barely-rounded 0.1rem corners — round it properly. */
+.md-code__nav {
+    border-radius: 0.4rem;
 }
 
 .md-typeset .mermaid {

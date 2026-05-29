@@ -20,7 +20,7 @@ Reads a CSV file into a pandas DataFrame.
 **Returns**
 
 _pandas.DataFrame_
-: Contents of the CSV file.
+: The CSV data as a DataFrame, with columns inferred from the file header.
 
 **Raises**
 

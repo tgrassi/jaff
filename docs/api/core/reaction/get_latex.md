@@ -8,9 +8,9 @@ tags:
 
 `#!python get_latex()`
 
-Returns the reaction in LaTeX form wrapped in `$...$`.
+Formats the reaction as a LaTeX math string with reactants and products joined by `\rightarrow`, wrapped in `$...$` for inline rendering. Species are formatted using their individual `Specie.latex` representations.
 
 **Returns**
 
 _str_
-: LaTeX-formatted reaction string.
+: Inline-math LaTeX string representing the reaction, e.g. `"$\mathrm{H} + \mathrm{O} \rightarrow \mathrm{OH}$"`.

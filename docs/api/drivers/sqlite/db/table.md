@@ -7,12 +7,12 @@ tags:
 
 `#!python table(name)`
 
-Returns a `Table` object for the given table name.
+Returns a `Table` wrapper for the named table, bound to the current connection and cursor. The table must already exist in the database; use `table_from_dataframe()` to create a new one from data.
 
 **Parameters**
 
 **name** : _str_
-: Table name.
+: Name of the table as it exists in the database.
 
 **Returns**
 

@@ -11,7 +11,7 @@ JAFF can turn any loaded network into ready-to-compile source files in C, C++, F
 
 <div class="grid cards" markdown>
 
-- :lucide-form:{ .lg .middle } **Template Syntax**
+- :lucide-form:{ .sm .middle } **Template Syntax**
 
     ***
 
@@ -19,7 +19,7 @@ JAFF can turn any loaded network into ready-to-compile source files in C, C++, F
 
     [:octicons-arrow-right-24: Template Syntax](template-syntax.md)
 
-- :lucide-settings-2:{ .lg .middle } **Configuration File**
+- :lucide-settings-2:{ .sm .middle } **Configuration File**
 
     ***
 
@@ -27,7 +27,7 @@ JAFF can turn any loaded network into ready-to-compile source files in C, C++, F
 
     [:octicons-arrow-right-24: Configuration File](jaff-toml.md)
 
-- :lucide-terminal:{ .lg .middle } **jaffgen CLI**
+- :lucide-terminal:{ .sm .middle } **jaffgen CLI**
 
     ***
 

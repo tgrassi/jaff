@@ -7,29 +7,23 @@ tags:
 
 `jaff.drivers.sqlite.Db`
 
-Low-level SQLite connection wrapper. Provides connection management, table creation, and query execution. Supports context manager protocol.
+A low-level wrapper around a SQLite database connection. It manages the connection lifecycle (opening and closing), enumerates the tables in the database, and provides helpers for constructing `Table` objects and running raw SQL queries. It can be used as a context manager so the connection is opened and closed automatically.
 
 ## Constructor
 
 `#!python Db(db_path)`
 
+The constructor only validates and stores the path; the connection is not opened until you call `connect()` (or enter the context manager).
+
 **Parameters**
 
-**db_path** : *str or Path*
-:   Path to SQLite database file. Must exist.
-
-**Raises**
-
-*ValueError*
-:   If `db_path` is not a `str` or `Path`.
-
-*FileNotFoundError*
-:   If the file does not exist.
+**db_path** : _str or Path_
+: Path to the `.db` SQLite file. The file must already exist, since the driver does not create new databases.
 
 ## Attributes
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `db_path` | `Path` | Resolved path to database file |
-| `connection` | `sqlite3.Connection or None` | Active connection (after `#!python connect()`) |
-| `cursor` | `sqlite3.Cursor or None` | Active cursor (after `#!python connect()`) |
+| Attribute    | Type                         | Description                                                             |
+| ------------ | ---------------------------- | ----------------------------------------------------------------------- |
+| `db_path`    | `Path`                       | Resolved path to the database file                                      |
+| `connection` | `sqlite3.Connection or None` | Active database connection; `None` until `#!python connect()` is called |
+| `cursor`     | `sqlite3.Cursor or None`     | Active cursor; `None` until `#!python connect()` is called              |

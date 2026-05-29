@@ -8,7 +8,7 @@ tags:
 
 `jaff.core.reaction.Reaction`
 
-Represents a single chemical reaction with reactants, products, rate expression, temperature bounds, and energy/radiation terms.
+The `Reaction` class represents a single chemical reaction, holding its reactants, products, symbolic rate expression, valid temperature bounds, and associated energy and radiation terms.
 
 ## Constructor
 
@@ -32,7 +32,7 @@ Represents a single chemical reaction with reactants, products, rate expression,
 : Maximum valid temperature in Kelvin.
 
 **dE** : _sympy.Basic_
-: Internal energy change expression for the reactions.
+: SymPy expression for the internal energy released or absorbed per reaction event (erg).
 
 **dRad** : _sympy.Basic_
 : Extra radiation energy density per unit energy (eV) that may be produced/absorbed by the reaction. The energy symbol must be `E` for the quantity to be integrated during cross-section calculation

@@ -8,9 +8,9 @@ tags:
 
 `#!python get_verbatim()`
 
-Returns the reaction in human-readable form.
+Returns the human-readable arrow notation for this reaction, with reactants and products joined by `+` and separated by `->`. This is the same string stored in `Reaction.verbatim` and corresponds to the original network file representation.
 
 **Returns**
 
 _str_
-: e.g. `"H + O -> OH"`.
+: Human-readable reaction string, e.g. `"H + O -> OH"`.

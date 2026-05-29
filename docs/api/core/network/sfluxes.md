@@ -13,7 +13,7 @@ Returns symbolic flux expressions for all reactions. The flux of a reaction is g
 <!-- prettier-ignore -->
 $$ k \times \prod_{i=1}^{N}[R_i]^{\alpha_i} $$
 
-where $k$ is the reaction rate coefficient, $R_i$ is the reactant concentration and $\alpha_i$ is it's stoichiometric ratio
+where $k$ is the reaction rate coefficient, $R_i$ is the reactant concentration, and $\alpha_i$ is its stoichiometric ratio.
 
 **Returns**
 

@@ -13,10 +13,10 @@ Generates the complete Jacobian matrix code block. Result is cached after the fi
 **Parameters**
 
 **use_dedt** : _bool, optional_
-: Include energy equation derivatives. Default `False`.
+: Include the energy equation row/column in the Jacobian. Default `False`.
 
 **idx_offset** : _int, optional_
-: Starting index. Default `0`.
+: Base index for row and column subscripts. Default `0`. Negative values use the language default (`0` for C/C++/Python/Rust, `1` for Fortran/Julia/R).
 
 **use_cse** : _bool, optional_
 : Apply common subexpression elimination. Default `True`.
@@ -25,21 +25,64 @@ Generates the complete Jacobian matrix code block. Result is cached after the fi
 : CSE variable prefix. Default `"cse"`.
 
 **jac_var** : _str, optional_
-: Jacobian array name. Default `"J"`.
+: Jacobian matrix name. Default `"J"`.
 
 **matrix_format** : _str, optional_
-: Override 2D format. Default `""`.
+: Override 2-D bracket/separator format. Empty string uses the language default (`"]["` → `J[i][j]` for C/C++/Python/Rust, `"(,)"` → `J(i, j)` for Fortran, `"][" → J[i][j]` for Julia, `"[,]" → J[i, j]` for R). Valid values:
+
+    | Format     | Output style |
+    | ---------- | ------------ |
+    | `"()"` / `"()()"`   | `J(i)(j)`    |
+    | `"(,)"`    | `J(i, j)`    |
+    | `"[]"` / `"[][]"`   | `J[i][j]`    |
+    | `"[,]"`    | `J[i, j]`    |
+    | `"{}"` / `"{}{}"`   | `J{i}{j}`    |
+    | `"{,}"`    | `J{i, j}`    |
+    | `"<>"` / `"<><>"`   | `J<i><j>`    |
+    | `"<,>"`    | `J<i, j>`    |
+
+    Default `""`.
 
 **var_prefix** : _str, optional_
-: Prefix for CSE variable declarations. Default `""`.
+: Type declaration prefix for CSE temporaries. Empty string uses the language default (`"const double "` for C/C++, `"const f64 "` for Rust, `"const Float64 "` for Julia, empty for Python/Fortran/R). Default `""`.
 
 **assignment_op** : _str, optional_
-: Override assignment operator. Default `""`.
+: Assignment operator override. Empty string uses the language default (`"="` for most, `"<-"` for R). Default `""`.
 
 **line_end** : _str, optional_
-: Override statement terminator. Default `""`.
+: Line terminator override. Empty string uses the language default (`";"` for C/C++/Rust, empty for Python/Fortran/Julia/R). Default `""`.
 
 **Returns**
 
 _str_
 : Jacobian code block.
+
+### Example
+
+For a network with two species and two reactions, default settings produce:
+
+```python
+cse0 =
+J[0][0] = -1.5e-10*tgas**(-0.5)*y[H2]
+J[0][1] = -1.5e-10*tgas**(-0.5)*y[H]
+J[1][0] = 1.5e-10*tgas**(-0.5)*y[H2]
+J[1][1] = 1.5e-10*tgas**(-0.5)*y[H]
+```
+
+Only non-zero Jacobian elements are emitted. `J[i][j]` is $\dfrac{\partial f_i}{\partial y_j}$.
+
+For C++ (`lang="cxx"`) with `var_prefix="const double "`:
+
+```python
+jac = cg.get_jacobian_str(var_prefix="const double ")
+```
+
+**Output**
+
+```cpp
+const double cse0 = pow(tgas, -0.5);
+J[0][0] = -1.5e-10*cse0*y[H2];
+J[0][1] = -1.5e-10*cse0*y[H];
+J[1][0] = 1.5e-10*cse0*y[H2];
+J[1][1] = 1.5e-10*cse0*y[H];
+```

@@ -8,14 +8,14 @@ tags:
 
 `#!python elements(ne=False)`
 
-Returns [`Elements`](../elements/index.md) objects for all species in the collection.
+Returns an [`Elements`](../elements/index.md) catalogue for every species in the collection, in catalogue order. Each `Elements` instance lists the unique chemical elements present in the corresponding species and is used to build composition matrices. Pass `ne=True` to drop the electron species `"e-"`.
 
 **Parameters**
 
 **ne** : _bool, optional_
-: If `True`, excludes `"e-"`. Default `False`.
+: If `True`, excludes the electron species `"e-"` from the returned vector. Default `False`.
 
 **Returns**
 
 _Vector[Elements]_
-: Elements objects for each species.
+: `Elements` catalogue for each species, in catalogue order.

@@ -8,9 +8,9 @@ tags:
 
 `#!python dE()`
 
-Returns the internal energy change SymPy expressions for all reactions.
+Returns the internal energy change SymPy expression for every reaction in the catalogue, representing the energy released or absorbed per reaction event in ergs. One entry per reaction, in catalogue order.
 
 **Returns**
 
 _Vector[sympy.Basic]_
-: Energy change per reaction event (erg) for all reactions.
+: SymPy expression for the energy change per reaction event (erg) for each reaction, in the same order as the catalogue.
