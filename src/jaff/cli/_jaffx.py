@@ -170,42 +170,49 @@ class JaffX:
         txt_grp.add_argument(
             "-f",
             "--file",
+            required=True,
             metavar="FILE",
             help="Output file path/name",
         )
 
         txt_grp.add_argument(
             "--tmin",
+            type=float,
             metavar="VALUE",
             help="Minimum temperature for the tabulation. Minimum temperature over reactions if unspecified",
         )
 
         txt_grp.add_argument(
             "--tmax",
+            type=float,
             metavar="VALUE",
             help="Maximum temperature for the tabulation. Maximum temperature over reactions if unspecified",
         )
 
         txt_grp.add_argument(
             "--nT",
+            type=int,
             metavar="INT",
             help="Initial guess for the number of sampling temperatures",
         )
 
         txt_grp.add_argument(
             "--err-tol",
+            type=float,
             metavar="FLOAT",
             help="Relative error tolerance for interpolation. Adaptive sampling is disabled and the table size will be exactly nT if unspecified",
         )
 
         txt_grp.add_argument(
             "--rate-min",
+            type=float,
             metavar="FLOAT",
             help="Adaptive error toleracne is not applied to rates below minimum rate",
         )
 
         txt_grp.add_argument(
             "--rate-max",
+            type=float,
             metavar="FLOAT",
             help="Rates above max rate is clipped to prevent overflow",
         )
@@ -262,42 +269,49 @@ class JaffX:
         hdf5_grp.add_argument(
             "-f",
             "--file",
+            required=True,
             metavar="FILE",
             help="Output file path/name",
         )
 
         hdf5_grp.add_argument(
             "--tmin",
+            type=float,
             metavar="VALUE",
             help="Minimum temperature for the tabulation. Minimum temperature over reactions if unspecified",
         )
 
         hdf5_grp.add_argument(
             "--tmax",
+            type=float,
             metavar="VALUE",
             help="Maximum temperature for the tabulation. Maximum temperature over reactions if unspecified",
         )
 
         hdf5_grp.add_argument(
             "--nT",
+            type=int,
             metavar="INT",
             help="Initial guess for the number of sampling temperatures",
         )
 
         hdf5_grp.add_argument(
             "--err-tol",
+            type=float,
             metavar="FLOAT",
             help="Relative error tolerance for interpolation. Adaptive sampling is disabled and the table size will be exactly nT if unspecified",
         )
 
         hdf5_grp.add_argument(
             "--rate-min",
+            type=float,
             metavar="FLOAT",
             help="Adaptive error toleracne is not applied to rates below minimum rate",
         )
 
         hdf5_grp.add_argument(
             "--rate-max",
+            type=float,
             metavar="FLOAT",
             help="Rates above max rate is clipped to prevent overflow",
         )
@@ -354,6 +368,7 @@ class JaffX:
         jaff_grp.add_argument(
             "-f",
             "--file",
+            required=True,
             metavar="FILE",
             help="Output file path/name",
         )
@@ -377,6 +392,7 @@ class JaffX:
         network_grp = parser.add_argument_group("Network properties")
         network_grp.add_argument(
             "--network",
+            required=True,
             metavar="FILE",
             help="Path ot chemical reaction network file (required)",
         )
@@ -554,7 +570,7 @@ class JaffX:
         Handle ``jaffx export jaff``.
 
         Exports the network to a ``.jaff`` (gzip-compressed JSON) file via
-        :meth:`~jaff.Network.to_hdf5`.
+        :meth:`~jaff.Network.to_jaff`.
 
         Parameters
         ----------
@@ -566,9 +582,8 @@ class JaffX:
         None
         """
         net = self.__get_network(args)
-        kwargs = {"filename": args.file}
 
-        net.to_hdf5(**kwargs)
+        net.to_jaff(args.file)
 
     def __get_nspec(self, args) -> None:
         """

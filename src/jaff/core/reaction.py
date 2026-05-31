@@ -177,9 +177,7 @@ class Reaction:
         str
             String including verbatim form, temperature bounds, and energy change.
         """
-        return (
-            f"Reaction({self.verbatim}, tmin={self.tmin}, tmax={self.tmax}, dE={self.dE})"
-        )
+        return f"ReactionObject({self.verbatim})"
 
     def __str__(self):
         """Return the human-readable verbatim reaction string.
@@ -749,6 +747,9 @@ class Reactions(Catalogue[Reaction]):
 
         super().__init__(reactions, _by_name)
         self._by_serialized = _by_serialized
+
+    def __repr__(self):
+        return f"Catalogue({self.verbatim()!r})"
 
     def add(self, reaction: Reaction) -> None:
         """Append a reaction to the catalogue (duplicates are not checked here).

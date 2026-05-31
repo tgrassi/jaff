@@ -37,8 +37,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from ..errors import ParserError
 from ..types import IndexedList
-from ._typing import CommandProps, IdxSpanResult
-from ._typing import IndexedReturn
+from ._typing import CommandProps, IdxSpanResult, IndexedReturn
 from .codegen import Codegen
 
 if TYPE_CHECKING:
@@ -1344,7 +1343,7 @@ class TemplateParser:
                     # Returns: IndexedReturn - full radiation ODE equations
                     "radodes": {
                         "func": lambda **kwargs: self.cg.get_indexed_radodes(**kwargs),
-                        "vars": ["idx", "radode"],
+                        "vars": ["idx", "radode", "cse"],
                     },
                     # Returns: IndexedReturn - right-hand side expressions with optional CSE
                     "rhses": {
@@ -1616,7 +1615,7 @@ class TemplateParser:
                     # Returns: int - charge of specified species
                     "specie_charge": {"func": lambda s: self.net.species[s].charge},
                     # Returns: str - LaTeX representation of specified species
-                    "specie_latex": {"func": lambda s: self.net.species[s].latex},
+                    "specie_latex": {"func": lambda s: self.net.species[s].latex()},
                     # Returns: float - minimum temperature for specified reaction
                     "reaction_tmin": {"func": lambda r: self.net.reactions[r].tmin},
                     # Returns: float - maximum temperature for specified reaction
@@ -1664,7 +1663,7 @@ class TemplateParser:
                 {
                     "var_name": {
                         "kwargs": Callable,  # generates function kwargs
-                        "func": Callable     # optional: processes the variable
+                        "func": Callable,  # optional: processes the variable
                     }
                 }
         """

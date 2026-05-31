@@ -144,7 +144,7 @@ class Element:
         str
             String including symbol and full element name.
         """
-        return f"Element(symbol={self.symbol!r}, name={self.name!r}"
+        return f"ElementObject(symbol={self.symbol!r})"
 
     def __str__(self) -> str:
         """Return the periodic-table symbol.
@@ -319,6 +319,9 @@ class Elements(Catalogue):
         self.__set_elements()
         self.__initalized = True
 
+    def __repr__(self):
+        return f"Catalogue({self.symbols()!r})"
+
     def __set_elements(self) -> None:
         """Collect unique alphabetic atoms across all species and build indices."""
         elements: set[str] = set()
@@ -359,7 +362,7 @@ class Elements(Catalogue):
 
         for i, element in enumerate(self._list):
             for j, specie in enumerate(self.species):
-                element_truth_matrix[i][j] = int(element in specie.exploded)
+                element_truth_matrix[i][j] = int(str(element) in specie.exploded)
 
         return element_truth_matrix
 

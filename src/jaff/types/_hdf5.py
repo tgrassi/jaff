@@ -79,7 +79,9 @@ class HDF5Dict(dict):
 
     Examples
     --------
-    >>> hd = HDF5Dict({"rates": {"_kind": "linear", "_data": arr, "_dtype": "f64", "_attrs": {}}})
+    >>> hd = HDF5Dict(
+    ...     {"rates": {"_kind": "linear", "_data": arr, "_dtype": "f64", "_attrs": {}}}
+    ... )
     >>> hd2 = HDF5Dict(Path("output.hdf5"))
     """
 
@@ -335,18 +337,18 @@ class HDF5Dict(dict):
         ``"b"`` (bool), ``"s"`` (variable-length UTF-8 string).
         """
         mapping = {
-            "i8":  np.int8,
+            "i8": np.int8,
             "i16": np.int16,
             "i32": np.int32,
             "i64": np.int64,
-            "u8":  np.uint8,
+            "u8": np.uint8,
             "u16": np.uint16,
             "u32": np.uint32,
             "u64": np.uint64,
             "f16": np.float16,
             "f32": np.float32,
             "f64": np.float64,
-            "c64":  np.complex64,
+            "c64": np.complex64,
             "c128": np.complex128,
             "b": np.bool_,
             "s": h5py.string_dtype(),

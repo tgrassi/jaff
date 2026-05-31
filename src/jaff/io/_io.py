@@ -378,7 +378,7 @@ def from_jaff_file(filename: str | Path, errors=False):
 
         rate = decode_maybe_sympy(rj.get("rate"))
         dE = decode_maybe_sympy(rj.get("dE"))
-        dRad_dt = rj.get("dRad_dt")
+        dRad_dt = decode_maybe_sympy(rj.get("dRad"))
         custom_rad_rate = rj.get("custom_rad_rate")
         tmin = rj.get("tmin")
         tmax = rj.get("tmax")
@@ -772,7 +772,7 @@ def write_data_table(
 
     def to_text():
         """Write the table in quokka plain-text 1-D lookup format."""
-        with open(fname) as fp:
+        with open(fname, "w") as fp:
             fp.write("# JAFF auto-generated rate coefficient table\n")
             fp.write(f"# Network name: {label}\n")
             fp.write("# Reactions included\n")

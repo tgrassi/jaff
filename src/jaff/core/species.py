@@ -15,6 +15,7 @@ identifier (``"idx_X"`` for most species; ``"idx_e"`` for electrons).
 
 from __future__ import annotations
 
+import re
 import sys
 from functools import cached_property
 from itertools import product
@@ -142,7 +143,7 @@ class Specie:
         str
             String including name, mass, and index.
         """
-        return f"Species(name={self.name!r}, mass={self.mass!r}, index={self.index!r})"
+        return f"SpecieObject({self.name!r})"
 
     def __str__(self):
         """Return the species chemical name.
@@ -338,10 +339,14 @@ class Specie:
         for i in range(0, 10):
             latex = latex.replace(str(i), "_{" + str(i) + "}")
         latex = re.sub(
-            r"\++", lambda m: f"^{{{len(m.group()) if len(m.group()) > 1 else ''}+}}", latex
+            r"\++",
+            lambda m: f"^{{{len(m.group()) if len(m.group()) > 1 else ''}+}}",
+            latex,
         )
         latex = re.sub(
-            r"-+", lambda m: f"^{{{len(m.group()) if len(m.group()) > 1 else ''}-}}", latex
+            r"-+",
+            lambda m: f"^{{{len(m.group()) if len(m.group()) > 1 else ''}-}}",
+            latex,
         )
         if "_ORTHO" in latex:
             latex = "o" + latex.replace("_ORTHO", "")
@@ -429,6 +434,9 @@ class Species(Catalogue[Specie]):
 
         super().__init__(_species, _by_name, check_length)
         self._by_serialized = _by_serialized
+
+    def __repr__(self):
+        return f"Catalogue({self.names()!r})"
 
     def add(self, specie: Specie) -> None:
         """Append a new species to the catalogue if not already present.

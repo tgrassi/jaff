@@ -1454,7 +1454,7 @@ class Codegen:
             rrdpattern = re.compile(r"\bry_(\d+)\b")  # ry_i -> radeden/photden[i]
             rfdpattern = re.compile(r"\bfy_(\d+)\b")  # fy_i -> rflux[i]
 
-        def replace_y(match: re.Match[str], var) -> str:
+        def _replace_y(match: re.Match[str], var) -> str:
             """Regex replacement helper: ``y_N`` → ``var[N]``."""
             idx = int(match.group(1))
             return f"{var}{self.lb}{idx}{self.rb}"
@@ -1482,19 +1482,19 @@ class Codegen:
                         expr, strict=False, allow_unknown_functions=True
                     )
                     # Back-substitute scalar symbols to array notation
-                    expr_str = dpattern.sub(lambda m: replace_y(m, "nden"), expr_str)
+                    expr_str = dpattern.sub(lambda m: _replace_y(m, "nden"), expr_str)
 
                     if radiation and self.net.radiation is not None:
                         rad = self.net.radiation
                         expr_str = rrdpattern.sub(
-                            lambda m: replace_y(
+                            lambda m: _replace_y(
                                 m,
                                 "radeden" if rad.energy_density else "photden",
                             ),
                             expr_str,
                         )
                         expr_str = rfdpattern.sub(
-                            lambda m: replace_y(m, "rflux"), expr_str
+                            lambda m: _replace_y(m, "rflux"), expr_str
                         )
 
                     ir["extras"]["cse"].append(IndexedValue([idx], expr_str))
@@ -1516,18 +1516,18 @@ class Codegen:
             )
             expr_str = self.code_gen(expr, strict=False, allow_unknown_functions=True)
             # Back-substitute scalar y_i -> nden[i] and radiation symbols
-            expr_str = dpattern.sub(lambda m: replace_y(m, "nden"), expr_str)
+            expr_str = dpattern.sub(lambda m: _replace_y(m, "nden"), expr_str)
 
             if radiation and self.net.radiation is not None:
                 rad = self.net.radiation
                 expr_str = rrdpattern.sub(
-                    lambda m: replace_y(
+                    lambda m: _replace_y(
                         m,
                         "radeden" if rad.energy_density else "photden",
                     ),
                     expr_str,
                 )
-                expr_str = rfdpattern.sub(lambda m: replace_y(m, "rflux"), expr_str)
+                expr_str = rfdpattern.sub(lambda m: _replace_y(m, "rflux"), expr_str)
 
             ir["expressions"].append(IndexedValue([i, j], expr_str))
 
@@ -1674,7 +1674,7 @@ class Codegen:
         cse_dict = cse_defs or {}
         replacement_dict = {}
 
-        def resolve_dexpr(dexpr: sp.Basic) -> sp.Basic:
+        def _resolve_dexpr(dexpr: sp.Basic) -> sp.Basic:
             """Follow CSE alias chain until a non-alias expression is found."""
             while str(dexpr) in cse_dict:
                 dexpr = cse_dict[str(dexpr)]
@@ -1682,7 +1682,7 @@ class Codegen:
 
         # Handle bare Derivative nodes (not wrapped in Subs)
         for ex in expr.atoms(sp.Derivative):
-            dexpr = resolve_dexpr(ex.expr)
+            dexpr = _resolve_dexpr(ex.expr)
 
             if (
                 not hasattr(dexpr, "func")
@@ -1713,7 +1713,7 @@ class Codegen:
                 sub_val = cast(tuple[sp.Basic, ...], ex.args[2])
                 sub_dict = dict(zip(sub_var, sub_val))
 
-                dexpr = resolve_dexpr(deriv.expr)
+                dexpr = _resolve_dexpr(deriv.expr)
 
                 if (
                     not hasattr(dexpr, "func")
@@ -1776,7 +1776,7 @@ class Codegen:
 
         used: set = set()
 
-        def dfs(sym: sp.Symbol) -> None:
+        def _dfs(sym: sp.Symbol) -> None:
             """Recursively mark *sym* and all CSE symbols it depends on as used."""
             if sym in used:
                 return
@@ -1788,12 +1788,12 @@ class Codegen:
 
             # Recurse into any CSE temporaries appearing inside this definition
             for dep in cast(Set[sp.Symbol], expr.free_symbols & cse_syms):
-                dfs(dep)
+                _dfs(dep)
 
         # Seed the reachability search from the main (non-temporary) expressions
         for expr in expressions:
             for sym in cast(Set[sp.Symbol], expr.free_symbols & cse_syms):
-                dfs(sym)
+                _dfs(sym)
 
         # Return only live temporaries in their original definition order
         return [(var, dep_map[var]) for var, _ in replacements if var in used]

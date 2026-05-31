@@ -17,9 +17,9 @@ All constant values follow CODATA 2018 recommended values where applicable.
 Examples
 --------
 >>> from jaff.physics.constants import cgs, si
->>> cgs.c          # speed of light in cm/s
+>>> cgs.c  # speed of light in cm/s
 2.99792458e+10
->>> si.k_b         # Boltzmann constant in J/K
+>>> si.k_b  # Boltzmann constant in J/K
 1.380649e-23
 """
 

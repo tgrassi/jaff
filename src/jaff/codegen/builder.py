@@ -12,8 +12,8 @@ corresponds to a sub-directory under
 ``<jaff_codegen>/templates/preprocessor/``.
 """
 
-import os
 import sys
+from pathlib import Path
 
 
 class Builder:
@@ -44,7 +44,9 @@ class Builder:
         """
         self.network = network
 
-    def build(self, template: str = "python_solve_ivp", output_dir: str | None = None) -> str:
+    def build(
+        self, template: str = "python_solve_ivp", output_dir: str | None = None
+    ) -> str:
         """Generate a complete solver project using a named plugin template.
 
         Resolves the template directory, dynamically imports the plugin module
@@ -79,13 +81,12 @@ class Builder:
         print("Building network with template:", template)
 
         # Resolve the template directory bundled with the jaff.codegen package
-        path_template = os.path.join(
-            os.path.dirname(__file__), "templates", "preprocessor", template
-        )
+        templates_dir = Path(__file__).parent.parent / "templates" / "preprocessor"
+        path_template = str(templates_dir / template)
 
         # Resolve the output directory (default: current working directory)
         if output_dir is None:
-            path_build = os.getcwd()
+            path_build = str(Path.cwd())
         else:
             path_build = output_dir
 
@@ -95,10 +96,8 @@ class Builder:
         except ImportError:
             print(f"Error: Template '{template}' not found. Available templates are:")
             # List all sub-directories in the preprocessor templates folder
-            for template in os.listdir(
-                os.path.join(os.path.dirname(__file__), "templates", "preprocessor")
-            ):
-                print(template)
+            for entry in sorted(templates_dir.iterdir()):
+                print(entry.name)
             sys.exit(1)
 
         # Delegate all code generation and file writing to the plugin's main()

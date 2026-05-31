@@ -244,8 +244,7 @@ def get_sradodes(
         group_dRad_dt_extra = Float(0.0)
         for reaction, props in group.props.items():
             rrate = props["k"]
-            # Accumulate any user-supplied radiation source/sink terms
-            # (e.g. heating/cooling from custom reactions).  Units: erg/cm³/s.
+            # Accumulate any user-supplied radiation source terms
             group_dRad_dt_extra += rrate * props["delta_rad"]  # type: ignore
             # Multiply by all reactant number densities (mass-action kinetics)
             for reactant in reaction.reactants:
@@ -259,7 +258,6 @@ def get_sradodes(
         flux = group_rate.xreplace(flux_map)
 
         # Add the user-supplied dRad term to the density equation.
-        # dRad is always in energy-density units (erg/cm³/s).
         # If we are tracking photon number density instead, divide by the
         # band-average photon energy (erg) to convert to photon rate units.
         group_rate += group_dRad_dt_extra / (

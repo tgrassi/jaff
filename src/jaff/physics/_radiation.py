@@ -372,7 +372,7 @@ class Radiation:
 
         Notes
         -----
-        ``dRad`` must be expressed per unit eV  and the symbol ``E`` must be
+        ``dRad`` must be expressed per unit eV and the symbol ``E`` must be
         used as the integration variable.
 
         If the total ``dRad`` integral evaluates to zero (e.g. the

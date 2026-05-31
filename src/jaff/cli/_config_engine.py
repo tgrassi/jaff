@@ -101,9 +101,16 @@ class ConfigTable:
         self.network_dir = network_file.parent
         # Use the network file stem as the default data file name.
         self.network_name: Path = Path(network_file.stem)
-        if not self.network_name.exists():
+        # The "default" source alias resolves to <network_dir>/<stem>.hdf5; only
+        # that alias requires the network's own data table to exist on disk.
+        default_data = network_file.with_suffix(".hdf5")
+        if (
+            table_dict.get("source", {}).get("path") == "default"
+            and not default_data.exists()
+        ):
             raise RuntimeError(
-                f"{self.network_dir} doesn't contain any default data file"
+                f"{self.network_dir} doesn't contain a default data file "
+                f"({default_data.name})"
             )
 
         if "source" not in table_dict:
@@ -173,13 +180,14 @@ class ConfigTable:
         # Collect all HDF5 path-level overrides from the target config
         # (keys that start with "/" are interpreted as dataset paths).
         target_hdf_tree = {
-            k: v for k, v in self.target_props.items() if k.startswith("/")
+            k: v for k, v in self.target_config.items() if k.startswith("/")
         }
         if self.source_props["type"] == "hdf5":
-            assert isinstance(self.source_tree, HDF5Dict)
+            # ``flatten()`` yields a plain dict keyed by absolute HDF5 path.
+            assert isinstance(self.source_tree, dict)
             if not target_hdf_tree:
                 # No remapping requested — return the source tree as-is.
-                return self.source_tree
+                return HDF5Dict(self.source_tree)
 
             target_tree = copy.deepcopy(self.source_tree)
             # Remap dataset paths: move datasets from their source h5path to
@@ -295,7 +303,7 @@ class ConfigTable:
         ValueError
             If the dataset at *prop_path* has no ``_data`` field.
         """
-        if not target_tree[prop_path].get("_data"):
+        if target_tree[prop_path].get("_data") is None:
             raise ValueError(f"Path doesn't contain any data: {prop_path}")
 
         return self.attr_dict[prop](target_tree[prop_path]["_data"])
@@ -376,12 +384,10 @@ class ConfigTable:
         )
         if props["type"] == "csv":
             # Read CSV parsing options; defaults match pandas read_csv conventions.
-            props["delimiter"] = self.target_config.get("delimiter", " ")
-            props["comment"] = self.target_config.get("comment", "#")
+            props["delimiter"] = self.source_config.get("delimiter", " ")
+            props["comment"] = self.source_config.get("comment", "#")
 
-        # Note: target_props is intentionally assigned here — this mirrors the
-        # original logic where source props inform the default target path.
-        self.target_props = props
+        self.source_props = props
 
     def __set_target_props(self) -> None:
         """
