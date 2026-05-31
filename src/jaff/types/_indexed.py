@@ -30,11 +30,9 @@ flattened
     generating nested array-access code such as ``k[i][j] = expr``.
 """
 
+import logging
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Iterable
-
-if TYPE_CHECKING:
-    import logging
+from typing import Any, Iterable
 
 
 class IndexedValue(tuple):
@@ -197,6 +195,7 @@ class IndexedList(list):
         logging.Logger
         """
         from ..io._logger import JaffLogger
+
         return JaffLogger().get_logger()
 
     def __repr__(self):
