@@ -17,5 +17,5 @@ Returns the sorted atomic-symbol list (with repetition) for every species in the
 
 **Returns**
 
-_Vector[list[str]]_
+_Vector\[list\[str\]\]_
 : Sorted atomic-symbol list (with repetition) for each species, in catalogue order.

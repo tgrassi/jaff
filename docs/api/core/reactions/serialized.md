@@ -12,5 +12,5 @@ Returns the name-level canonical key for every reaction in the catalogue, in cat
 
 **Returns**
 
-_Vector[str]_
+_Vector\[str\]_
 : Name-level canonical keys of the form `"<sorted_reactants>__<sorted_products>"` for each reaction, in the same order as the catalogue.

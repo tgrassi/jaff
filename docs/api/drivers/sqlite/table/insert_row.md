@@ -11,5 +11,5 @@ Inserts a single row into the table and immediately commits the transaction. Val
 
 **Parameters**
 
-**values** : _list[str or float or int]_
+**values** : _list\[str or float or int\]_
 : One value per column, in column definition order.

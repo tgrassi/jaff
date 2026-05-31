@@ -17,5 +17,5 @@ Returns an [`Elements`](../elements/index.md) catalogue for every species in the
 
 **Returns**
 
-_Vector[Elements]_
+_Vector\[Elements\]_
 : `Elements` catalogue for each species, in catalogue order.

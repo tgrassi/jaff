@@ -12,7 +12,7 @@ Static method. Returns the full language token dictionary mapping canonical lang
 
 **Returns**
 
-_dict[str, LangModifier]_
+_dict\[str, LangModifier\]_
 : Mapping from canonical language name to a `LangModifier` `TypedDict`. Supported keys: `"cxx"`, `"c"`, `"fortran"`, `"python"`, `"rust"`, `"julia"`, `"r"`. (User-facing aliases like `"c++"`, `"cpp"`, `"py"`, `"f90"`, `"rs"`, `"jl"` are normalised to these canonical names before lookup.)
 
 Each `LangModifier` is a `TypedDict` with the following fields:

@@ -12,5 +12,5 @@ Returns the zero-based catalogue indices of all photo-reactions, in ascending in
 
 **Returns**
 
-_Vector[int]_
+_Vector\[int\]_
 : Zero-based catalogue index for each photo-reaction, in ascending order.

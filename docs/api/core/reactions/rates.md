@@ -12,5 +12,5 @@ Returns the symbolic rate-coefficient expression for every reaction in the catal
 
 **Returns**
 
-_Vector[sympy.Basic]_
+_Vector\[sympy.Basic\]_
 : SymPy rate-coefficient expression for each reaction, in the same order as the catalogue.

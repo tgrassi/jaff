@@ -12,5 +12,5 @@ Returns an ordered list of all reactions in the catalogue.
 
 **Returns**
 
-_list[Reaction]_
+_list\[Reaction\]_
 : Ordered list of all reactions.

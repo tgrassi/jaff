@@ -12,7 +12,7 @@ Returns `True` if all given species are present in the reactants.
 
 **Parameters**
 
-**species** : _Specie, str, or list[Specie or str]_
+**species** : _Specie, str, or list\[Specie or str\]_
 : Species to check for.
 
 **Returns**

@@ -2,16 +2,16 @@
 tags:
     - User-guide
     - Code-generation
-icon: lucide/code-2
+icon: phosphor/code-block
 ---
 
 # Code Generation
 
-JAFF can turn any loaded network into ready-to-compile source files in C, C++, Fortran, Python, Rust, Julia, or R. The generation pipeline is template-driven: you write ordinary source files that contain special JAFF directives, and JAFF expands them into network-specific code.
+JAFF can turn any loaded network into ready-to-compile/run source files in C, C++, Fortran, Python, Rust, Julia, or R. The generation pipeline is template-driven: you write ordinary source files that contain special JAFF directives, and JAFF expands them into network-specific code.
 
 <div class="grid cards" markdown>
 
-- :lucide-form:{ .sm .middle } **Template Syntax**
+- :phosphor-textbox:{ .sm .middle } **Template Syntax**
 
     ***
 
@@ -19,7 +19,7 @@ JAFF can turn any loaded network into ready-to-compile source files in C, C++, F
 
     [:octicons-arrow-right-24: Template Syntax](template-syntax.md)
 
-- :lucide-settings-2:{ .sm .middle } **Configuration File**
+- :phosphor-gear-six:{ .sm .middle } **Configuration File**
 
     ***
 
@@ -27,12 +27,20 @@ JAFF can turn any loaded network into ready-to-compile source files in C, C++, F
 
     [:octicons-arrow-right-24: Configuration File](jaff-toml.md)
 
-- :lucide-terminal:{ .sm .middle } **jaffgen CLI**
+- :phosphor-terminal-window:{ .sm .middle } **jaffgen CLI**
 
     ***
 
     Run the code-generation pipeline from the command line. Combine predefined templates, custom input directories, and individual files in a single invocation.
 
     [:octicons-arrow-right-24: jaffgen CLI](jaffgen.md)
+
+- :phosphor-chart-line:{ .sm .middle } **Table Interpolation**
+
+    ***
+
+    Use precomputed lookup tables in rates and cooling: how `interp` functions in `.jfunc` are preserved through codegen, how their Jacobian derivatives become `_partial_N` calls, and how `[[table]]` emits the data.
+
+    [:octicons-arrow-right-24: Table Interpolation](table-interpolation.md)
 
 </div>

@@ -12,7 +12,7 @@ Binary element-presence matrix. Entry `[i][j]` is `1` if element `i` is present 
 Row order matches the sorted element list; column order matches the order of _species_ passed to `__init__`.
 **Returns**
 
-_list[list[int]]_
+_list\[list\[int\]\]_
 : Shape `(n_elements, n_species)`.
 
 **Example**

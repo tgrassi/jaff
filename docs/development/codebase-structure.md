@@ -1,7 +1,7 @@
 ---
 tags:
     - Development
-icon: lucide/layers
+icon: phosphor/stack
 ---
 
 # Codebase Structure
@@ -71,8 +71,19 @@ src/jaff/
 │   ├── _fastlog.py             # Fast structured logging
 │   └── _welcome.py             # MOTD / version banner
 │
-└── errors/
-    └── _parser.py              # ParserError hierarchy
+├── errors/
+│   └── _parser.py              # ParserError hierarchy
+│
+├── data/                       # Bundled raw data assets
+│   ├── atom_mass.csv           # Element mass table
+│   └── xsecs/                  # Photo cross-section data (Verner fits, .dat tables)
+│
+├── db/                         # Prebuilt SQLite database
+│   └── jaff.db                 # Reaction/species/mass tables, built from data/
+│
+└── _utils/                     # Standalone maintenance scripts
+    ├── generate_mass_table.py        # Build mass tables in jaff.db from data/atom_mass.csv
+    └── generate_ion_xsecs_table.py   # Build ion cross-section tables in jaff.db from data/xsecs/
 ```
 
 ## Architecture Diagram
@@ -149,3 +160,26 @@ All rate expressions, fluxes, and ODEs live as SymPy objects inside `Network`. C
 
 **`.jaff` binary format.**
 Networks can be saved as gzip-compressed JSON (`.jaff` files) via `io/_io.py`. On load, SymPy expressions are reconstructed from the versioned compact encoding in `common/_sympy_json.py`. This avoids re-parsing large networks on repeated runs.
+
+## Utility Scripts
+
+`src/jaff/_utils/` holds standalone, easy-to-run scripts for maintaining the bundled data. They are **not** part of the runtime data flow — they are run by hand (or during maintenance) to regenerate the assets in `data/` and `db/jaff.db`.
+
+| Script | Purpose |
+|--------|---------|
+| `generate_mass_table.py` | Read `data/atom_mass.csv` and (re)build the element mass tables inside `db/jaff.db`. |
+| `generate_ion_xsecs_table.py` | Compute photoionisation cross-sections (Verner fits) from `data/xsecs/` and (re)build the cross-section tables in `db/jaff.db`. |
+
+Run a script as a module from the project root, e.g.:
+
+=== "python"
+
+    ```bash
+    python -m jaff._utils.generate_mass_table
+    ```
+
+=== "uv"
+
+    ```bash
+    uv run python -m jaff._utils.generate_mass_table
+    ```

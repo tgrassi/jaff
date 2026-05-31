@@ -22,7 +22,7 @@ Preprocesses a single template file, substituting pragma blocks and writing to `
 **fname** : _str or Path_
 : Path to the template file.
 
-**dictionary** : _dict[str, str]_
+**dictionary** : _dict\[str, str\]_
 : Mapping from pragma keys (without `PREPROCESS_` prefix) to replacement strings.
 
 **comment** : _str, optional_

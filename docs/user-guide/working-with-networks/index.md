@@ -2,7 +2,7 @@
 tags:
     - User-guide
     - Network
-icon: lucide/network
+icon: phosphor/graph
 ---
 
 # Working with Networks
@@ -22,7 +22,7 @@ print(f"Elements:  {net.elements.count}")
 
 <div class="grid cards" markdown>
 
-- :lucide-flask-conical:{ .sm .middle } **Network**
+- :phosphor-flask:{ .sm .middle } **Network**
 
     ***
 
@@ -30,7 +30,7 @@ print(f"Elements:  {net.elements.count}")
 
     [:octicons-arrow-right-24: Network](network.md)
 
-- :lucide-dna:{ .sm .middle } **Species**
+- :phosphor-dna:{ .sm .middle } **Species**
 
     ***
 
@@ -38,7 +38,7 @@ print(f"Elements:  {net.elements.count}")
 
     [:octicons-arrow-right-24: Species](species.md)
 
-- :lucide-atom:{ .sm .middle } **Elements**
+- :phosphor-atom:{ .sm .middle } **Elements**
 
     ***
 
@@ -46,7 +46,7 @@ print(f"Elements:  {net.elements.count}")
 
     [:octicons-arrow-right-24: Elements](elements.md)
 
-- :lucide-zap:{ .sm .middle } **Reactions**
+- :phosphor-lightning:{ .sm .middle } **Reactions**
 
     ***
 
@@ -54,7 +54,7 @@ print(f"Elements:  {net.elements.count}")
 
     [:octicons-arrow-right-24: Reactions](reactions.md)
 
-- :lucide-terminal:{ .sm .middle } **jaffx CLI**
+- :phosphor-terminal-window:{ .sm .middle } **jaffx CLI**
 
     ***
 

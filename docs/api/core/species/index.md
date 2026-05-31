@@ -29,7 +29,7 @@ The `ne` parameter on many accessor methods excludes the electron species (`"e-"
 
 **Parameters**
 
-**species** : _list[Specie] or list[str] or None_
+**species** : _list\[Specie\] or list\[str\] or None_
 : Initial species. Plain strings are converted to `Specie` objects with indices assigned in list order. If `None`, an empty catalogue is created.
 
 **check_length** : _bool, optional_

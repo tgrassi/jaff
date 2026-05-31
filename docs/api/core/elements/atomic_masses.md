@@ -12,5 +12,5 @@ Returns the standard atomic weight in atomic mass units (amu) for each element, 
 
 **Returns**
 
-_Vector[float]_
+_Vector\[float\]_
 : Standard atomic weight per element in atomic mass units.

@@ -12,5 +12,5 @@ Returns a normalized identifier string for every species in the collection, in c
 
 **Returns**
 
-_Vector[str]_
+_Vector\[str\]_
 : Normalized, code-safe identifier string for each species, in catalogue order.

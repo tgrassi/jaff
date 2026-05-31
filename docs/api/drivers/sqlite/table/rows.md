@@ -11,7 +11,7 @@ Fetches rows with optional WHERE filtering.
 
 **Parameters**
 
-**cols** : _list[str], optional_
+**cols** : _list\[str\], optional_
 : Columns to select. Default `["*"]`.
 
 **conditions** : _str, optional_

@@ -1,7 +1,7 @@
 ---
 tags:
     - Api
-icon: lucide/atom
+icon: phosphor/atom
 ---
 
 # jaff.physics
@@ -10,9 +10,9 @@ Jaff provides physical constants in four unit systems for astrochemical and phys
 
 ## Classes
 
-| Class                       | Description                                                                    |
-| --------------------------- | ------------------------------------------------------------------------------ |
-| [`Constants`](constants.md) | Frozen dataclass of physical and astronomical constants in a given unit system |
+| Class                             | Description                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------ |
+| [`Constants`](constants/index.md) | Frozen dataclass of physical and astronomical constants in a given unit system |
 
 ## Available Instances
 

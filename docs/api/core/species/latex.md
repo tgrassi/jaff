@@ -20,5 +20,5 @@ Returns a LaTeX-formatted string for every species in the collection, in catalog
 
 **Returns**
 
-_Vector[str]_
+_Vector\[str\]_
 : LaTeX-formatted string for each species, in catalogue order.

@@ -12,5 +12,5 @@ Returns the reaction-type label (e.g. `"photo"`, `"cosmic_ray"`) for every react
 
 **Returns**
 
-_Vector[str]_
+_Vector\[str\]_
 : Reaction-type label for each reaction, in the same order as the catalogue.

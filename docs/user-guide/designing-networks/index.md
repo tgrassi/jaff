@@ -2,7 +2,7 @@
 tags:
     - User-guide
     - Network
-icon: lucide/pencil-ruler
+icon: phosphor/pencil-ruler
 ---
 
 # Designing Networks
@@ -11,7 +11,7 @@ This section covers everything you need to know to write and structure chemical 
 
 <div class="grid cards" markdown>
 
-- :lucide-file-text:{ .sm .middle } **Network Formats**
+- :phosphor-file-text:{ .sm .middle } **Network Formats**
 
     ***
 
@@ -19,7 +19,7 @@ This section covers everything you need to know to write and structure chemical 
 
     [:octicons-arrow-right-24: Network Formats](network-formats.md)
 
-- :lucide-function-square:{ .sm .middle } **Auxiliary Function Files**
+- :phosphor-function:{ .sm .middle } **Auxiliary Function Files**
 
     ***
 
@@ -27,7 +27,7 @@ This section covers everything you need to know to write and structure chemical 
 
     [:octicons-arrow-right-24: Auxiliary Functions](auxiliary-functions.md)
 
-- :lucide-sun:{ .sm .middle } **Photochemistry**
+- :phosphor-sun:{ .sm .middle } **Photochemistry**
 
     ***
 

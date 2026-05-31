@@ -29,7 +29,7 @@ Supports three storage modes depending on the which parameters are passed:
 **hdf5_key** : _str, optional_
 : Name of the dataset or table inside the group. Defaults to the CSV filename stem.
 
-**flatten_columns** : _list[str], optional_
+**flatten_columns** : _list\[str\], optional_
 : Column names to deduplicate before storage. These columns are reduced to their unique sorted values instead of storing every row. Cannot be combined with `as_table`. Default `[]`.
 
 **as_table** : _bool, optional_

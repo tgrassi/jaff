@@ -12,5 +12,5 @@ Returns the mass of the most abundant natural isotope, in grams (CGS), for every
 
 **Returns**
 
-_Vector[float]_
+_Vector\[float\]_
 : Mass of the most common isotope in grams (CGS) for each element, in alphabetical-symbol order.

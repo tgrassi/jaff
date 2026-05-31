@@ -17,5 +17,5 @@ Returns the total mass in grams (CGS) for every species in the collection, summe
 
 **Returns**
 
-_Vector[float or None]_
+_Vector\[float or None\]_
 : Total mass in grams (CGS) for each species, or `None` when the mass cannot be resolved. One entry per species, in catalogue order.

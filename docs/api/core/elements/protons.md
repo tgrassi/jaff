@@ -12,5 +12,5 @@ Returns the atomic number (number of protons) for each element. Values are in th
 
 **Returns**
 
-_Vector[int]_
+_Vector\[int\]_
 : Atomic number per element.

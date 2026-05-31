@@ -16,10 +16,10 @@ The `Reaction` class represents a single chemical reaction, holding its reactant
 
 **Parameters**
 
-**reactants** : _list[Specie]_
+**reactants** : _list\[Specie\]_
 : Reactant species.
 
-**products** : _list[Specie]_
+**products** : _list\[Specie\]_
 : Product species.
 
 **rate** : _sympy.Basic_

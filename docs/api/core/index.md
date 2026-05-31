@@ -2,7 +2,7 @@
 tags:
     - Api
     - Network
-icon: lucide/git-compare-arrows
+icon: phosphor/git-diff
 ---
 
 # jaff.core
@@ -13,13 +13,13 @@ The `jaff.core` subpackage contains the primary data-model classes for loading, 
 
 | Class                              | Description                                                                           |
 | ---------------------------------- | ------------------------------------------------------------------------------------- |
-| [`Network`](network.md)            | Load and manage a chemical reaction network from file                                 |
-| [`Species`](species.md)            | Typed collection of `Specie` objects within a network, network or reaction            |
-| [`Specie`](species.md#specie)      | Single chemical species with mass, charge, and other attributes and helper methods    |
-| [`Reactions`](reaction.md)         | Typed collection of `Reaction` objects within a network                               |
-| [`Reaction`](reaction.md#reaction) | Single chemical reaction with rate expression and other attributes and helper methods |
-| [`Elements`](elements.md)          | Extract elements from species and and their collective properties                     |
-| [`Element`](elements.md#element)   | Single chemical element with atomic properties                                        |
+| [`Network`](network/index.md)      | Load and manage a chemical reaction network from file                                 |
+| [`Species`](species/index.md)      | Typed collection of `Specie` objects within a network, network or reaction            |
+| [`Specie`](specie/index.md)        | Single chemical species with mass, charge, and other attributes and helper methods    |
+| [`Reactions`](reactions/index.md)  | Typed collection of `Reaction` objects within a network                               |
+| [`Reaction`](reaction/index.md)    | Single chemical reaction with rate expression and other attributes and helper methods |
+| [`Elements`](elements/index.md)    | Extract elements from species and and their collective properties                     |
+| [`Element`](element/index.md)      | Single chemical element with atomic properties                                        |
 
 ## Quick Start
 

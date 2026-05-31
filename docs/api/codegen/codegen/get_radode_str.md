@@ -46,7 +46,7 @@ _str_
 
 ### Example
 
-For a network with H photoionization (`H → H+ + e-`, 1 UV band [13.6, ∞] eV, photon-density mode), default settings (`order=0`) produce:
+For a network with H photoionization (`H → H+ + e-`, 1 UV band \[13.6, ∞\] eV, photon-density mode), default settings (`order=0`) produce:
 
 ```python
 f[0] = -4.72e-8*nden[H]*photden[0]

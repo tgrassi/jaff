@@ -19,7 +19,7 @@ Supported attributes are: `charge` `elements` `exploded` `fidx` `index` `mass` `
 
 **Returns**
 
-_Vector[Specie or any]_
+_Vector\[Specie or any\]_
 : Neutral `Specie` objects in catalogue order, or the value of *attr* for each neutral species if *attr* was given.
 
 **Raises**

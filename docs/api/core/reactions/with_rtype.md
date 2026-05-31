@@ -17,5 +17,5 @@ Filters the catalogue and returns every reaction whose type label matches *rtype
 
 **Returns**
 
-_Vector[Reaction]_
+_Vector\[Reaction\]_
 : All reactions of the specified type.

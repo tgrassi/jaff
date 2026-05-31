@@ -17,7 +17,7 @@ Returns a binary vector indicating which species are charged.
 
 **Returns**
 
-_Vector[int]_
+_Vector\[int\]_
 : `1` for charged species, `0` for neutral.
 
 **Examples**

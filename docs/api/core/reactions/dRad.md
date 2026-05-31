@@ -12,5 +12,5 @@ Returns the extra photon absorption/emission rate contribution expression for ev
 
 **Returns**
 
-_Vector[sympy.Basic]_
+_Vector\[sympy.Basic\]_
 : SymPy expression for the radiation energy density rate contribution for each reaction, in the same order as the catalogue.

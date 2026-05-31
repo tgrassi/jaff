@@ -40,7 +40,7 @@ Generates the complete RHS code block (ODE system + energy equation). The energy
 : Normalise the energy derivative by total density to yield a specific internal-energy rate. Default `False`.
 
 **norm** : _int, optional_
-: Density normalisation convention when `specific_eint=True`. `0` normalises by mass density (Σ m_i · nden[i]); `1` normalises by number density (Σ nden[i]). Ignored when `specific_eint=False`. Default `0`.
+: Density normalisation convention when `specific_eint=True`. `0` normalises by mass density (Σ m_i · nden\[i\]); `1` normalises by number density (Σ nden\[i\]). Ignored when `specific_eint=False`. Default `0`.
 
 **radiation** : _bool, optional_
 : Include radiation moment ODEs after the energy equation. Default `False`.

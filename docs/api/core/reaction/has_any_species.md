@@ -12,7 +12,7 @@ Returns `True` if any of the given species appear in either reactants or product
 
 **Parameters**
 
-**species** : _Specie, str, or list[Specie or str]_
+**species** : _Specie, str, or list\[Specie or str\]_
 : Species to check for.
 
 **Returns**

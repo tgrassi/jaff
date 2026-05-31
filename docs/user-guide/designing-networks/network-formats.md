@@ -2,12 +2,17 @@
 tags:
     - User-guide
     - Network
-icon: lucide/share-2
 ---
 
 # Network Formats
 
-JAFF can currenlty parse five file formats that are standard in the astrochemical modelling community. Format detection is automatic — JAFF inspects the file content and picks the correct parser without requiring a format flag.
+JAFF can currently parse five file formats that are standard in the astrochemical modelling community. Format detection is automatic — JAFF inspects the file content and picks the correct parser without requiring a format flag.
+
+<!-- prettier-ignore -->
+!!! tip "You never declare the format"
+    Detection is per line, not per file. JAFF classifies each reaction line on its
+    own, so a single file can mix formats freely (see [Using these formats in
+    JAFF](#using-these-formats-in-jaff)). The file extension is ignored.
 
 ## Supported Formats
 
@@ -25,16 +30,16 @@ JAFF can currenlty parse five file formats that are standard in the astrochemica
 
 All rate expressions are parsed as SymPy expressions. The following physical symbols are available across all formats:
 
-| Symbol    | Description                                      | Units         |
-| --------- | ------------------------------------------------ | ------------- |
-| `tgas`    | Gas temperature                                  | K             |
-| `av`      | Visual extinction                                | magnitudes    |
-| `crate`   | Primary cosmic-ray ionisation rate per H nucleus | s⁻¹           |
-| `chi`     | Radiation field strength (Draine 1978 units)     | dimensionless |
-| `ntot`    | Total number density                             | cm⁻³          |
-| `hnuclei` | H nucleus number density                         | cm⁻³          |
-| `d2g`     | Dust-to-gas mass ratio                           | dimensionless |
-| `tdust`   | Dust grain temperature                           | K             |
+| Symbol  | Description                                      | Units         |
+| ------- | ------------------------------------------------ | ------------- |
+| `tgas`  | Gas temperature                                  | K             |
+| `av`    | Visual extinction                                | magnitudes    |
+| `crate` | Primary cosmic-ray ionisation rate per H nucleus | s⁻¹           |
+| `chi`   | Radiation field strength (Draine 1978 units)     | dimensionless |
+| `ntot`  | Total number density                             | cm⁻³          |
+| `nh`    | H nucleus number density                         | cm⁻³          |
+| `d2g`   | Dust-to-gas mass ratio                           | dimensionless |
+| `tdust` | Dust grain temperature                           | K             |
 
 Format-specific shorthand variables (e.g. `t32`, `te`, `invtgas` from KROME files) are automatically rewritten to the canonical symbols above during parsing.
 
@@ -44,22 +49,15 @@ Format-specific shorthand variables (e.g. `t32`, `te`, `invtgas` from KROME file
 
 **Source:** [kida.astrochem-tools.org/](https://kida.astrochem-tools.org/)
 
-KIDA (Kinetic Database for Astrochemistry) distributes networks as fixed-width whitespace-separated files. Each data line encodes one reaction with its Arrhenius parameters, uncertainty estimate, reaction type, and temperature range.
+KIDA (Kinetic Database for Astrochemistry) distributes networks as **fixed-width** files: each field occupies a fixed character range, not just a whitespace gap. Each data line encodes one reaction with its Arrhenius parameters, uncertainty estimate, formula index, and temperature range.
 
-### Rate formulae by `itype`
-
-| `itype` | Reaction class                         | Rate expression                                                   |
-| ------- | -------------------------------------- | ----------------------------------------------------------------- |
-| 1       | Direct CR ionisation                   | $\alpha \cdot \zeta$                                              |
-| 2       | CR-induced UV photodissociation        | $\alpha \cdot \zeta$                                              |
-| 3       | FUV dissociation / ionisation          | $\alpha \cdot \chi \cdot e^{-\beta A_V}$                          |
-| 4       | Neutral-neutral / ion-neutral          | $\alpha \left(\dfrac{T}{300}\right)^\beta e^{-\dfrac{\gamma}{T}}$ |
-| 5       | Charge-exchange                        | $\alpha \left(\dfrac{T}{300}\right)^\beta e^{-\dfrac{\gamma}{T}}$ |
-| 6       | Radiative association                  | $\alpha \left(\dfrac{T}{300}\right)^\beta e^{-\dfrac{\gamma}{T}}$ |
-| 7       | Associative detachment                 | $\alpha \left(\dfrac{T}{300}\right)^\beta e^{-\dfrac{\gamma}{T}}$ |
-| 8       | Dissociative / radiative recombination | $\alpha \left(\dfrac{T}{300}\right)^\beta e^{-\dfrac{\gamma}{T}}$ |
-| 9       | Grain-assisted reactions               | network-specific                                                  |
-| 10      | Special / composite reactions          | network-specific                                                  |
+<!-- prettier-ignore -->
+!!! warning "Columns are fixed-width, not just whitespace-separated"
+    The reactant and product blocks are read by character position. Reactants
+    occupy the first 34 columns and products the next 57; species names are
+    padded with spaces to fit. Keep the column alignment of an existing KIDA
+    file intact — adding or dropping spaces shifts the fields and misreads the
+    reaction.
 
 ### Column layout
 
@@ -74,7 +72,7 @@ A comprehensive example of the KIDA format implementation can be found in `netwo
 ```text
 ! comment lines start with '!'
 ! alpha, beta, gamma: Arrhenius coefficients
-! itype: reaction type (see KIDA documentation)
+! frml: rate-formula index (see KIDA documentation)
 ! Tmin, Tmax: valid temperature range
 
 H          CR                     H+         e-        0.000e+00  0.000e+00  0.000e+00 2.00e+00 0.00e+00 logn  1  -9999   9999  7     1 1  1
@@ -88,19 +86,19 @@ He         CR                     He+        e-        1.100e+00  0.000e+00  0.0
 
 **Source:** [umistdatabase.uk](https://umistdatabase.uk/)
 
-The UMIST Database for Astrochemistry (Rate22) uses a colon-delimited format with a leading integer ID and reaction-type tag. Up to three reactants and four products are supported; unused slots are left empty between consecutive colons.
+The UMIST Database for Astrochemistry (Rate22) uses a colon-delimited format with a leading integer ID and reaction-type tag. Up to two reactants and four products are supported; unused slots are left empty between consecutive colons.
 
 ### Column layout
 
 ```text
-ID:type:R1:R2:R3:P1:P2:P3:P4:α:β:γ:Tmin:Tmax:...
+ID:type:R1:R2:P1:P2:P3:P4:α:β:γ:Tmin:Tmax:...
 ```
 
 | Field       | Description                                       |
 | ----------- | ------------------------------------------------- |
 | `ID`        | Integer reaction index                            |
 | `type`      | Reaction class code (e.g. `AD`, `IN`, `RA`, `DR`) |
-| `R1–R3`     | Reactants (empty if fewer than 3)                 |
+| `R1–R2`     | Reactants (empty if fewer than 2)                 |
 | `P1–P4`     | Products (empty if fewer than 4)                  |
 | `α β γ`     | Arrhenius parameters                              |
 | `Tmin Tmax` | Valid temperature range (K)                       |
@@ -119,7 +117,7 @@ A comprehensive example of the UDFA format implementation can be found in `netwo
 
 ## PRIZMO Format
 
-**Source:** [tgrassi.prizmo](https://github.com/tgrassi/prizmo)
+**Source:** [jaff-chemistry.prizmo](https://github.com/jaff-chemistry/prizmo)
 
 PRIZMO networks are Fortran-flavoured text files with an optional `VARIABLES{}` block at the top. Inside the block, shorthand aliases are defined and then used in the rate expressions on subsequent reaction lines. JAFF converts Fortran double-precision literals (`d` exponent) and exponent operators (`**`) to Python/SymPy automatically.
 
@@ -142,7 +140,7 @@ Reactant1 [+ Reactant2] -> Product1 [+ Product2 ...]    rate_expression
 
 ### Photoreaction syntax
 
-Photo reactions can be specified by using the `PHOTO` keyword in the rate expresssion separated by a comma. The `PHOTO` keyword is case sensitive
+Photo reactions can be specified by using the `PHOTO` keyword in the rate expression separated by a comma. The `PHOTO` keyword is case sensitive. The value after the comma is the photon energy threshold in eV.
 
 ```text
 H -> H+ + E    []    PHOTO, 13.60
@@ -168,7 +166,7 @@ CO -> C + O        1.0d-10 * exp(-3.53d0 * av)
 
 **Source:** [kromepackage.org](https://kromepackage.org/)
 
-KROME files open with a `@format:` header that specifies column semantics, followed by comma-separated reaction lines. Global Fortran-style variable aliases can be defined with `@var:`. Other KROME decleratives are ignored.
+KROME files open with a `@format:` header that specifies column semantics, followed by comma-separated reaction lines. Global Fortran-style variable aliases can be defined with `@var:`. Other KROME declaratives are ignored.
 
 ### `@format:` header
 
@@ -207,13 +205,22 @@ A comprehensive example can be found at `networks/COthin/react_COthin.jet`
 
 **Source:** [uclchem.github.io](https://uclchem.github.io/)
 
-UCLCHEM networks use the same `!`-prefixed comment style but with a distinct column layout produced by the UCLCHEM Python tool. Gas-phase species have no prefix; ice-surface species are prefixed with `#`, bulk-ice species with `@` and so on.
+UCLCHEM networks are **comma-separated**, produced by the UCLCHEM Python tool. Every reaction always carries three reactant and four product slots; empty slots are filled with the `NAN` sentinel (this `NAN` is what identifies the format). Gas-phase species have no prefix; ice-surface species are prefixed with `#`, bulk-ice species with `@`.
 
 ### Column layout
 
 ```text
-R1  R2  [R3]  P1  P2  [P3]  [P4]  α  β  γ  Tmin  Tmax  itype  ID ...
+R1,R2,R3,P1,P2,P3,P4,α,β,γ,Tmin,Tmax,reduced_mass,extrapolate
 ```
+
+| Field          | Description                                            |
+| -------------- | ------------------------------------------------------ |
+| `R1–R3`        | Reactants; unused slots are `NAN`                      |
+| `P1–P4`        | Products; unused slots are `NAN`                       |
+| `α β γ`        | Arrhenius parameters                                   |
+| `Tmin Tmax`    | Valid temperature range (K)                            |
+| `reduced_mass` | Reduced mass of the reactants                          |
+| `extrapolate`  | `True`/`False` — allow rate use outside `[Tmin, Tmax]` |
 
 ### Example
 
@@ -225,9 +232,10 @@ A comprehensive example can be found at `networks/uclchem_small_gas/uclchem_smal
 ! Species notation: @ = bulk ice, # = surface ice, no prefix = gas phase
 !
 
-N2         CR                     N          N         5.000e+00  0.000e+00  0.000e+00 1.25e+00 0.00e+00 logn  1  -9999   9999  1     1 1  1
-H          CR                     H+         e-        4.600e-01  0.000e+00  0.000e+00 2.00e+00 0.00e+00 logn  1  -9999   9999  1     2 1  1
-He         CR                     He+        e-        5.000e-01  0.000e+00  0.000e+00 2.00e+00 0.00e+00 logn  1  -9999   9999  1     3 1  1
+H,CRP,NAN,H+,E-,NAN,NAN,5.98e-18,0.0,0.0,10.0,41000.0,0.0,False
+C,PHOTON,NAN,C+,E-,NAN,NAN,3.5e-10,0.0,3.76,10.0,41000.0,0.0,False
+C,CO+,NAN,CO,C+,NAN,NAN,1.1e-10,0.0,0.0,10.0,41000.0,0.0,False
+@C,BULKSWAP,NAN,#C,NAN,NAN,NAN,1.0,0.0,0.0,0.0,10000.0,0.0,False
 ```
 
 ---

@@ -1,7 +1,7 @@
 ---
 tags:
     - Development
-icon: lucide/file-code-2
+icon: phosphor/file-code
 ---
 
 # Adding a New Network Parser
@@ -56,8 +56,8 @@ Every handler must append a `parsedListProps` dict with exactly these keys:
 | ---------- | --------------- | --------------------------------------------------- |
 | `"r"`      | `list[str]`     | Reactant name strings                               |
 | `"p"`      | `list[str]`     | Product name strings                                |
-| `"tmin"`   | `float \| None` | Lower temperature bound in Kelvin, or `None`        |
-| `"tmax"`   | `float \| None` | Upper temperature bound in Kelvin, or `None`        |
+| `"tmin"`   | `float or None` | Lower temperature bound in Kelvin, or `None`        |
+| `"tmax"`   | `float or None` | Upper temperature bound in Kelvin, or `None`        |
 | `"rate"`   | `str`           | Rate expression as a Python/SymPy-compatible string |
 | `"string"` | `str`           | Original network-file line (for error reporting)    |
 
@@ -95,8 +95,9 @@ Open `src/jaff/core/_network_engine.py` and locate the `__global_patterns_dict` 
 2. **`local_re`** — use named groups (`?P<name>`) to capture every field. Named groups map directly to `#!python match.group("name")` calls in your handler.
 3. **`handler`** — the private method you will write in the next step.
 
+<!-- prettier-ignore -->
 !!! warning "Order matters"
-The patterns dict is iterated sequentially. Place your format **before** any pattern whose `global_re` would also match your format's lines, and **after** any format that should take priority. The existing order is:
+    The patterns dict is iterated sequentially. Place your format **before** any pattern whose `global_re` would also match your format's lines, and **after** any format that should take priority. The existing order is:
 
     `krome_format` → `krome_var` → `prizmo_vars` → `prizmo` → `udfa` → `krome` → `uclchem` → `kida`
 
@@ -163,16 +164,16 @@ For richer diagnostics, inspect the `global_re` match groups (stored as `self.__
 
 After all lines are parsed, `__normalize_rates` lowercases every rate string. The `__set_known_replacements` method (line 743) pre-populates `self.__globals` with SymPy aliases for common shorthand symbols found in KROME/PRIZMO files:
 
-| Shorthand    | Canonical expansion |
-| ------------ | ------------------- |
-| `t32`        | `tgas/3e2`          |
-| `te`         | `tgas*8.617343e-5`  |
-| `invt32`     | `1e0 / t32`         |
-| `invte`      | `1e0 / te`          |
-| `invtgas`    | `1e0 / tgas`        |
-| `sqrtgas`    | `#!python sqrt(tgas)`        |
-| `user_tdust` | `tdust`             |
-| `user_av`    | `av`                |
+| Shorthand    | Canonical expansion   |
+| ------------ | --------------------- |
+| `t32`        | `tgas/3e2`            |
+| `te`         | `tgas*8.617343e-5`    |
+| `invt32`     | `1e0 / t32`           |
+| `invte`      | `1e0 / te`            |
+| `invtgas`    | `1e0 / tgas`          |
+| `sqrtgas`    | `#!python sqrt(tgas)` |
+| `user_tdust` | `tdust`               |
+| `user_av`    | `av`                  |
 
 If your format introduces additional shorthand symbols, add them to `__set_known_replacements` following the same pattern. Compound aliases (those that reference simpler ones) must be listed **before** the simpler aliases they depend on so that `resolve_symbolic_dependencies` substitutes correctly.
 

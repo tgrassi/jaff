@@ -17,5 +17,5 @@ Returns the net charge (in units of elementary charge) for every species in the 
 
 **Returns**
 
-_Vector[int]_
+_Vector\[int\]_
 : Net charge in units of elementary charge for each species, in catalogue order.

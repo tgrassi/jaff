@@ -1,7 +1,7 @@
 ---
 tags:
     - Development
-icon: lucide/blocks
+icon: phosphor/squares-four
 ---
 
 # Adding New Template Properties
@@ -137,6 +137,7 @@ The handler can be any callable returning a list-like object — an existing net
 },
 ```
 
+<!-- prettier-ignore -->
 !!! note "Expression-generating props vs list props"
     Props whose `func` returns a plain `list` (species names, charges, masses, etc.) work out of the box. Props whose `func` returns an `IndexedList` (rates, ODEs, Jacobian elements) carry index metadata and support the `$idx$` vertical expansion mode. Both shapes are handled automatically by `__do_iterative_repeat`.
 
@@ -252,13 +253,13 @@ For `REPEAT`, any function that returns a `list` or `IndexedList` works:
 
 ## Summary
 
-| Command  | `"func"` signature        | Extra key     | What templates get             |
-|----------|---------------------------|---------------|-------------------------------|
-| `SUB`    | `() → value`              | —             | `$token$`                     |
-| `REPEAT` | `(**kwargs) → list`       | `"vars": [...]` | `$idx$`, `$token$` per item |
-| `REDUCE` | `() → list[float\|int]`  | `"var": str`  | `$($token$)$` sum expression  |
-| `GET`    | `(entity: str) → value`   | —             | `$token$` for named entity    |
-| `HAS`    | `(entity: str) → int`     | —             | `$token$` → 0 or 1           |
+| Command  | `"func"` signature        | Extra key       | What templates get           |
+| -------- | ------------------------- | --------------- | ---------------------------- |
+| `SUB`    | `() → value`              | —               | `$token$`                    |
+| `REPEAT` | `(**kwargs) → list`       | `"vars": [...]` | `$idx$`, `$token$` per item  |
+| `REDUCE` | `() → list[float or int]` | `"var": str`    | `$($token$)$` sum expression |
+| `GET`    | `(entity: str) → value`   | —               | `$token$` for named entity   |
+| `HAS`    | `(entity: str) → int`     | —               | `$token$` → 0 or 1           |
 
 All existing network accessors (`self.net.species.*`, `self.net.reactions.*`, `self.net.elements.*`) and `Codegen` methods can be wired in directly or via a one-line lambda. No changes to parsing logic are needed.
 

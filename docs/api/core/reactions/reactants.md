@@ -12,5 +12,5 @@ Returns the reactant `Species` collection for every reaction in the catalogue, i
 
 **Returns**
 
-_Vector[Species]_
+_Vector\[Species\]_
 : `Species` collection of reactants for each reaction, in the same order as the catalogue.

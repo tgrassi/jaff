@@ -1,479 +1,370 @@
 ---
 tags:
     - Introduction
-icon: lucide/layers
+icon: phosphor/stack
 ---
 
 # Basic Concepts
 
-The main aim of JAFF is to provide a common interface for all common chemical network formats while also serving as a multi-language code generator. It is also the first tool to completely support explicit photochemistry code generation.
+JAFF does two things: it gives every common chemical-network format a
+single in-memory representation, and it turns that representation into
+source code in the language of your choice — with
+first-class support for explicit photochemistry.
 
-## Core Components
-
-### 1. Chemical Networks
-
-A **chemical network** describes a system of chemical species and the reactions between them.
-
-**Example Network:**
-
-The following network describes a simple collisional hydrogen ionization and recombination network
+This page walks the objects you will meet, in the order you meet them. The
+running example throughout is the hydrogen photo-ionization network, the same
+one used across the rest of the user guide. It is small enough to print in full
+yet still contains a neutral atom, a cation, the electron, and a genuine
+photo-reaction:
 
 ```text
 H -> H+ + e-
 H+ + e- -> H
 ```
 
-This network has:
+Two reactions, three species, and rate coefficients that depend on temperature
+or other parameters. A rate coefficient tells you how fast a reaction runs. For a reaction
 
-- 3 species: H, H+ and e-
-- 2 reactions
-- Temperature-dependent rate coefficients
+$$ \alpha A + \beta B \rightarrow \gamma C $$
 
-A rate coefficient tells us how fast the reaction occurs.
-For a reaction of the form
-
-$$ \alpha A + \beta B -> \gamma C $$
-
-where $\alpha$, $\beta$ and $\gamma$ are the stoichiometric coefficients, the rate of the reaction is given by
+with stoichiometric coefficients $\alpha$, $\beta$, $\gamma$, the rate is
 
 $$ r = k\ [A]^{\alpha} [B]^{\beta} $$
 
-where $k$ is the rate coefficient and $[A]$ and $[B]$ represents the concentrations of $A$ and $B$ respectively.
+where $k$ is the rate coefficient and $[A]$, $[B]$ are the number densities of
+$A$ and $B$. In astrophysics a reaction can fire for many reasons — thermal
+collisions, cosmic-ray impacts, photons from a nearby source, or spontaneous
+decay — and each cause carries its own rate law. Keeping those causes
+distinguishable is one of the things JAFF is built to do.
 
-In astrophysics, reactions can occur due to a lot of reasons. For example, a reaction can occur due to thermal collisions, collisions with cosmic ray particles, photons from various astrophysical sources, or simply a spontaneous decay. All these reactions typically have different characteristics and rates, and the cause of the reaction can significantly alter the environment.
+---
 
-### 2. Network Object
+## The shape of the library
 
-The `Network` class represents a loaded chemical network in memory.
+There are **two halves**, and keeping them apart is the key to the whole API:
+
+- the **model** — a loaded [`Network`](../user-guide/working-with-networks/network.md)
+  and the typed objects it holds: [`Species`](../user-guide/working-with-networks/species.md),
+  [`Reactions`](../user-guide/working-with-networks/reactions.md), and
+  [`Elements`](../user-guide/working-with-networks/elements.md);
+- the **code generator** — the
+  [`jaffgen`](../user-guide/code-generation/index.md) CLI, which expands your
+  `$JAFF` templates against the model to emit rate, ODE, and Jacobian source.
+
+```text
+Network                          ← the loaded model
+  ├── net.species   → Species    ← the chemical entities
+  ├── net.reactions → Reactions  ← the transformations
+  └── net.elements  → Elements   ← the atoms they are made of
+        │
+        ▼
+jaffgen --network … --files …    ← expands $JAFF templates against the model
+  → generated/                   ← network-specific source out
+```
+
+Everything below follows that seam: first the model, then the generator.
+
+---
+
+## The `Network`
+
+`Network` is the entry point for every JAFF workflow. One constructor call
+reads a file, auto-detects its format, parses it into the typed catalogues, and
+validates the chemistry.
 
 ```python
 from jaff import Network
 
-# Load a network file
-net = Network("networks/COthin/react_COthin.jet")
+net = Network("networks/h_photoionization/h_photo.jet")
 
-# Access properties
-print(f"Species: {len(net.species)}")      # Number of species
-print(f"Reactions: {len(net.reactions)}")  # Number of reactions
-print(f"Label: {net.label}")                # Network identifier
+len(net.species)      # 3   — number of species
+len(net.reactions)    # 2   — number of reactions
+net.label             # 'h_photo'   — network identifier
 ```
 
-**It contains:**
+A loaded `Network` carries:
 
-- `species`: Collection of all chemical species; supports name lookup via `net.species["name"]`
-- `reactions`: Collection of all reactions
-- Mass information and elemental composition
-- `file_name`: The network file name
-- `label`: A label for the network
+- `species` — the [`Species`](../user-guide/working-with-networks/species.md)
+  catalogue; look an entity up by name with `net.species["H"]`;
+- `reactions` — the [`Reactions`](../user-guide/working-with-networks/reactions.md)
+  catalogue;
+- `elements` — the [`Elements`](../user-guide/working-with-networks/elements.md)
+  catalogue, plus mass and composition information;
+- `file_name` — the path the network was read from;
+- `label` — a human-readable identifier (defaults to the file stem).
 
-### 3. Species
+<!-- prettier-ignore -->
+!!! tip "Validate while you load"
+    Pass `errors=True` to turn on chemistry checks — missing sinks and sources,
+    duplicate reactions, isomer clashes, and element-conservation violations are
+    reported as warnings:
+    ```python
+    net = Network("mynetwork.dat", errors=True)
+    ```
 
-A **species** represents a single chemical entity with properties.
+---
+
+## Species
+
+A **`Specie`** is one chemical entity — atom, molecule, or ion. From the single
+name string in the file it derives the composition, mass, charge, and the
+identifiers code generation needs.
 
 ```python
-# Get a species
-species = net.species[0]
+H = net.species["H"]
 
-print(f"Name: {species.name}")        # e.g., "CO"
-print(f"Mass: {species.mass}")        # Atomic mass in amu
-print(f"Charge: {species.charge}")    # Electric charge
-print(f"Index: {species.index}")      # Position in array
+H.name          # 'H'
+H.mass          # 1.673773e-24   ← grams, not amu
+H.charge        # 0
+H.index         # 0
+H.latex()       # '{\\rm H}'      ← latex() is a method, not an attribute
 ```
 
-**Species Properties:**
+The attributes worth knowing up front:
 
-- `name`: Chemical formula or identifier
-- `mass`: Molecular mass in atomic mass units
-- `charge`: Electric charge (0 for neutral, +1/-1 for ions)
-- `index`: Position in the species array (for indexing)
-- `latex`: Latex representation of the species
+- `name` — the formula exactly as written in the file;
+- `mass` — total mass in **grams (CGS)**, summed over the constituent atoms;
+- `charge` — net charge in elementary-charge units (`0` neutral, `>0` cation,
+  `<0` anion);
+- `index` — zero-based position inside `net.species`, used everywhere arrays are
+  indexed.
 
-### 4. Reactions
+<!-- prettier-ignore -->
+!!! warning "Mass is in grams (CGS), not atomic mass units"
+    `specie.mass` is the physical mass in grams — `H` is `1.673773e-24`, not
+    `1.008`. JAFF works in CGS so the value drops straight into rate and energy
+    expressions. For the atomic weight in amu, read it from the element data
+    instead.
 
-A **reaction** describes a chemical transformation.
+The [Species page](../user-guide/working-with-networks/species.md) covers the
+derived identifiers (`exploded`, `serialized`, `fidx`), the catalogue's bulk
+accessors, and the electron's special handling.
+
+---
+
+## Reactions
+
+A **`Reaction`** is one chemical transformation. It carries the species going
+in, the species coming out, a symbolic rate, optional temperature bounds, and
+an energy budget.
 
 ```python
-# Get a reaction
-reaction = net.reactions[0]
+rxn = net.reactions[0]
 
-print(f"Reaction: {reaction.verbatim}")  # e.g., "H + O -> OH"
-print(f"Type: {reaction.rtype}")         # Reaction type
-
-# Get reaction rate
-k = reaction.rate
-print(f"Rate: {k}")
+rxn.verbatim      # 'H -> H+ + e-'   ← verbatim is an attribute
+rxn.rtype()       # 'photo'          ← rtype() is a method
+rxn.rate          # a SymPy expression for the rate coefficient
+rxn.reactants     # species consumed
+rxn.products      # species created
 ```
 
-**Reaction Components:**
+- `reactants` / `products` — the species on each side, as `Species` catalogues;
+- `rate` — the rate coefficient as a **SymPy expression**, not a number; it
+  still contains the temperature symbol so it can be differentiated and emitted
+  as code;
+- `rtype()` — the classification (`photo`, `cosmic_ray`, `photo_av`, `3_body`,
+  `unknown`), read from the rate expression;
+- `tmin` / `tmax` — the temperature window the rate is valid over (`None` means
+  unbounded);
+- `verbatim` — the human-readable reaction string.
 
-- `reactants`: Species consumed in the reaction
-- `products`: Species created in the reaction
-- `rate`: Formula for calculating reaction speed as a SymPy expression
-- `rtype`: Classification (e.g. photo)
-- `tmin`: Minimum temperature for reaction cutoff
-- `tmax`: Maximum temperature for reaction cutoff
-- `verbatim`: User friendly representation of reaction
-
-**Rate Expressions:**
-
-Most reactions use Arrhenius-type rate laws:
+**Rate expressions.** Most thermal reactions use an Arrhenius-type law:
 
 $$k(T) = \alpha \left(\frac{T}{300}\right)^\beta e^{-\gamma/T}$$
 
-Where:
+with $\alpha$ the pre-exponential factor, $\beta$ the temperature exponent,
+$\gamma$ the activation parameter, and $T$ the temperature in Kelvin.
+Photo-reactions instead carry a `photorates(...)` call, which is what `rtype()`
+keys on. The [Reactions page](../user-guide/working-with-networks/reactions.md)
+goes through every reaction type and the catalogue API.
 
-- $\alpha$: Pre-exponential factor
-- $\beta$: Temperature exponent
-- $\gamma$: Activation energy parameter
-- $T$: Temperature in Kelvin
+---
 
-### 5. Code Generation
+## Network files
 
-JAFF uses **templates** to generate code in multiple languages.
+JAFF reads several community formats and detects which one it is looking at
+automatically:
 
-**Template Workflow:**
+- **KIDA** — the KInetic Database for Astrochemistry;
+- **UDFA** — the UMIST Database for Astrochemistry;
+- **PRIZMO** — the PRIZMO astrochemical code;
+- **KROME** — the KROME package for astrochemistry;
+- **UCLCHEM** — the UCL Chemistry and Dust code.
 
-1. **Write a template** with the `$JAFF` commands
-2. **Process the template** with the network
-3. **Generate code** in your target language
+Whatever the source, the loaded model is identical — that uniform
+representation is the point of the parser.
 
-**Example Template:**
+---
 
-```cpp hl_lines="2 4"
-// Template: rates.cpp
+## Code generation
+
+JAFF's code generation is **template-driven**, and the
+[`jaffgen`](../user-guide/code-generation/jaffgen.md) CLI is how you run it. You
+write an ordinary source file — C, C++, Fortran, Python, Rust, Julia, or R — and
+mark up the parts that depend on the network with `$JAFF` directives. `jaffgen`
+loads a network, expands every directive against it, and writes the result out.
+
+A template is real source code with small generated regions. Every line that is
+**not** a directive is copied verbatim; directive blocks are filled in:
+
+```cpp
+// rates.cpp — a template
 // $JAFF SUB nreact
 const int NREACT = $nreact$;
 // $JAFF END
 
 void compute_rates(double* k, double T) {
-    $JAFF REPEAT idx, rate IN rates
+    // $JAFF REPEAT idx, rate IN rates
     k[$idx$] = $rate$;
-    $JAFF END
+    // $JAFF END
 }
 ```
 
-**Generated Code:**
+Run it against the network:
+
+```bash
+jaffgen --network networks/h_photoionization/h_photo.jet --files rates.cpp
+```
+
+The expanded file lands in `generated/`, keeping its name. `SUB` swaps a single
+value; `REPEAT` loops a line once per item in a collection (here `rates`):
 
 ```cpp
-const int NREACT = 127;
+const int NREACT = 2;
 
 void compute_rates(double* k, double T) {
-    k[0] = 1.2e-10 * pow(T/300, 0.5);
-    k[1] = 3.4e-11 * exp(-500/T);
-    // ... more rates
+    k[0] = photorates(0, …);
+    k[1] = …;
 }
 ```
 
-## Key Concepts
+The directive language is small — `SUB`, `REPEAT`, `REDUCE`, `GET`, `HAS`,
+`END`, plus a `REPLACE` modifier. The
+[Template Syntax](../user-guide/code-generation/template-syntax.md) page is the
+full reference. Three ideas explain what the collections emit: indexing, CSE,
+and the ODE/Jacobian pair.
 
-### Network Files
+### Array indexing
 
-JAFF supports multiple network file formats:
+Languages disagree on where arrays start and how they are bracketed. JAFF reads
+the target language from each file's extension (or the `--lang` fallback) and
+emits the right convention automatically:
 
-- **KIDA format**: From the KInetic Database for Astrochemistry
-- **UDFA format**: From the UMIST Database for Astrochemistry
-- **PRIZMO format**: From the PRIZMO astrochemical code
-- **KROME format**: From the KROME package for astrochemistry
-- **UCLCHEM format**: From the UCL Chemistry and Dust code
-
-### Array Indexing
-
-Different languages use different indexing conventions and bracket formats:
-
-| Language | Starting Index | Example  |
+| Language | Starting index | Example  |
 | -------- | -------------- | -------- |
 | C/C++    | 0              | `arr[0]` |
 | Python   | 0              | `arr[0]` |
 | Fortran  | 1              | `arr(1)` |
 
-JAFF handles these differences automatically when generating code.
-
-### Index Offsets
-
-You can customize array indexing:
-
-```python
-from jaff import Codegen
-
-cg = Codegen(network=net, lang="c++")
-
-# Use default offset (0 for C++)
-code1 = cg.get_rates_str(idx_offset=0)  # arr[0], arr[1], ...
-
-# Use custom offset (e.g., start at 1)
-code2 = cg.get_rates_str(idx_offset=1)  # arr[1], arr[2], ...
-```
+So the same template gives `k[0]` in C++ and `k(1)` in Fortran with no change.
 
 ### Common Subexpression Elimination (CSE)
 
-CSE is an optimization that reduces redundant calculations:
+The indexed collections (`rates`, `odes`, `jacobian`, …) can factor repeated
+work into temporaries so each sub-expression is computed once. You opt in by
+adding the `cse` variable to a `REPEAT`:
 
-**Without CSE:**
+=== "Without CSE"
 
-```cpp
-rate[0] = k0 * sqrt(T) * n[0];
-rate[1] = k1 * sqrt(T) * n[1];
-rate[2] = k2 * sqrt(T) * n[2];
-```
+    ```cpp
+    // $JAFF REPEAT idx, rate IN rates
+    k[$idx$] = $rate$;
+    // $JAFF END
+    ```
 
-**With CSE:**
+=== "With CSE"
 
-```cpp
-double x0 = sqrt(T);
-rate[0] = k0 * x0 * n[0];
-rate[1] = k1 * x0 * n[1];
-rate[2] = k2 * x0 * n[2];
-```
+    ```cpp
+    // $JAFF REPEAT idx, rate, cse IN rates
+    const double x$idx$ = $cse$;   // shared temporaries, emitted first
+    k[$idx$] = $rate$;             // rate now references the x_i
+    // $JAFF END
+    ```
 
-Enable CSE with `use_cse=True`:
+### ODEs and the Jacobian
 
-```python
-code = cg.get_rates_str(use_cse=True)  # More efficient
-```
-
-### ODEs (Ordinary Differential Equations)
-
-Chemical networks produce systems of ODEs describing concentration changes:
+A chemical network is a system of ODEs describing how concentrations change:
 
 $$\frac{dy_i}{dt} = \sum_j \nu_{ij} R_j$$
 
-Where:
+with $y_i$ the concentration of species $i$, $R_j$ the rate of reaction $j$, and
+$\nu_{ij}$ the stoichiometric coefficient of species $i$ in reaction $j$. The
+`odes` collection emits exactly this right-hand side; implicit solvers also need
+the **Jacobian** $J_{ij} = \partial f_i / \partial y_j$ (where $f_i = dy_i/dt$),
+which the `jacobian` collection emits. Because every `rate` is a symbolic
+expression, JAFF differentiates it exactly rather than numerically:
 
-- $y_i$: Concentration of species i
-- $R_j$: Rate of reaction j
-- $\nu_{ij}$: Stoichiometric coefficient ($y_{i}^{c_{j}}$)
+```cpp
+// $JAFF REPEAT idx, ode IN odes
+dydt[$idx$] = $ode$;
+// $JAFF END
 
-JAFF generates these ODEs automatically:
-
-```python
-ode_code = cg.get_ode_str(ode_var="dydt", use_cse=True)
+// $JAFF REPEAT idx, expr IN jacobian
+J[$idx$] = $expr$;
+// $JAFF END
 ```
 
-### Jacobian Matrix
+---
 
-The **Jacobian** is the matrix of partial derivatives:
+## Driving runs with `jaff.toml`
 
-$$J_{ij} = \frac{\partial f_i}{\partial y_j}$$
+Spelling out the network, inputs, output, and radiation on every `jaffgen` line
+gets old. A [`jaff.toml`](../user-guide/code-generation/jaff-toml.md) declares
+the run once, so the command collapses to:
 
-Where $f_i = dy_i/dt$ is the ODE for species i.
-
-Jacobians are essential for implicit ODE solvers:
-
-```python
-jac_code = cg.get_jacobian_str(jac_var="J", use_cse=True)
+```bash
+jaffgen --config jaff.toml
 ```
 
-### Element Conservation
+CLI flags still win over the file when both set the same thing, so a `jaff.toml`
+is a baseline you can override per run.
 
-Chemical reactions conserve elements. JAFF can check conservation:
+---
 
-```python
-elem = net.elements
+## Putting it together
 
-# Get element truth matrix (rows=elements, cols=species; entry [i][j] = 1 if present)
-# Note: use density_matrix() for atom counts
-density_matrix = elem.density_matrix()
-```
-
-## Workflow Examples
-
-### Basic Analysis Workflow
+A first analysis pass touches only the model — no code generation at all:
 
 ```python
 from jaff import Network
 
-# 1. Load network
-net = Network("networks/COthin/react_COthin.jet")
+net = Network("networks/h_photoionization/h_photo.jet", errors=True)
 
-# 2. Explore species
-for species in net.species:
-    print(f"{species.name}: {species.mass} amu")
+for sp in net.species:
+    print(f"{sp.name}: {sp.mass:.3e} g  charge {sp.charge:+d}")
 
-# 3. Explore reactions
-for reaction in net.reactions:
-    print(f"{reaction.verbatim}: {reaction.rtype}")
-
-# 4. Get rates for further calculation and plotting
-for reaction in net.reactions[:5]:
-    k = reaction.rate
-    print(f"{reaction.verbatim}: k = {k}")
+for rxn in net.reactions:
+    print(f"{rxn.verbatim}  [{rxn.rtype()}]")
 ```
 
-### Code Generation Workflow with Preprocessor
+The code-generation pass is a `jaffgen` invocation over your templates, exactly
+as shown above. Everything else in the user guide is a deeper cut through one of
+these objects.
 
-The recommended workflow uses the `Preprocessor` class to replace pragmas in template files:
+---
 
-```python
-from jaff import Network, Codegen, Preprocessor
-
-# 1. Load network
-net = Network("networks/COthin/react_COthin.jet")
-
-# 2. Create code generator and preprocessor
-cg = Codegen(network=net, lang="cxx")
-p = Preprocessor()
-
-# 3. Generate code components
-commons = cg.get_commons(idx_offset=0, definition_prefix="static constexpr int ")
-rates = cg.get_rates_str(idx_offset=0, use_cse=True)
-odes = cg.get_ode_str(idx_offset=0, use_cse=True)
-jacobian = cg.get_jacobian_str(idx_offset=0, use_cse=True)
-
-# 4. Define pragma replacements
-replacements = {
-    "COMMONS": commons,
-    "RATES": rates,
-    "ODE": odes,
-    "JACOBIAN": jacobian,
-    "NUM_SPECIES": f"static constexpr int neqs = {net.species.count};"
-}
-
-# 5. Process template file with pragma replacement
-# Template file should contain pragmas like: // PREPROCESS_RATES
-p.preprocess(
-    path="path/to/templates",
-    fnames=["chemistry.hpp"],
-    dictionaries=replacements,
-    comment="//",  # or use "auto" for auto-detection
-    path_build="output/"
-)
-```
-
-In your template file (`chemistry.hpp`), use pragma markers:
-
-```cpp
-// PREPROCESS_COMMONS
-// PREPROCESS_END
-
-void compute_rates() {
-    // PREPROCESS_RATES
-    // PREPROCESS_END
-}
-
-void compute_ode(double* y, double* dydt) {
-    // PREPROCESS_ODE
-    // PREPROCESS_END
-}
-```
-
-The preprocessor will replace content between `// PREPROCESS_<KEY>` and `// PREPROCESS_END` with the corresponding values from the dictionary.
-
-````
-
-### Template-Based Workflow
-
-Use the `jaffgen` CLI to process template files with `$JAFF` directives:
-
-```bash
-jaffgen --network networks/COthin/react_COthin.jet --files template.cpp
-```
-
-The generated file is placed in the `generated/` folder. See [Template Syntax](../user-guide/template-syntax.md) for directive reference.
-````
-
-## Best Practices
-
-### 1. Validate Networks
-
-Always check for errors when loading:
-
-```python
-net = Network("mynetwork.dat", errors=True)
-```
-
-This enables warnings for:
-
-- Missing sink/source species
-- Duplicate reactions
-- Isomer issues
-- Element conservation violations
-
-### 2. Use CSE for Performance
-
-Enable CSE for production code:
-
-```python
-cg.get_rates_str(use_cse=True)  # Faster execution
-```
-
-### 3. Check Generated Code
-
-Always review generated code before using:
-
-```python
-code = cg.get_rates_str()
-print(code)  # Inspect output
-```
-
-### 4. Choose Appropriate Index Offsets
-
-Match your target framework:
-
-```python
-# For C/C++/Python: start at 0
-code = cg.get_rates_str(idx_offset=0)
-
-# For Fortran: start at 1
-code = cg.get_rates_str(idx_offset=1)
-
-# For custom arrays: use any offset
-code = cg.get_rates_str(idx_offset=5)
-```
-
-### 5. Organize Generated Code
-
-Structure your output logically:
-
-```python
-# Generate all components
-commons = cg.get_commons()
-rates = cg.get_rates_str(use_cse=True)
-odes = cg.get_ode_str(use_cse=True)
-jac = cg.get_jacobian_str(use_cse=True)
-
-# Combine in logical order
-full_code = f"""
-// Common definitions
-{commons}
-
-// Rate calculations
-{rates}
-
-// ODE system
-{odes}
-
-// Jacobian matrix
-{jac}
-"""
-```
-
-## Next Steps
-
-Now that you understand the basic concepts:
-
-2. [Loading Networks](../user-guide/loading-networks.md): Learn about network file formats
-3. [Code Generation](../user-guide/code-generation.md): Master code generation
-4. [Template Syntax](../user-guide/template-syntax.md): Create custom templates
-5. [API Reference](../api/index.md): Explore the complete API
-
-## Common Terms
+## Common terms
 
 | Term                 | Definition                                                      |
 | -------------------- | --------------------------------------------------------------- |
 | **Species**          | A chemical entity (atom, molecule, ion)                         |
 | **Reaction**         | A chemical transformation between species                       |
-| **Rate Coefficient** | Function determining reaction speed                             |
+| **Rate coefficient** | Function determining reaction speed                             |
 | **Stoichiometry**    | Ratio of reactants to products                                  |
 | **ODE**              | Ordinary Differential Equation describing concentration changes |
-| **Jacobian**         | Matrix of partial derivatives of ODEs                           |
-| **CSE**              | Common Subexpression Elimination (optimization)                 |
-| **Template**         | File with JAFF commands for code generation                     |
-| **Network**          | Collection of species and reactions                             |
-| **Index Offset**     | Starting index for arrays (0 or 1)                              |
+| **Jacobian**         | Matrix of partial derivatives of the ODEs                       |
+| **CSE**              | Common Subexpression Elimination (an optimization)              |
+| **Template**         | A source file with `$JAFF` directives for code generation       |
+| **Network**          | A collection of species and reactions                           |
+| **Index offset**     | Starting index for generated arrays (`0` or `1`)                |
 
-## Further Reading
+---
 
-- **Chemistry Background**: Understanding chemical kinetics helps interpret results
-- **ODE Solvers**: Learn about numerical integration methods
-- **Programming Languages**: Familiarity with target languages (C++, Fortran, etc.)
-- **SymPy**: JAFF uses SymPy for symbolic mathematics
+## Next steps
+
+Now that the pieces have names:
+
+1. [Working with Networks](../user-guide/working-with-networks/index.md) — inspect species, reactions, and elements in depth;
+2. [Code Generation](../user-guide/code-generation/index.md) — run `jaffgen` over your templates;
+3. [Template Syntax](../user-guide/code-generation/template-syntax.md) — write your own `$JAFF` templates;
+4. [API Reference](../api/index.md) — the complete surface.

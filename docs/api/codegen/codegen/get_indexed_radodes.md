@@ -17,10 +17,10 @@ Generates radiation ODE expressions in a given pattern
 
 | Order | Radiation list pattern                   |
 | ----- | ---------------------------------------- |
-| 0     | [$rd_0$, $f_0$, $rd_1$, $f_1$, ...]      |
-| 1     | [$f_0$, $rd_0$, $f_1$, $rd_1$, ...]      |
-| 2     | [$rd_0$, $rd_1$, ..., $f_0$, $f_1$, ...] |
-| 3     | [$f_0$, $f_1$, ..., $rd_0$, $rd_1$, ...] |
+| 0     | \[$rd_0$, $f_0$, $rd_1$, $f_1$, ...\]      |
+| 1     | \[$f_0$, $rd_0$, $f_1$, $rd_1$, ...\]      |
+| 2     | \[$rd_0$, $rd_1$, ..., $f_0$, $f_1$, ...\] |
+| 3     | \[$f_0$, $f_1$, ..., $rd_0$, $rd_1$, ...\] |
 
 Where $rd_i$ is the radiation energy density / photon density and $f_i$ is the radiation flux.
 

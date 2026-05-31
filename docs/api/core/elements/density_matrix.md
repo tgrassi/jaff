@@ -12,7 +12,7 @@ Atom-count matrix (stoichiometric composition matrix). Entry `[i][j]` is the num
 
 **Returns**
 
-_list[list[int]]_
+_list\[list\[int\]\]_
 : Shape `(n_elements, n_species)`.
 
 **Example**

@@ -2,7 +2,7 @@
 tags:
     - User-guide
     - Code-generation
-icon: lucide/cpu
+icon: phosphor/cpu
 ---
 
 # Advanced Code Generation
@@ -18,7 +18,7 @@ JAFF exposes two programmatic interfaces for code generation that bypass the tem
 
 <div class="grid cards" markdown>
 
-- :lucide-box:{ .sm .middle } **Builder**
+- :phosphor-cube:{ .sm .middle } **Builder**
 
     ***
 
@@ -26,7 +26,7 @@ JAFF exposes two programmatic interfaces for code generation that bypass the tem
 
     [:octicons-arrow-right-24: Builder](builder.md)
 
-- :lucide-settings:{ .sm .middle } **Codegen**
+- :phosphor-gear:{ .sm .middle } **Codegen**
 
     ***
 

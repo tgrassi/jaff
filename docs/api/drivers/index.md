@@ -1,7 +1,7 @@
 ---
 tags:
     - Api
-icon: lucide/database
+icon: phosphor/database
 ---
 
 # jaff.drivers
@@ -12,12 +12,12 @@ The `jaff.drivers` subpackage provides I/O drivers for reading and writing data 
 
 | Name                                | Description                                    |
 | ----------------------------------- | ---------------------------------------------- |
-| [`HDF5`](hdf5.md)                   | Read/write HDF5 files with compression support |
-| [`Db`](sqlite.md)                   | Low-level SQLite connection and query wrapper  |
-| [`JaffDb`](sqlite.md#jaffdb)        | High-level JAFF-specific SQLite interface      |
-| [`Toml`](toml.md)                   | Read TOML configuration files                  |
-| [`csv_to_df`](csv.md)               | Load a CSV file into a pandas DataFrame        |
-| [`csv_to_hdf5`](csv.md#csv_to_hdf5) | Convert a CSV file to an HDF5 dataset          |
+| [`HDF5`](hdf5/index.md)             | Read/write HDF5 files with compression support |
+| [`Db`](sqlite/db/index.md)          | Low-level SQLite connection and query wrapper  |
+| [`JaffDb`](sqlite/jaffdb/index.md)  | High-level JAFF-specific SQLite interface      |
+| [`Toml`](toml/index.md)             | Read TOML configuration files                  |
+| [`csv_to_df`](csv/csv_to_df.md)     | Load a CSV file into a pandas DataFrame        |
+| [`csv_to_hdf5`](csv/csv_to_hdf5.md) | Convert a CSV file to an HDF5 dataset          |
 
 ## Quick Start
 

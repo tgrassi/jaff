@@ -12,5 +12,5 @@ Returns the number of electrons in the neutral atom for each element. Values are
 
 **Returns**
 
-_Vector[int]_
+_Vector\[int\]_
 : Number of electrons per element (equals the atomic number for neutral atoms).

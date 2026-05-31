@@ -2,7 +2,7 @@
 tags:
     - Api
     - Code-generation
-icon: lucide/braces
+icon: phosphor/brackets-curly
 ---
 
 # jaff.codegen
@@ -13,9 +13,9 @@ The `jaff.codegen` subpackage contains the classes for generating solver source 
 
 | Class                             | Description                                                       |
 | --------------------------------- | ----------------------------------------------------------------- |
-| [`Builder`](builder.md)           | High-level build orchestrator using named plugin templates        |
-| [`Codegen`](codegen.md)           | Low-level multi-language code generator (rates, ODEs, Jacobian)   |
-| [`Preprocessor`](preprocessor.md) | Pragma-based template preprocessor for file-level code generation |
+| [`Builder`](builder/index.md)           | High-level build orchestrator using named plugin templates        |
+| [`Codegen`](codegen/index.md)           | Low-level multi-language code generator (rates, ODEs, Jacobian)   |
+| [`Preprocessor`](preprocessor/index.md) | Pragma-based template preprocessor for file-level code generation |
 
 ## Quick Start
 

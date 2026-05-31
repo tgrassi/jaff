@@ -12,5 +12,5 @@ Returns the minimum valid gas temperature for every reaction in the catalogue, i
 
 **Returns**
 
-_Vector[float or None]_
+_Vector\[float or None\]_
 : Lower temperature bound in Kelvin for each reaction, or `None` when no lower bound is defined. One entry per reaction, in catalogue order.

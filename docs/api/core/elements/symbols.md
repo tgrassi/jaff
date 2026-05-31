@@ -12,5 +12,5 @@ Returns the periodic-table symbols for all elements in the collection, in sorted
 
 **Returns**
 
-_Vector[str]_
+_Vector\[str\]_
 : Periodic-table symbols (e.g. `["C", "H", "O"]`).

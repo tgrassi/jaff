@@ -12,5 +12,5 @@ Returns the sorted list of `Element` objects derived from the species provided a
 
 **Returns**
 
-_list[Element]_
+_list\[Element\]_
 : All unique `Element` objects, sorted alphabetically by chemical symbol.

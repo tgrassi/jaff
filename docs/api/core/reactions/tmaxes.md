@@ -12,5 +12,5 @@ Returns the maximum valid gas temperature for every reaction in the catalogue, i
 
 **Returns**
 
-_Vector[float or None]_
+_Vector\[float or None\]_
 : Upper temperature bound in Kelvin for each reaction, or `None` when no upper bound is defined. One entry per reaction, in catalogue order.

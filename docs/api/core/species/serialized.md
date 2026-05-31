@@ -17,5 +17,5 @@ Returns the canonical serialized key (`"/".join(sorted(exploded))`) for every sp
 
 **Returns**
 
-_Vector[str]_
+_Vector\[str\]_
 : Canonical serialized key for each species, in catalogue order.

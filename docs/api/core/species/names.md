@@ -17,5 +17,5 @@ Returns the name string of every species in the collection, in the order they we
 
 **Returns**
 
-_Vector[str]_
+_Vector\[str\]_
 : Name of each species in the collection, in catalogue order.

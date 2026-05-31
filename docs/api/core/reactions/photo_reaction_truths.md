@@ -12,5 +12,5 @@ Returns a binary membership vector over the full catalogue indicating which reac
 
 **Returns**
 
-_Vector[int]_
+_Vector\[int\]_
 : `1` if the corresponding reaction is a photo-reaction, `0` otherwise. One entry per reaction, in catalogue order.

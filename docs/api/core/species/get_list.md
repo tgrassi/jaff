@@ -12,5 +12,5 @@ Returns an ordered list of all `Specie` objects in the catalogue.
 
 **Returns**
 
-_list[Specie]_
+_list\[Specie\]_
 : Ordered list of all species.

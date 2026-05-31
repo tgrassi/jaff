@@ -1,187 +1,136 @@
 ---
 tags:
     - Introduction
-icon: lucide/rocket
+icon: phosphor/rocket-launch
 ---
 
 # Quick Start Guide
 
-## Analysing networks
+JAFF does two things: it **loads a chemical reaction network** and lets you
+inspect it, and it **generates solver code** from that network in the language
+of your choice. This guide is a five-minute tour of both — just enough to see
+the shape of the tool. Every step links to the [User Guide](../user-guide/working-with-networks/index.md)
+where the same ground is covered in detail.
 
-Let's load and explore a chemical reaction network and see how we can extract its properties. A `Network` forms the backbone of **JAFF** and represents all the chemical reactions taking place in a specified scenario along with their associated properties.
+## Load and explore a network
 
-### Step 1: Loading a Network
-
-Loading a network requires a network file. Currently JAFF supports network files in the following formats: `KIDA`, `KROME`, `PRIZMO`, `UCLCHEM`, and `UDFA`.
+A [`Network`](../user-guide/working-with-networks/network.md) is the backbone of
+JAFF — it holds every species and reaction, with all their derived properties.
+Load one from a file:
 
 ```python
 from jaff import Network
 
-# Load a network file
-net = Network("networks/demos/demo1.jet")
+net = Network("networks/h_photoionization/h_photo.jet")
+
+print(f"Label:     {net.label}")
+print(f"Species:   {net.species.count}")
+print(f"Reactions: {net.reactions.count}")
 ```
 
-Once the network is loaded, different properties of the network can be accessed using the `net` object.
+```text
+Label:     h_photo
+Species:   3
+Reactions: 2
+```
+
+JAFF reads all the common community formats — KIDA, UDFA, PRIZMO, KROME, and
+UCLCHEM — and detects which one a file uses automatically, so you never pass a
+format flag. See [Network Formats](../user-guide/designing-networks/network-formats.md).
+
+### Species
+
+`net.species` is a catalogue of every [`Specie`](../user-guide/working-with-networks/species.md);
+iterate it to see each one's properties:
 
 ```python
-# Display basic information
-print(f"Network label: {net.label}")
-print(f"Number of species: {net.species.count}")
-print(f"Number of reactions: {net.reactions.count}")
+for s in net.species:
+    print(f"{s.index}: {s.name:<3} mass={s.mass:.5e} g  charge={s.charge:+d}")
 ```
 
-**Output**:
-
-```
-Network label: demo1
-Number of species: 14
-Number of reactions: 15
+```text
+0: H   mass=1.67377e-24 g  charge=+0
+1: H+  mass=1.67377e-24 g  charge=+1
+2: e-  mass=9.10938e-28 g  charge=-1
 ```
 
-### Step 2: Exploring Species
+### Reactions
 
-The network contains a species attribute that holds information about all the species taking part in the reaction network.
+`net.reactions` holds every [`Reaction`](../user-guide/working-with-networks/reactions.md);
+`verbatim` is the human-readable form:
 
 ```python
-# List first 5 species
-for i, species in enumerate(net.species[:5]):
-    print(f"{i}: {species.name} (mass={species.mass:.5e} gm, charge={species.charge})")
+for r in net.reactions:
+    print(r.verbatim)
 ```
 
-**Output**:
-
-```
-0: H+ (mass=1.67377e-24 gm, charge=1)
-1: e- (mass=9.10938e-28 gm, charge=-1)
-2: H (mass=1.67377e-24 gm, charge=0)
-3: C (mass=1.99447e-23 gm, charge=0)
-4: C+ (mass=1.99447e-23 gm, charge=1)
+```text
+H -> H+ + e-
+H+ + e- -> H
 ```
 
-### Step 3: Exploring Reactions
+<!-- prettier-ignore -->
+!!! tip "Look up by key instead of looping"
+    Indexing a catalogue returns the object directly — no search needed:
+    `#!python net.species["H"]` gives the `H` specie, and `#!python net.reactions[0]`
+    the first reaction.
 
-The network also contains a reactions attribute that holds information about all reactions that are part of the network.
+The [Working with Networks](../user-guide/working-with-networks/index.md) guide
+covers lookup, filtering, elemental composition, conservation checks, and export.
 
-```python
-# Display first 3 reactions
-for i, reaction in enumerate(net.reactions[:3]):
-    print(f"{i}: {reaction.verbatim}")
-```
+## Generate code
 
-**Output**:
-
-```
-0: H+ + e- -> H
-1: H -> H+ + e-
-2: C -> C+ + e-
-```
-
-A detailed overview of the network and its attributes and methods is provided by the [user guide](../user-guide/loading-networks.md) and the [api reference](../api/index.md).
-
-## Generating Code
-
-Now let's generate code for solving the chemical network.
-
-### Step 1: Creating a Template
-
-A template is a file that contains `JAFF directives` which are later processed by JAFF. Create a file named `rates.cpp`:
-
-```cpp
-// rates_template.cpp
-#include <cmath>
-
-// $JAFF SUB nreact
-const int NUM_REACTIONS = $nreact$;
-// $JAFF END
-
-// Calculate reaction rates
-void compute_rates(double* rate, const double* n, const double* k, double T) {
-    // $JAFF REPEAT idx, rate IN rates
-    rate[$idx$] = $rate$;
-    // $JAFF END
-}
-
-// Reaction names
-// $JAFF REPEAT idx, reaction IN reactions
-const char* reaction_names[$idx$] = "$reaction$";
-// $JAFF END
-```
-
-### Step 2: Generating Code
-
-Once the template is ready, you can use the `jaffgen` command to generate the code.
+Code generation is primarily **template-driven**: JAFF expands ordinary source files that
+contain `$JAFF` directives into network-specific code. The fastest way to see it
+work is a **built-in template** — a ready-made collection you don't have to
+write — run through the [`jaffgen`](../user-guide/code-generation/jaffgen.md) CLI:
 
 ```bash
-jaffgen --network networks/demos/demo1.jet --files path/to/rates.cpp
+jaffgen \
+    --network  networks/h_photoionization/h_photo.jet \
+    --template fortran_dlsodes \
+    --lang     fortran \
+    --outdir   generated/
 ```
 
-The generated file will be located in the `generated` folder at the root of the project.
-
-### Step 3: View Generated Code
-
-The generated `rates.cpp` will contain:
-
-```cpp
-#include <cmath>
-
-const int NUM_REACTIONS = 15;
-
-void compute_rates(double* rate, const double* n, const double* k, double T) {
-    rate[0] = ...  // H+ + e- -> H
-    rate[1] = ...  // H -> H+ + e-
-    rate[2] = ...  // C -> C+ + e-
-    // ... more rates
-}
-
-const char* reaction_names[0] = "H+ + e- -> H";
-const char* reaction_names[1] = "H -> H+ + e-";
-const char* reaction_names[2] = "C -> C+ + e-";
-// ... more names
+```text
+INFO     Network loaded successfully!
+INFO     Successfully generated files
 ```
 
-**Supported languages:** `c`, `cxx` , `fortran` , `python` , `rust` , `julia` and `r`
+`generated/` now holds a complete, buildable Fortran solver:
 
-## Next Steps
-
-Now that you've completed the quick start:
-
-1. **Learn the Basics**: Read about [Basic Concepts](concepts.md) to understand chemical networks
-2. **User Guide**: Explore the detailed [User Guide](../user-guide/loading-networks.md)
-3. **Templates**: Understand [Template Syntax](../user-guide/template-syntax.md) for custom code generation
-4. **API Reference**: Browse the complete [API documentation](../api/index.md)
-
-## Getting Help
-
-- **Documentation**: Browse the full documentation
-- **Examples**: Check the `examples/` directory in the repository
-- **Issues**: Report bugs at [GitHub Issues](https://github.com/tgrassi/jaff/issues)
-- **Discussions**: Ask questions in GitHub Discussions
-
-## Tips & Tricks
-
-<!-- prettier-ignore -->
-!!! tip "Pro Tip: Species Lookup"
-    Use the species and reactions lookup instead of looping to find a species or reactions object:
-    `idx = net.species["CO"]  # Much faster than searching`
-
-<!-- prettier-ignore -->
-!!! tip "Pro Tip: Template Testing"
-    Test templates on small networks first before using large ones:
-
-```bash
-    jaffgen --indir folder --network networks/demos/demo1.jet
+```text
+commons.f90  fluxes.f90  ode.f90  reactions.f90  main.f90  Makefile
+opkda1.f     opkda2.f    opkdmain.f
 ```
 
 <!-- prettier-ignore -->
-!!! warning "Watch Out: File Extensions"
-    The parser determines language from file extension: - `.cpp`, `.cxx`, `.cc` → C++ - `.c` → C - `.f90`, `.f95` → Fortran
+!!! note "Why `--lang`?"
+    This collection bundles non-source files (a `Makefile`) whose language can't
+    be inferred from an extension. `--lang` supplies the fallback. See
+    [jaffgen](../user-guide/code-generation/jaffgen.md) for the other built-in
+    templates and input options.
 
-    **Make sure your template has the correct extension!**
+From here the [Code Generation](../user-guide/code-generation/index.md) guide
+shows how to write your own templates with the
+[directive language](../user-guide/code-generation/template-syntax.md). The
+[`Builder`](../user-guide/advanced-code-generation/builder.md) API does the same
+generation but is intended for manual code generation when the template syntax is
+insufficient.
 
-## Example Networks
+## Next steps
 
-JAFF comes with several predefined networks:
+1. **Concepts** — [Basic Concepts](concepts.md) explains chemical networks and the JAFF model.
+2. **Working with Networks** — [inspect, filter, and export](../user-guide/working-with-networks/index.md) loaded networks.
+3. **Code Generation** — the [template directive language](../user-guide/code-generation/template-syntax.md) and the [`jaffgen`](../user-guide/code-generation/jaffgen.md) CLI.
+4. **API Reference** — the complete [API documentation](../api/index.md).
 
-- `networks/demos` - Small test networks
-- `networks/COthin` - CO chemistry
-- `networks/GOW` - Gong-Ostriker-Wolfire chemical network
+## Example networks
+
+JAFF ships with several networks to experiment with:
+
+- `networks/demos` — small test networks
+- `networks/h_photoionization` — hydrogen photo-ionization (used above)
+- `networks/COthin` — CO chemistry
+- `networks/GOW` — the Gong–Ostriker–Wolfire network

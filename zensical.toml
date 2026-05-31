@@ -1,15 +1,15 @@
 [project]
 site_name = "JAFF Documentation"
 site_description = "Just Another Fancy Format - An astrochemical network parser and code generator"
-site_url = "https://tgrassi.github.io/jaff"
+site_url = "https://jaff-chemistry.github.io/jaff"
 authors = ["JAFF Team"]
 copyright = "Copyright &copy; 2025 JAFF Team"
 docs_dir = "docs"
 site_dir = "site"
 dev_addr = "localhost:8000"
-extra_css = ["stylesheets/extra.css?v=13"]
-repo_url = "https://github.com/tgrassi/jaff"
-repo_name = "tgrassi/jaff"
+extra_css = ["stylesheets/extra.css?v=16"]
+repo_url = "https://github.com/jaff-chemistry/jaff"
+repo_name = "jaff-chemistry/jaff"
 repo = "fontawesome/brands/git-alt"
 extra_javascript = [
   "javascripts/mathjax.js",
@@ -36,15 +36,16 @@ nav = [
       "user-guide/working-with-networks/index.md",
       "user-guide/working-with-networks/network.md",
       "user-guide/working-with-networks/species.md",
-      "user-guide/working-with-networks/elements.md",
       "user-guide/working-with-networks/reactions.md",
+      "user-guide/working-with-networks/elements.md",
       "user-guide/working-with-networks/jaffx.md"
     ] },
     { "Code Generation" = [
       "user-guide/code-generation/index.md",
       "user-guide/code-generation/template-syntax.md",
       "user-guide/code-generation/jaff-toml.md",
-      "user-guide/code-generation/jaffgen.md"
+      "user-guide/code-generation/jaffgen.md",
+      "user-guide/code-generation/table-interpolation.md"
     ] },
     { "Advanced Code Generation" = [
       "user-guide/advanced-code-generation/index.md",
@@ -244,6 +245,7 @@ nav = [
   ] },
   { "Development" = [
     "development/installation.md",
+    "development/contributing.md",
     "development/codebase-structure.md",
     "development/code-style.md",
     "development/testing.md",
@@ -254,8 +256,8 @@ nav = [
 ]
 
 [project.repository]
-url = "https://github.com/tgrassi/jaff"
-name = "tgrassi/jaff"
+url = "https://github.com/jaff-chemistry/jaff"
+name = "jaff-chemistry/jaff"
 edit_uri = "edit/main/docs/"
 
 # -----------------------------------------------------------------------------
@@ -263,6 +265,7 @@ edit_uri = "edit/main/docs/"
 # -----------------------------------------------------------------------------
 [project.theme]
 variant = "modern"  # This enables the floating cards + dot matrix background
+custom_dir = "overrides"  # hosts vendored phosphor icons in overrides/.icons/phosphor
 logo = "assets/logo.webp"
 icon.repo = "fontawesome/brands/github"
 favicon = "assets/favicon.ico"
@@ -347,7 +350,7 @@ Testing = "test"
 
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
-link = "https://github.com/tgrassi/jaff"
+link = "https://github.com/jaff-chemistry/jaff"
 
 [project.plugins.mkdocstrings]
 handlers.python.paths = ["src"]
@@ -387,6 +390,7 @@ generic = true
 [project.markdown_extensions.pymdownx.emoji]
 emoji_index = "zensical.extensions.emoji.twemoji"
 emoji_generator = "zensical.extensions.emoji.to_svg"
+options = { custom_icons = ["overrides/.icons"] }
 
 [project.markdown_extensions.pymdownx.highlight]
 anchor_linenums = true

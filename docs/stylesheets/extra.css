@@ -17,7 +17,11 @@
     --jaff-code-titlebar: rgba(0, 0, 0, 0.03);
 
     /* Distinct shade of accent for API type pills (deeper than link accent) */
-    --jaff-pill-accent: color-mix(in srgb, var(--md-accent-fg-color) 65%, var(--md-heading-color) 35%);
+    --jaff-pill-accent: color-mix(
+        in srgb,
+        var(--md-accent-fg-color) 65%,
+        var(--md-heading-color) 35%
+    );
 
     /* Param name chip color (full accent in light mode) */
     --jaff-name-accent: var(--md-accent-fg-color);
@@ -48,7 +52,11 @@
     --jaff-code-titlebar: rgba(0, 0, 0, 0.18);
 
     /* Distinct shade of accent for API type pills (lighter than link accent) */
-    --jaff-pill-accent: color-mix(in srgb, var(--md-accent-fg-color) 65%, var(--md-heading-color) 35%);
+    --jaff-pill-accent: color-mix(
+        in srgb,
+        var(--md-accent-fg-color) 65%,
+        var(--md-heading-color) 35%
+    );
 
     /* Dimmer param name chip in dark mode (orange accent runs too bright) */
     --jaff-name-accent: color-mix(in srgb, var(--md-accent-fg-color) 72%, #000 28%);
@@ -133,12 +141,20 @@ body {
     background-image:
         radial-gradient(
             55rem 55rem at 100% 0%,
-            color-mix(in srgb, var(--md-accent-fg-color) var(--jaff-glow-strength), transparent),
+            color-mix(
+                in srgb,
+                var(--md-accent-fg-color) var(--jaff-glow-strength),
+                transparent
+            ),
             transparent 60%
         ),
         radial-gradient(
             130% 95% at 50% 22%,
-            color-mix(in srgb, var(--md-heading-color) var(--jaff-vignette-strength), transparent),
+            color-mix(
+                in srgb,
+                var(--md-heading-color) var(--jaff-vignette-strength),
+                transparent
+            ),
             transparent 55%
         );
     background-repeat: no-repeat;
@@ -399,6 +415,34 @@ table,
     opacity: 0.9;
 }
 
+/* Vertically center the icon box with its label text */
+.md-sidebar--primary .md-nav__link {
+    display: flex;
+    align-items: center;
+}
+
+/* Bordered box around left-nav topic icons (direct-child svg only, so the
+   collapse chevron in .md-nav__icon is untouched) */
+.md-sidebar--primary .md-nav__link > svg {
+    box-sizing: content-box;
+    width: 0.9rem;
+    height: 0.9rem;
+    padding: 0.2rem;
+    margin-right: 0.1rem;
+    border: 1px solid var(--jaff-grid);
+    border-radius: 0.35rem;
+    background-color: var(--jaff-grid-primary);
+    flex-shrink: 0;
+}
+
+/* Accent the icon box for the active page / active section ancestor */
+.md-sidebar--primary .md-nav__link--active > svg,
+.md-sidebar--primary .md-nav__item--active > .md-nav__link > svg {
+    border-color: color-mix(in srgb, var(--md-accent-fg-color) 20%, transparent);
+    color: color-mix(in srgb, var(--md-accent-fg-color) 80%, transparent);
+    background-color: color-mix(in srgb, var(--md-accent-fg-color) 10%, transparent);
+}
+
 /* Left sidebar nav icon flip on hover */
 .md-sidebar--primary .md-nav__link svg {
     transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -493,7 +537,9 @@ table,
     scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
-[data-md-color-scheme="slate"] .md-sidebar--primary .md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+[data-md-color-scheme="slate"]
+    .md-sidebar--primary
+    .md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -557,7 +603,9 @@ table,
 }
 
 .md-tabs__link {
-    transition: opacity 0.2s ease, color 0.2s ease;
+    transition:
+        opacity 0.2s ease,
+        color 0.2s ease;
 }
 
 .md-tabs__link:hover {

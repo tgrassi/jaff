@@ -2,7 +2,7 @@
 tags:
     - Api
     - Introduction
-icon: lucide/code
+icon: phosphor/code
 ---
 
 # API Reference
@@ -13,25 +13,25 @@ This is a complete reference for all public APIs in JAFF.
 
 <div class="grid cards" markdown>
 
-- :material-dna:{ .lg .middle } **Core**
+- :phosphor-dna:{ .sm .middle } **Core**
 
     Primary data-model classes: `Network`, `Species`, `Reaction`, `Elements`.
 
     [:octicons-arrow-right-24: jaff.core](core/index.md)
 
-- :material-xml:{ .lg .middle } **Codegen**
+- :phosphor-brackets-angle:{ .sm .middle } **Codegen**
 
     Source code generation from reaction networks: `Builder`, `Codegen`, `Preprocessor`.
 
     [:octicons-arrow-right-24: jaff.codegen](codegen/index.md)
 
-- :material-database:{ .lg .middle } **Drivers**
+- :phosphor-database:{ .sm .middle } **Drivers**
 
     I/O drivers for CSV, HDF5, SQLite, and TOML file formats.
 
     [:octicons-arrow-right-24: jaff.drivers](drivers/index.md)
 
-- :material-flask:{ .lg .middle } **Physics**
+- :phosphor-flask:{ .sm .middle } **Physics**
 
     Physical and astronomical constants in CGS, SI, Gaussian, and natural units.
 

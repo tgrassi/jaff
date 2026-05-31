@@ -11,5 +11,5 @@ Inserts multiple rows by calling `insert_row` for each entry. Each row is commit
 
 **Parameters**
 
-**rows** : _list[list[str or float or int]]_
+**rows** : _list\[list\[str or float or int\]\]_
 : A list of rows, where each row is a list of column values in column definition order.

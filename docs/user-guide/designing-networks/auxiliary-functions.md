@@ -2,7 +2,6 @@
 tags:
     - User-guide
     - Network
-icon: lucide/function-square
 ---
 
 # Auxiliary Function Files
@@ -13,7 +12,7 @@ An **auxiliary function file** (`.jfunc`) lets you attach custom symbolic expres
 - Define composite or multi-step reactions whose effective rate coefficient depends on other species densities.
 - Provide gas heating and cooling rates that vary with the physical state of the gas.
 - Declare global symbolic constants shared across multiple functions.
-- Define radiation generation rates per unit frequency for photo reactions
+- Define radiation generation rates per unit photon energy for photo reactions
 
 JAFF automatically looks for a file with the same stem as the network file and a `.jfunc` extension. You can also specify one explicitly:
 
@@ -49,7 +48,7 @@ A `.jfunc` file contains two kinds of declarations: **global constants** (`@var`
 
 Expressions may reference previously declared `@var` names:
 
-```text
+```text hl_lines="3"
 @var sigma_SB = 5.670374419e-5
 @var c_light  = 2.99892458e10
 @var a_R      = 4 * sigma_SB / c_light    # radiation constant
@@ -67,11 +66,64 @@ Expressions may reference previously declared `@var` names:
 
 - Lines inside a function block are **local variable assignments** evaluated in order.
 - The block ends with a `return` statement whose expression is the function's symbolic value.
-- Comments (`#`) inside a block may document individual arguments — JAFF attaches them to the argument metadata.
+- Comments (`#`) inside a block may document individual arguments. A comment is attached to an argument's metadata **only when its first word is one of the declared argument names** (`# tgas Gas temperature in K`); any other comment is ignored.
 - Long expressions can be wrapped with a trailing backslash `\`.
 - `expressions` can contain sympy functions like `Piecewise`
 
 Functions may call other functions defined earlier in the same file.
+
+### Referencing species densities
+
+Functions usually depend on the number densities of species in the network. You
+do **not** wire these up by hand — you reference them through reserved symbol
+names (typically as the function's arguments), and JAFF substitutes the matching
+species density when the network is built. The substitution understands the
+following conventions:
+
+| Symbol            | Resolves to                                                                 |
+| ----------------- | --------------------------------------------------------------------------- |
+| `ntot`            | Total number density (sum over **all** species)                             |
+| `nh`              | Sum over all H-bearing species (H nucleus density)                          |
+| `nh0`             | Density of `H`                                                              |
+| `nh2`             | Density of `H2`                                                             |
+| `nhp`             | Density of `H+`                                                             |
+| `ne`              | Density of the electron (`e-`)                                              |
+| `n_<species>`     | Density of the named species (see suffix rules below)                       |
+
+There is no standalone `nhe` shorthand — to get the He-nucleus sum, write `n_He`.
+
+For the general `n_<species>` form, the part after `n_` is mapped to a species
+name with a small suffix convention:
+
+- trailing `p` → `+`, trailing `m` → `-`, trailing `0` → neutral (suffix dropped).
+  So `n_Cp` → `C+`, `n_O0` → `O`, `n_Hep` → `He+`.
+- `n_e` → the electron (`e-`).
+- `n_H` and `n_He` are treated as the H- and He-nucleus **element sums** (`n_H`
+  is equivalent to `nh`), not a single species.
+- any other `n_<species>` resolves to that exact species' density, e.g. `n_CO` → `CO`.
+
+<!-- prettier-ignore -->
+!!! warning "Density symbol casing"
+    The fixed shorthands (`ntot`, `nh`, `ne`, `nh0`, `nh2`, `nhp`) are matched
+    case-insensitively. The species part of the general `n_<species>` form is
+    **case-sensitive** and must match the species name exactly as it appears in
+    the network (`n_CO`, not `n_co`). A symbol that does not resolve to a species
+    in the network is left untouched as a free symbol — no error is raised, so a
+    mistyped name silently fails to substitute.
+
+The non-density physical symbols are passed through unchanged and supplied by
+the solver at runtime. These are the same canonical symbols available in rate
+expressions — `tgas`, `av`, `crate`, `chi`, `d2g`, `tdust`, and so on — listed
+in [Rate Expression Variables](network-formats.md#rate-expression-variables).
+(`gradv`, the velocity gradient used by the CO cooling fit, is another such
+runtime-supplied symbol.)
+
+<!-- prettier-ignore -->
+!!! note "`nh` / `nhe` expansion and `replace_nH`"
+    By default JAFF expands `nh`, `nhe`, `n_H`, and `n_He` into explicit sums
+    over the H-/He-bearing species. Constructing the network with
+    `Network(..., replace_nH=False)` instead keeps `nh` / `nhe` as standalone
+    free symbols.
 
 ---
 
@@ -89,7 +141,9 @@ JAFF recognises four reserved naming conventions:
 
 <!-- prettier-ignore -->
 !!! warning "Custom function naming"
-    Once parsed, the functions are stored in lowercase formats to make them case-insensitive. This is to make sure that they are compatible with languages that are case-insensetive and must be kept in mind while naming functions
+    Once parsed, the functions are stored in lowercase formats to make them case-insensitive. This is to make sure that they are compatible with languages that are case-insensetive and must be kept in mind while naming functions.
+
+    Note that this applies to **function names only**. `@var` constant names are **case-sensitive** — `kB` and `kb` are different symbols — so a constant must be referenced with the exact case it was declared with.
 
 ---
 
@@ -176,7 +230,7 @@ where $R_i$ represents the rate of the $i^{th}$ reaction and $\Delta E_i$ repres
 
 ```text
 @function deltaE40()
-    # Reaction 40+1: H2 + H -> H + H + H  (collisional dissociation)
+    # Reaction 40: H2 + H -> H + H + H  (collisional dissociation)
     return -4.48 * eV
 
 @function deltaE13(tgas, nH, nH0, nH2, chi, av)
@@ -189,7 +243,7 @@ where $R_i$ represents the rate of the $i^{th}$ reaction and $\Delta E_i$ repres
 
 ### Heating / cooling function
 
-The heating cooling function is used to add any non-chemical heating and cooling rates to the reaction network. The returned `expresssion` must be in terms of rate of internal energy change in units of $erg\ s^{-1}$
+The heating cooling function is used to add any non-chemical heating and cooling rates to the reaction network. The returned `expression` must be in terms of rate of internal energy change in units of $erg\ s^{-1}\ cm^{-3}$
 
 ```text
 @function heatingCoolingRate(chi, av, d2g, tgas, n_H, n_H0, n_H2,

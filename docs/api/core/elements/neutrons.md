@@ -12,5 +12,5 @@ Returns the number of neutrons in the most common isotope for each element. Valu
 
 **Returns**
 
-_Vector[int]_
+_Vector\[int\]_
 : Neutron count per element.

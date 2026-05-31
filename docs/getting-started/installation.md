@@ -2,54 +2,28 @@
 tags:
     - Introduction
     - Installation
-icon: lucide/monitor-down
+icon: phosphor/download-simple
 ---
 
 # Installation
 
 ## Requirements
 
-JAFF requires `python>=3.9`. Check your Python version:
+JAFF requires `python>=3.`. Check your Python version:
 
 ```bash
 python --version
 ```
 
-## Installation Methods
+## Installation
 
 <!-- prettier-ignore -->
 !!! tip "Managing virtual environments"
     Although JAFF can be installed in a variety of ways, it is encouraged to use [uv](https://docs.astral.sh/uv/) to install JAFF and manage its virtual environment.
 
-### Install from Source
+We recommend installing JAFF inside a virtual environment to avoid conflicts with other packages.
 
-For the latest development version:
-
-=== "pip"
-
-    ```bash
-    # Clone the repository
-    git clone git@github.com:jaff-chemistry/jaff.git
-    cd jaff
-
-    # Install the package
-    pip install -e .
-    ```
-
-=== "uv"
-
-    ```bash
-    # Clone the repository
-    git clone https://github.com/tgrassi/jaff.git
-    cd jaff
-
-    # Install the package
-    uv pip install -e .
-    ```
-
-## Virtual Environment (Recommended)
-
-It's recommended to use a virtual environment to avoid conflicts with other packages:
+### 1. Create and activate a virtual environment
 
 === "venv"
 
@@ -62,36 +36,53 @@ It's recommended to use a virtual environment to avoid conflicts with other pack
 
     # Activate (Windows)
     .venv\Scripts\activate
-
-    # Install JAFF
-    pip install jaff -e .
     ```
 
 === "conda"
 
     ```bash
     # Create conda environment
-    conda create -n .venv python=3.11
+    conda create -n jaff python=3.11
 
     # Activate
-    conda activate venv
-
-    # Install JAFF
-    pip install jaff -e .
+    conda activate jaff
     ```
 
 === "uv"
 
     ```bash
-    # Create virtual environment with uv (faster)
+    # Create virtual environment (faster)
     uv venv
 
-    # Activate
-    source .venv/bin/activate  # Linux/macOS
-    .venv\Scripts\activate     # Windows
+    # Activate (Linux/macOS)
+    source .venv/bin/activate
 
-    # Install JAFF
-    uv pip install jaff -e .
+    # Activate (Windows)
+    .venv\Scripts\activate
+    ```
+
+### 2. Install from source
+
+=== "pip"
+
+    ```bash
+    # Clone the repository
+    git clone https://github.com/jaff-chemistry/jaff.git
+    cd jaff
+
+    # Install the package
+    pip install -e .
+    ```
+
+=== "uv"
+
+    ```bash
+    # Clone the repository
+    git clone https://github.com/jaff-chemistry/jaff.git
+    cd jaff
+
+    # Install the package
+    uv pip install -e .
     ```
 
 ## Verifying Installation
@@ -139,46 +130,25 @@ On some systems, if you are using pip, you may need to install `NumPy` and `SciP
 pip install numpy scipy
 ```
 
-<!--### Permission Errors
-
-If you get permission errors on Linux/macOS:
-
-```bash
-# Install for current user only
-pip install --user jaff
-
-# Or use a virtual environment (recommended)
-python -m venv .venv
-source .venv/bin/activate
-pip install jaff
-```-->
-
-## Next Steps
-
-Now that JAFF is installed:
-
-- **Quick Start**: Follow the [Quick Start Guide](quickstart.md) to run your first network analysis
-- **Basic Concepts**: Learn about [chemical networks and reactions](concepts.md)
-- **User Guide**: Explore detailed [usage documentation](../user-guide/loading-networks.md)
-- **Developer Guide**: If you want to contribute or develop JAFF, see the [Developer Installation Guide](../development/installation.md)
-
-<!--
 ## Updating JAFF
 
-To update to the latest version:
+JAFF is installed from source, so update by pulling the latest changes and reinstalling:
 
-```bash
-# Update from PyPI
-pip install --upgrade jaff
-```
+=== "pip"
 
-Or with uv:
+    ```bash
+    cd jaff
+    git pull
+    pip install -e .
+    ```
 
-```bash
-# Update from PyPI
-uv pip install --upgrade jaff
-```
--->
+=== "uv"
+
+    ```bash
+    cd jaff
+    git pull
+    uv pip install -e .
+    ```
 
 ## Uninstalling
 
@@ -195,3 +165,12 @@ To remove JAFF from your system/venv:
     ```bash
     uv pip uninstall jaff
     ```
+
+## Next Steps
+
+Now that JAFF is installed:
+
+- **Quick Start**: Follow the [Quick Start Guide](quickstart.md) to run your first network analysis
+- **Basic Concepts**: Learn about [chemical networks and reactions](concepts.md)
+- **User Guide**: Explore detailed [usage documentation](../user-guide/working-with-networks/index.md)
+- **Developer Guide**: If you want to contribute or develop JAFF, see the [Developer Installation Guide](../development/installation.md)

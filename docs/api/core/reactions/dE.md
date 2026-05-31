@@ -12,5 +12,5 @@ Returns the internal energy change SymPy expression for every reaction in the ca
 
 **Returns**
 
-_Vector[sympy.Basic]_
+_Vector\[sympy.Basic\]_
 : SymPy expression for the energy change per reaction event (erg) for each reaction, in the same order as the catalogue.

@@ -12,5 +12,5 @@ Returns the atom-level (isomer-insensitive) canonical key for every reaction in 
 
 **Returns**
 
-_Vector[str]_
+_Vector\[str\]_
 : Atom-level canonical keys built from `Specie.serialized` forms for each reaction, in the same order as the catalogue.

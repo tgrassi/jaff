@@ -16,7 +16,7 @@ The `Elements` class is a sorted, deduplicated `Catalogue` of chemical elements 
 
 **Parameters**
 
-**species** : _Specie, list[Specie], str, or list[str]_
+**species** : _Specie, list\[Specie\], str, or list\[str\]_
 : Species to analyze. Strings are auto-converted to `Specie`.
 
 ## Attributes

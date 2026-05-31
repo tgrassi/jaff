@@ -11,7 +11,7 @@ Fetches all rows, optionally selecting specific columns.
 
 **Parameters**
 
-**cols** : _list[str], optional_
+**cols** : _list\[str\], optional_
 : Column names to select. Default `["*"]` (all columns).
 
 **Returns**

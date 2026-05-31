@@ -8,7 +8,7 @@ tags:
 
 `#!python plot(ax=None)`
 
-Plots the rate coefficient as a function of gas temperature on a log-log scale. The temperature axis spans [`tmin`, `tmax`]; when either is `None`, defaults of 2.73 K and 1e6 K are used respectively.
+Plots the rate coefficient as a function of gas temperature on a log-log scale. The temperature axis spans \[`tmin`, `tmax`\]; when either is `None`, defaults of 2.73 K and 1e6 K are used respectively.
 
 **Parameters**
 

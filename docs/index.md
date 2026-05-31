@@ -1,7 +1,7 @@
 ---
 tags:
     - Introduction
-icon: lucide/house
+icon: phosphor/house
 ---
 
 # JAFF
@@ -24,25 +24,25 @@ JAFF is a comprehensive library for working with astrochemical reaction networks
 
 <div class="grid cards" markdown>
 
-- :lucide-atom:{ .sm .middle } **Multi-format support**
+- :phosphor-atom:{ .sm .middle } **Multi-format support**
 
     ***
 
     Parses `KIDA`, `UDFA`, `PRIZMO`, `KROME` and `UCLCHEM` networks with automatic format detection.
 
-- :lucide-chart-spline:{ .sm .middle } **Validation and Analysis**
+- :phosphor-chart-line:{ .sm .middle } **Validation and Analysis**
 
     ***
 
     Automatically validates mass and charge conservation, and extracts elemental composition.
 
-- :lucide-code:{ .sm .middle } **Code Generation**
+- :phosphor-code:{ .sm .middle } **Code Generation**
 
     ***
 
     Generates optimized code for rates, ODEs, Jacobians, and fluxes `C`, `C++`, `Fortran`, `Python`, `Rust`, `Julia`, and `R` with optional CSE.
 
-- :lucide-chart-no-axes-gantt:{ .sm .middle } **Template System**
+- :phosphor-chart-bar:{ .sm .middle } **Template System**
 
     ***
 
@@ -97,7 +97,7 @@ Products: H+, e-
 
 <div class="grid cards" markdown>
 
-- :lucide-rocket:{ .sm .middle } **Getting Started**
+- :phosphor-rocket-launch:{ .sm .middle } **Getting Started**
 
     ***
 
@@ -105,7 +105,7 @@ Products: H+, e-
 
     [:octicons-arrow-right-24: Installation Guide](getting-started/installation.md)
 
-- :lucide-book-open:{ .sm .middle } **User Guide**
+- :phosphor-book-open:{ .sm .middle } **User Guide**
 
     ***
 
@@ -113,15 +113,15 @@ Products: H+, e-
 
     [:octicons-arrow-right-24: User Guide](user-guide/designing-networks/index.md)
 
-- :lucide-braces:{ .sm .middle } **Code Generation**
+- :phosphor-brackets-curly:{ .sm .middle } **Code Generation**
 
     ***
 
     Use JAFF's templated code generation capabilites to generate code any any of the major programming languages to simulate chemical reactions
 
-    [:octicons-arrow-right-24: Code Generation Guide](user-guide/code-generation.md)
+    [:octicons-arrow-right-24: Code Generation Guide](user-guide/code-generation/index.md)
 
-- :lucide-folder-kanban:{ .sm .middle } **API Reference**
+- :phosphor-kanban:{ .sm .middle } **API Reference**
 
     ***
 
@@ -135,7 +135,7 @@ Products: H+, e-
 
 ## Community & Support
 
-- **GitHub Issues**: Report bugs and request features at [github.com/tgrassi/jaff/issues](https://github.com/tgrassi/jaff/issues)
+- **GitHub Issues**: Report bugs and request features at [github.com/jaff-chemistry/jaff/issues](https://github.com/jaff-chemistry/jaff/issues)
 - **Discussions**: Ask questions and share ideas
 - **Contributing**: See our [Contributing Guide](development/contributing.md)
 
@@ -150,7 +150,7 @@ If you use JAFF in your research, please cite:
   title = {JAFF: Just Another Fancy Format},
   author = {JAFF Team},
   year = {2024},
-  url = {https://github.com/tgrassi/jaff},
+  url = {https://github.com/jaff-chemistry/jaff},
   version = {0.1.0}
 }
 ```

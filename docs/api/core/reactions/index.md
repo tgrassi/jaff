@@ -21,5 +21,5 @@ The `Reactions` class is a typed, ordered `Catalogue` of `Reaction` objects. It 
 
 **Parameters**
 
-**reactions** : _list[Reaction] or None, optional_
+**reactions** : _list\[Reaction\] or None, optional_
 : Initial reactions. Default `None` (empty collection).

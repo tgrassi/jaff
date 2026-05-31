@@ -11,5 +11,5 @@ Returns the names of all user-defined tables in the database, queried from the S
 
 **Returns**
 
-_list[str]_
+_list\[str\]_
 : Names of all tables currently in the database.
