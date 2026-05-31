@@ -318,7 +318,13 @@ def from_jaff_file(filename: str | Path, errors=False):
         """
         if not rate_symbol_assumptions:
             return expr
-        symbols = [s for s in expr.free_symbols if s.name in rate_symbol_assumptions]
+        # Only rebuild plain Symbols; leave MatrixSymbols (e.g. ``nden``) intact,
+        # otherwise their MatrixElement indices (``nden[i, 0]``) cannot be rebuilt.
+        symbols = [
+            s
+            for s in expr.free_symbols
+            if isinstance(s, Symbol) and s.name in rate_symbol_assumptions
+        ]
         if not symbols:
             return expr
         replacements = {}

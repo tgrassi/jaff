@@ -139,3 +139,54 @@ def test_network_json_roundtrip_sample_kida_valid():
             os.unlink(legacy_path)
     finally:
         os.unlink(json_path)
+
+
+def test_network_json_roundtrip_preserves_nden_rates():
+    """Rates standardized to ``nden[i, 0]`` MatrixElements must survive a
+    round-trip. Regression test for the reload-side bug where the ``nden``
+    MatrixSymbol was rebuilt as a plain Symbol (breaking MatrixElement) and the
+    ``dRad`` field was read under the wrong JSON key (``None * rate`` crash)."""
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    path = os.path.join(repo_root, "networks", "GOW", "GOW.jet")
+
+    with patch("builtins.print"):
+        net = Network(path)
+
+    # The GOW network uses density shorthand, so some rates contain nden[i, 0].
+    assert any("nden" in str(r.rate) for r in net.reactions)
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".jaff", delete=False) as f:
+        json_path = f.name
+
+    try:
+        net.to_jaff(json_path)
+        with patch("builtins.print"):
+            net2 = Network(json_path)  # must not raise
+
+        assert [s.name for s in net2.species] == [s.name for s in net.species]
+        assert len(net2.reactions) == len(net.reactions)
+
+        # ODEs must match numerically (float display-precision may differ).
+        # Evaluate both sides at a sampled point rather than simplifying the
+        # symbolic difference (prohibitively slow for large RHSs). Substitute
+        # plain Symbols and nden[i, 0] MatrixElements directly — never the bare
+        # nden MatrixSymbol, which cannot be replaced by a scalar.
+        from sympy.matrices.expressions.matexpr import MatrixElement
+
+        odes1, odes2 = net.sodes(), net2.sodes()
+        assert len(odes1) == len(odes2)
+
+        names = set()
+        for e in odes1 + odes2:
+            names |= {str(t) for t in (e.atoms(sympy.Symbol) | e.atoms(MatrixElement))}
+        sample = {n: 2.0 + i for i, n in enumerate(sorted(names))}
+
+        def evaluate(expr):
+            targets = expr.atoms(sympy.Symbol) | expr.atoms(MatrixElement)
+            return float(expr.xreplace({t: sympy.Float(sample[str(t)]) for t in targets}).evalf())
+
+        for e1, e2 in zip(odes1, odes2):
+            v1, v2 = evaluate(e1), evaluate(e2)
+            assert abs(v2 - v1) <= 1e-9 * max(1.0, abs(v1))
+    finally:
+        os.unlink(json_path)
