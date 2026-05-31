@@ -1,71 +1,194 @@
-# ABOUTME: Physical constants in multiple unit systems
-# ABOUTME: CGS, SI, Gaussian, and natural units for astrochemistry and particle physics
+"""
+Physical and astronomical constants for multiple unit systems.
+
+This module defines the :class:`Constants` dataclass and provides four
+pre-instantiated constant sets:
+
+- ``cgs`` -- CGS-ESU (centimetre–gram–second, electrostatic units). This is
+  the primary system used throughout JAFF for internal calculations.
+- ``si`` -- SI (metre–kilogram–second).
+- ``gaussian`` -- Gaussian CGS (combines ESU for electric quantities and EMU
+  for magnetic quantities; factors of *c* appear explicitly in Maxwell's
+  equations).
+- ``natural`` -- Natural units with ℏ = c = 1, energies in MeV.
+
+All constant values follow CODATA 2018 recommended values where applicable.
+
+Examples
+--------
+>>> from jaff.physics.constants import cgs, si
+>>> cgs.c  # speed of light in cm/s
+2.99792458e+10
+>>> si.k_b  # Boltzmann constant in J/K
+1.380649e-23
+"""
 
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class Constants:
-    """Physical and astronomical constants in consistent unit systems."""
+    """
+    Immutable container for physical and astronomical constants.
+
+    All fields are floats whose numeric values correspond to a specific unit
+    system (CGS, SI, Gaussian, or natural units).  The dataclass is frozen so
+    that constants cannot be accidentally mutated at runtime.
+
+    Parameters
+    ----------
+    c : float
+        Speed of light in vacuum.
+    h : float
+        Planck constant.
+    h_bar : float
+        Reduced Planck constant (ℏ = h / 2π).
+    G : float
+        Newtonian gravitational constant.
+    k_b : float
+        Boltzmann constant.
+    e : float
+        Elementary charge (esu in CGS/Gaussian; coulombs in SI; dimensionless
+        coupling √α in natural units).
+    m_e : float
+        Electron rest mass.
+    m_p : float
+        Proton rest mass.
+    m_n : float
+        Neutron rest mass.
+    amu : float
+        Atomic mass unit (1 u).
+    me_mp : float
+        Electron-to-proton mass ratio (dimensionless).
+    m_sun : float
+        Solar mass.
+    r_sun : float
+        Solar radius.
+    l_sun : float
+        Solar luminosity.
+    pc : float
+        Parsec.
+    kpc : float
+        Kiloparsec.
+    mpc : float
+        Megaparsec.
+    au : float
+        Astronomical unit.
+    ly : float
+        Light-year.
+    H0 : float
+        Hubble constant (67.4 km/s/Mpc expressed in the unit system's
+        velocity and distance units).
+    sigma_sb : float
+        Stefan–Boltzmann constant.
+    a_rad : float
+        Radiation constant (a = 4σ/c).
+    alpha : float
+        Fine-structure constant (dimensionless, ≈ 1/137).
+    sigma_T : float
+        Thomson scattering cross section.
+    lambda_C : float
+        Compton wavelength of the electron (h / m_e c).
+    a0 : float
+        Bohr radius.
+    Ry_hc : float
+        Rydberg energy (1 Ry = 13.6 eV expressed in the unit system's energy
+        units).
+    Ry : float
+        Rydberg energy in electronvolts (always 13.605693 eV, unit-independent).
+    r_e : float
+        Classical electron radius.
+    gyro_coeff : float
+        Gyration-frequency coefficient (charge/mass, or equivalent).
+    ev_to_erg : float
+        Conversion factor: 1 eV expressed in the unit system's energy unit.
+    mu_H : float
+        Mean mass of a hydrogen atom (≈ proton mass).
+    mu_H2 : float
+        Mean mass of a hydrogen molecule (≈ 2 × proton mass).
+    kb_ev : float
+        Boltzmann constant in eV/K (useful for converting temperatures).
+    T_cmb : float
+        CMB temperature in Kelvin (2.725 K; system-independent).
+    T_1ev : float
+        Temperature equivalent of 1 eV (k_B T = 1 eV ⟹ T in Kelvin).
+    nH_ref : float
+        Reference hydrogen number density corresponding to 1 hydrogen atom
+        per unit volume of the system.
+    barn : float
+        1 barn expressed in the unit system's area unit (10⁻²⁴ cm²).
+    mbarn : float
+        1 megabarn expressed in the unit system's area unit.
+    n_A : float
+        Avogadro constant (dimensionless, same in all systems).
+    R_gas : float
+        Molar gas constant (k_B × N_A).
+
+    Notes
+    -----
+    The dataclass is declared ``frozen=True`` to make instances hashable and
+    prevent accidental mutation.  Use the module-level instances ``cgs``,
+    ``si``, ``gaussian``, and ``natural`` rather than constructing your own.
+    """
 
     # Fundamental Physical Constants
-    c: float  # speed of light
-    h: float  # Planck constant
-    h_bar: float  # reduced Planck constant
-    G: float  # gravitational constant
-    k_b: float  # Boltzmann constant
-    e: float  # elementary charge
-    m_e: float  # electron mass
-    m_p: float  # proton mass
-    m_n: float  # neutron mass
-    amu: float  # atomic mass unit
-    me_mp: float  # electron-to-proton mass ratio
+    c: float
+    h: float
+    h_bar: float
+    G: float
+    k_b: float
+    e: float
+    m_e: float
+    m_p: float
+    m_n: float
+    amu: float
+    me_mp: float
 
     # Astronomical Constants
-    m_sun: float  # solar mass
-    r_sun: float  # solar radius
-    l_sun: float  # solar luminosity
-    pc: float  # parsec
-    kpc: float  # kiloparsec
-    mpc: float  # megaparsec
-    au: float  # astronomical unit
-    ly: float  # light year
-    H0: float  # Hubble constant
+    m_sun: float
+    r_sun: float
+    l_sun: float
+    pc: float
+    kpc: float
+    mpc: float
+    au: float
+    ly: float
+    H0: float
 
-    # Physical Constants Used in Astrochemistry
-    sigma_sb: float  # Stefan-Boltzmann constant
-    a_rad: float  # radiation constant
-    alpha: float  # fine structure constant
-    sigma_T: float  # Thomson cross section
-    lambda_C: float  # Compton wavelength of electron
-    a0: float  # Bohr radius
-    Ry_hc: float  # Rydberg constant times hc
-    Ry: float  # Rydberg energy
+    # Astrochemistry
+    sigma_sb: float
+    a_rad: float
+    alpha: float
+    sigma_T: float
+    lambda_C: float
+    a0: float
+    Ry_hc: float
+    Ry: float
 
-    # Physical Constants for Gas/Plasma Astrophysics
-    r_e: float  # classical electron radius
-    gyro_coeff: float  # cyclotron frequency coefficient
+    # Gas/Plasma Astrophysics
+    r_e: float
+    gyro_coeff: float
 
     # Conversion Factors and Derived Constants
-    ev_to_erg: float  # electrovolts to energy conversion
-    mu_H: float  # mean molecular weight (atomic hydrogen)
-    mu_H2: float  # mean molecular weight (H2)
-    kb_ev: float  # Boltzmann constant in eV/K
+    ev_to_erg: float
+    mu_H: float
+    mu_H2: float
+    kb_ev: float
 
-    # Temperature-related Constants
-    T_cmb: float  # cosmic microwave background temperature
-    T_1ev: float  # temperature corresponding to 1 eV
+    # Temperature
+    T_cmb: float
+    T_1ev: float
 
-    # Density-related Constants
-    nH_ref: float  # reference hydrogen number density
+    # Density
+    nH_ref: float
 
     # Cross section reference values
-    barn: float  # barn unit
-    mbarn: float  # megabarn unit
+    barn: float
+    mbarn: float
 
-    # Physical Constants for Reference
-    n_A: float  # Avogadro's number
-    R_gas: float  # gas constant
+    # Reference
+    n_A: float
+    R_gas: float
 
 
 # =============================================================================
@@ -311,71 +434,20 @@ natural = Constants(
 
 
 # =============================================================================
-# Unit Systems Documentation
+# Unit Systems Quick-Reference
 # =============================================================================
-"""
-UNIT SYSTEMS
-=============
-
-CGS-ESU (cgs_esu / cgs):
-    Length: centimeter (cm)
-    Mass: gram (g)
-    Time: second (s)
-    Energy: erg (1 erg = 1 g·cm²/s²)
-    Temperature: Kelvin (K)
-    Charge: esu (electrostatic unit / statcoulomb)
-    Magnetic field: stattesla
-    Pure electrostatic CGS system
-
-SI (si):
-    Length: meter (m)
-    Mass: kilogram (kg)
-    Time: second (s)
-    Energy: joule (J = kg·m²/s²)
-    Temperature: Kelvin (K)
-    Charge: coulomb (C)
-    Magnetic field: tesla (T)
-    International standard, common in modern physics
-
-Gaussian (gaussian):
-    Length: centimeter (cm)
-    Mass: gram (g)
-    Time: second (s)
-    Energy: erg
-    Temperature: Kelvin (K)
-    Charge: esu
-    Magnetic field: Gauss
-    Standard in astrophysics and plasma physics.
-    Combines ESU for charge/electric fields and EMU for magnetic fields.
-    Factors of c appear explicitly in Maxwell's equations.
-
-Natural Units (natural):
-    ℏ = c = 1 (dimensionless)
-    Energy scale: MeV (can be rescaled to GeV, etc.)
-    Length: MeV⁻¹ (≈ 1.973 × 10⁻¹⁴ cm = 1 fm)
-    Time: MeV⁻¹ (≈ 6.583 × 10⁻²² s)
-    Mass: MeV
-    Temperature: Kelvin (K), with k_B = 8.617 × 10⁻¹¹ MeV/K
-    Convenient for particle physics and quantum mechanics calculations
-    Common in high-energy physics and relativistic calculations
-
-USAGE:
-    from jaff.physics.constants import cgs, si, gaussian, natural
-
-    # Access constants via dot notation
-    c_cgs = cgs.c        # 2.998e10 cm/s
-    c_si = si.c          # 2.998e8 m/s
-    m_e_natural = natural.m_e  # 0.511 MeV
-
-KEY CONVERSIONS:
-    1 MeV⁻¹ = 1.973 × 10⁻¹⁴ cm (natural to CGS)
-    1 fm = 197.327 MeV⁻¹ (CGS to natural)
-    α ≈ 1/137 (fine structure constant, dimensionless in all systems)
-    ℏc ≈ 197.327 MeV·fm
-
-WHEN TO USE EACH SYSTEM:
-    - CGS: Astrophysics, plasma physics, older literature
-    - SI: Modern physics, engineering, international standards
-    - Gaussian: Electromagnetism in CGS framework, theoretical physics
-    - Natural: Particle physics, quantum field theory, relativistic calculations
-"""
+# CGS-ESU (cgs):  cm, g, s, erg, K, esu, stattesla
+# SI (si):        m, kg, s, J, K, C, T
+# Gaussian:       cm, g, s, erg, K, esu, Gauss  (c explicit in Maxwell eqs)
+# Natural:        ℏ = c = 1; energy in MeV; length in MeV⁻¹ ≈ 1.973×10⁻¹⁴ cm
+#
+# Key cross-system conversions:
+#   1 MeV⁻¹ = 1.973×10⁻¹⁴ cm   (natural → CGS length)
+#   1 fm    = 5.068 MeV⁻¹        (CGS → natural length)
+#   ℏc      ≈ 197.327 MeV·fm
+#   α       ≈ 1/137 (fine-structure constant, dimensionless in all systems)
+#
+# Preferred system per domain:
+#   Astrochemistry / plasma physics : CGS or Gaussian
+#   Modern physics / engineering    : SI
+#   Particle / quantum field theory : Natural

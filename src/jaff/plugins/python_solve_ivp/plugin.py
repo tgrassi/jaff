@@ -1,9 +1,7 @@
-from jaff import Codegen, Network
+from jaff import Codegen, Network, Preprocessor
 
 
 def main(network, path_template, path_build=None):
-    from jaff.preprocessor import Preprocessor
-
     p = Preprocessor()
     cg = Codegen(network=network, lang="python")
 

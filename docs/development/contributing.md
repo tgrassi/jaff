@@ -1,513 +1,184 @@
 ---
 tags:
     - Development
-icon: lucide/git-pull-request
+icon: phosphor/git-pull-request
 ---
 
 # Contributing to JAFF
 
-Thank you for your interest in contributing to JAFF! This guide will help you get started.
+Thank you for your interest in contributing to JAFF! This guide covers the
+workflow: forking, branching, opening a pull request, and getting it through CI.
 
-## Table of Contents
+All work lands on `main` through pull requests. You never push directly to
+`main` — you push a branch to your fork and open a PR from it.
 
-<!--- [Code of Conduct](#code-of-conduct)-->
+## Ways to Contribute
 
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Making Changes](#making-changes)
-- [Testing](#testing)
-- [Documentation](#documentation)
-- [Submitting Changes](#submitting-changes)
-- [Code Style](#code-style)
-- [Review Process](#review-process)
+- **Report bugs** — open an issue describing the problem and how to reproduce it.
+- **Suggest features** — open an issue to discuss before building anything large.
+- **Fix issues / add features** — pick an issue, then send a PR.
+- **Improve docs** — corrections and clarifications are always welcome.
 
-<!--## Code of Conduct
+For major changes, open an issue first so the direction can be agreed before you
+invest time.
 
-We are committed to providing a welcoming and inclusive environment. Please be respectful and considerate in all interactions.
+## 1. Fork and Clone
 
-### Our Standards
-
-- Use welcoming and inclusive language
-- Respect differing viewpoints and experiences
-- Accept constructive criticism gracefully
-- Focus on what's best for the community
-- Show empathy towards others-->
-
-## Getting Started
-
-### Ways to Contribute
-
-- **Report bugs** - Found a bug? Open an issue!
-- **Suggest features** - Have an idea? We'd love to hear it
-- **Fix issues** - Browse open issues and submit a PR
-- **Improve docs** - Documentation can always be better
-- **Add examples** - Share your use cases
-- **Answer questions** - Help others in discussions
-
-### Before You Start
-
-1. Check if an issue already exists for your contribution
-2. For major changes, open an issue first to discuss
-3. Make sure you can run the tests locally
-4. Read through this guide
-
-## Development Setup
-
-### Fork and Clone
+Fork the repository on GitHub, then clone **your fork**:
 
 ```bash
-# Fork the repository on GitHub, then:
 git clone https://github.com/YOUR_USERNAME/jaff.git
 cd jaff
 ```
 
-### Create Virtual Environment
+Add the upstream repository so you can keep your fork in sync:
 
 ```bash
-# Using venv
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Or using conda
-conda create -n jaff python=3.11
-conda activate jaff
+git remote add upstream https://github.com/jaff-chemistry/jaff.git
+git remote -v   # origin = your fork, upstream = jaff-chemistry/jaff
 ```
 
-### Install Development Dependencies
+Set up the development environment (editable install with dev dependencies) by
+following the [Installation guide](installation.md).
+
+## 2. Create a Branch
+
+Always branch off an up-to-date `main`. Never commit to `main` directly.
 
 ```bash
-# Install package in editable mode with dev dependencies
-pip install -e ".[dev]"
-
-# Or if that doesn't work:
-pip install -e .
-pip install pytest black mypy ruff mkdocs-material
-```
-
-### Verify Installation
-
-```bash
-# Run tests
-pytest
-
-# Check code style
-black --check src/
-ruff check src/
-
-# Type checking
-mypy src/
-```
-
-## Making Changes
-
-### Create a Branch
-
-```bash
-# Create a new branch for your changes
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/issue-number-description
+git checkout main
+git pull upstream main          # sync with upstream
+git checkout -b feature/short-description
 ```
 
 ### Branch Naming
 
-- `feature/` - New features
-- `fix/` - Bug fixes
-- `docs/` - Documentation changes
-- `test/` - Test additions/modifications
-- `refactor/` - Code refactoring
+Prefix the branch with its purpose so its intent is clear at a glance:
+
+| Prefix      | Use for                           | Example                          |
+| ----------- | --------------------------------- | -------------------------------- |
+| `feature/`  | New functionality                 | `feature/gpu-codegen`            |
+| `bug-fix/`  | Bug fixes                         | `bug-fix/fortran-index-offset`   |
+| `docs/`     | Documentation changes             | `docs/rewrite-installation`      |
+| `refactor/` | Restructuring, no behavior change | `refactor/split-template-engine` |
+| `test/`     | Test additions or fixes           | `test/network-edge-cases`        |
+| `chore/`    | Maintenance, tooling, deps        | `chore/bump-numpy`               |
+
+## 3. Make Your Changes
+
+Keep changes focused — one logical change per branch makes review faster.
 
 ### Commit Messages
 
-Write clear, descriptive commit messages:
+Write clear messages explaining _what_ and _why_, not _how_:
 
 ```bash
 # Good
-git commit -m "Add support for GPU code generation"
-git commit -m "Fix index offset bug in Fortran codegen"
-git commit -m "docs: Update installation guide"
+git commit -m "feat: add support for GPU code generation"
+git commit -m "fix: correct index offset in Fortran codegen"
+git commit -m "docs: rewrite installation guide"
 
 # Bad
-git commit -m "Fixed stuff"
+git commit -m "fixed stuff"
 git commit -m "WIP"
-git commit -m "update"
 ```
 
-**Format:**
+Suggested format:
 
 ```
-type: Short description (50 chars or less)
+type: short description (≤50 chars)
 
-Longer description if needed. Explain what and why,
-not how. Wrap at 72 characters.
+Longer explanation if needed. What changed and why,
+wrapped at ~72 characters.
 
 Fixes #123
 ```
 
-**Types:**
+Commit types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
 
-- `feat:` - New feature
-- `fix:` - Bug fix
-- `docs:` - Documentation
-- `test:` - Tests
-- `refactor:` - Code refactoring
-- `style:` - Formatting
-- `chore:` - Maintenance
+### Tests and Code Style
 
-## Testing
-
-### Running Tests
+Before opening a PR, make sure tests pass and the code is formatted and linted:
 
 ```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_network.py
-
-# Run with coverage
-pytest --cov=jaff --cov-report=html
-
-# Run specific test
-pytest tests/test_network.py::test_load_network
+pytest          # run the test suite
+ruff check .    # lint
+ruff format .   # format
 ```
 
-### Writing Tests
+- See the [Testing Guide](testing.md) for running, writing, and covering tests.
+- See the [Code Style Guide](code-style.md) for formatting, naming, type hints,
+  and docstring conventions.
 
-Add tests for all new features and bug fixes:
+## 4. Open a Pull Request
 
-```python
-# tests/test_myfeature.py
-import pytest
-from jaff import Network
-
-def test_my_new_feature():
-    """Test description."""
-    net = Network("networks/test.dat")
-    result = net.my_new_feature()
-    assert result == expected_value
-
-def test_edge_case():
-    """Test edge cases."""
-    with pytest.raises(ValueError):
-        # Code that should raise ValueError
-        pass
-```
-
-### Test Coverage
-
-- Aim for >80% code coverage
-- Test both success and failure cases
-- Include edge cases
-- Add regression tests for bug fixes
-
-## Documentation
-
-### Docstrings
-
-Use Google-style docstrings:
-
-```python
-def my_function(arg1: int, arg2: str) -> bool:
-    """Short description.
-
-    Longer description if needed. Explain what the function
-    does, not how it does it.
-
-    Args:
-        arg1: Description of arg1
-        arg2: Description of arg2
-
-    Returns:
-        Description of return value
-
-    Raises:
-        ValueError: When something is wrong
-
-    Example:
-        >>> result = my_function(42, "test")
-        >>> print(result)
-        True
-    """
-    pass
-```
-
-### Type Hints
-
-Add type hints to all new code:
-
-```python
-from typing import List, Dict, Optional
-
-def process_species(
-    species: List[str],
-    options: Optional[Dict[str, int]] = None
-) -> Dict[str, float]:
-    """Process species list."""
-    pass
-```
-
-### Documentation Files
-
-Update relevant documentation in `docs/`:
+Push your branch to your fork and open a PR against `jaff-chemistry/jaff:main`:
 
 ```bash
-# Build docs locally
-cd docs
-mkdocs serve
-
-# View at http://localhost:8000
+git push origin feature/short-description
 ```
 
-Add examples to documentation:
+GitHub will print a link to open the PR. In the PR description:
 
-````markdown
-## Example
+- Summarize what changed and why.
+- Reference any related issues (`Fixes #123`).
+- Note anything reviewers should pay attention to.
 
-```python
-from jaff import Network
+### Pre-submit Checklist
 
-net = Network("network.dat")
-# ...
-```
-````
+- [x] Branched off `main` with a correct prefix
+- [x] `pytest` passes locally
+- [x] `ruff check .` and `ruff format .` are clean
+- [x] Documentation updated if behavior or interfaces changed
+- [x] PR description explains the change and links related issues
 
-````
+## 5. Pass CI
 
-## Submitting Changes
+Every pull request to `main` must pass all CI checks before it can be merged.
+Three workflows run automatically:
 
-### Before Submitting
+| Workflow                 | What it does                                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------------------- |
+| **Tests**                | Runs `pytest` (with coverage) across Linux, macOS, and Windows on Python 3.11, 3.12, and 3.13. |
+| **Deploy Documentation** | Builds the docs with `zensical build` to catch broken builds and links.                        |
+| **Test Notebooks**       | Executes every notebook in `examples/` on Python 3.11, 3.12, and 3.13.                         |
 
-Checklist:
+Because tests run on three operating systems and three Python versions, keep
+code portable (use `pathlib` over hard-coded paths, avoid version-specific
+syntax). If a check fails, open the failing job's logs from the PR's **Checks**
+tab, fix locally, and push again — CI re-runs on every push.
 
-- [ ] Code follows style guide
-- [ ] Tests pass locally
-- [ ] Added tests for new features
-- [ ] Updated documentation
-- [ ] Added docstrings
-- [ ] Type hints added
-- [ ] No merge conflicts
+## 6. Address Review Feedback
 
-### Create Pull Request
+A maintainer will review your PR. To respond to comments, commit on the same
+branch and push — the PR updates automatically and CI re-runs:
 
 ```bash
-# Push your branch
-git push origin feature/your-feature-name
-````
-
-Then on GitHub:
-
-1. Click "New Pull Request"
-2. Choose your branch
-3. Fill out the PR template
-4. Submit!
-
-### Pull Request Template
-
-```markdown
-## Description
-
-Brief description of changes.
-
-## Type of Change
-
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Documentation update
-- [ ] Refactoring
-
-## Testing
-
-How to test these changes:
-
-1. Step 1
-2. Step 2
-
-## Checklist
-
-- [ ] Tests pass
-- [ ] Documentation updated
-- [ ] Code follows style guide
-- [ ] Added type hints
-
-## Related Issues
-
-Fixes #123
-```
-
-## Code Style
-
-### Python Style Guide
-
-We follow PEP 8 with some modifications:
-
-```python
-# Maximum line length: 88 characters (Black default)
-# Use 4 spaces for indentation
-# Use double quotes for strings
-
-# Good
-def compute_rates(network: Network, temperature: float) -> np.ndarray:
-    """Compute reaction rates."""
-    return network.get_rates(temperature)
-
-# Avoid
-def compute_rates(network,temperature):
-    return network.get_rates(temperature)
-```
-
-### Formatting with Black
-
-```bash
-# Format all files
-black src/ tests/
-
-# Check without modifying
-black --check src/
-
-# Format specific file
-black src/jaff/network.py
-```
-
-### Linting with Ruff
-
-```bash
-# Check for issues
-ruff check src/
-
-# Fix automatically where possible
-ruff check --fix src/
-```
-
-### Type Checking with mypy
-
-```bash
-# Type check
-mypy src/
-
-# Strict mode
-mypy --strict src/jaff/network.py
-```
-
-### Import Order
-
-Use `isort` or follow this order:
-
-```python
-# Standard library
-import os
-import sys
-from typing import List, Dict
-
-# Third-party
-import numpy as np
-import sympy as sp
-
-# Local
-from jaff import Network
-from jaff.codegen import Codegen
-```
-
-## Review Process
-
-### What to Expect
-
-1. **Automated Checks** - CI runs tests, linting, type checking
-2. **Code Review** - Maintainers review your code
-3. **Discussion** - Back-and-forth to improve the PR
-4. **Approval** - Once approved, PR is merged
-
-### Review Timeline
-
-- Initial review: Usually within 1 week
-- Follow-up: Within a few days
-- Be patient - maintainers are volunteers!
-
-### Responding to Reviews
-
-```bash
-# Make requested changes
 git add .
-git commit -m "Address review comments"
-git push
+git commit -m "address review comments"
+git push origin feature/short-description
 ```
 
-Be respectful and open to feedback. Reviews make the code better!
-
-## Development Tips
-
-### Running Specific Tests
+Keep your branch current with `main` if it falls behind:
 
 ```bash
-# Fast test subset
-pytest tests/test_network.py -v
-
-# Skip slow tests
-pytest -m "not slow"
-
-# Run with debugging
-pytest --pdb
-```
-
-### Debugging
-
-```python
-# Add breakpoint
-import pdb; pdb.set_trace()
-
-# Or in Python 3.7+
-breakpoint()
-```
-
-### Building Documentation
-
-```bash
-# Serve locally
-mkdocs serve
-
-# Build static site
-mkdocs build
-
-# Deploy (maintainers only)
-mkdocs gh-deploy
-```
-
-### Performance Profiling
-
-```python
-import cProfile
-
-cProfile.run('my_function()')
+git fetch upstream
+git rebase upstream/main
+git push --force-with-lease origin feature/short-description
 ```
 
 ## Getting Help
 
-Need help? We're here to assist:
-
-- **GitHub Discussions** - Ask questions
-- **GitHub Issues** - Report problems
-- **Pull Requests** - Get feedback on code
-
-Don't be shy! We're happy to help new contributors.
-
-## Recognition
-
-Contributors are recognized:
-
-- Mentioned in release notes
-- GitHub contributions graph
+- **GitHub Issues** — bug reports and feature requests.
+- **GitHub Discussions** — questions about the codebase or usage.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
-
----
-
-**Thank you for contributing to JAFF!** 🎉
-
-Your contributions help make JAFF better for everyone.
+By contributing, you agree that your contributions are licensed under the
+project's [MIT License](../about/license.md).
 
 ## See Also
 
-- [Code Style Guide](code-style.md)
+- [Installation Guide](installation.md)
 - [Testing Guide](testing.md)
+- [Code Style Guide](code-style.md)

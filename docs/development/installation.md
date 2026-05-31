@@ -2,14 +2,17 @@
 tags:
     - Development
     - Installation
-icon: lucide/monitor-down
+icon: phosphor/download-simple
 ---
 
 # Installation
 
+This guide covers a **development** install (editable, with dev tooling). For a
+plain user install, see the [Getting Started installation guide](../getting-started/installation.md).
+
 ## Prerequisites
 
-- Python 3.9 or higher
+- `python >= 3.11`
 - Git
 - (Optional) [uv](https://docs.astral.sh/uv/) - A fast Python package installer and resolver
 
@@ -24,7 +27,7 @@ python --version
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/tgrassi/jaff.git
+git clone https://github.com/jaff-chemistry/jaff.git
 cd jaff
 ```
 
@@ -32,7 +35,7 @@ cd jaff
 
 It's strongly recommended to use a virtual environment for development:
 
-=== "Using venv"
+=== "venv"
 
     ```bash
     # Create virtual environment
@@ -45,7 +48,7 @@ It's strongly recommended to use a virtual environment for development:
     .venv\Scripts\activate
     ```
 
-=== "Using uv (Recommended)"
+=== "uv (Recommended)"
 
     ```bash
     # Create virtual environment with uv (much faster)
@@ -56,7 +59,7 @@ It's strongly recommended to use a virtual environment for development:
     .venv\Scripts\activate     # Windows
     ```
 
-=== "Using conda"
+=== "conda"
 
     ```bash
     # Create conda environment
@@ -70,21 +73,48 @@ It's strongly recommended to use a virtual environment for development:
 
 Install JAFF in editable mode with all development dependencies:
 
-=== "Using pip"
+=== "pip"
 
     ```bash
-    # Install in editable mode with development dependencies
     pip install -e ".[dev]"
     ```
 
-=== "Using uv (Recommended)"
+=== "uv (Recommended)"
 
     ```bash
-    # Install in editable mode with development dependencies
     uv pip install -e ".[dev]"
     ```
 
 The `-e` flag installs the package in "editable" mode, meaning changes you make to the source code are immediately reflected without reinstalling.
+
+## Verifying Your Development Setup
+
+After installation, verify everything is working:
+
+=== "Package import"
+
+    ```bash
+    python -c "import jaff; print(jaff.__version__)"
+    ```
+
+=== "CLI"
+
+    ```bash
+    jaffgen --help
+    jaffx --help
+    ```
+
+=== "Tests"
+
+    ```bash
+    pytest
+    ```
+
+=== "Code style"
+
+    ```bash
+    ruff check .
+    ```
 
 ## Dependencies
 
@@ -92,11 +122,18 @@ The `-e` flag installs the package in "editable" mode, meaning changes you make 
 
 These are automatically installed with JAFF:
 
-- `numpy (≥2.0.0)`- Numerical computations
-- `scipy (≥1.13.0)` - Scientific computing
-- `sympy (≥1.14.0)` - Symbolic mathematics
-- `rich (≥15.0.0)` - Progress bars
-- `h5py (≥3.9.0) `- HDF5 file support
+| Package      | Minimum Version | Purpose                       |
+| ------------ | --------------- | ----------------------------- |
+| `numpy`      | ≥2.0.0          | Numerical computations        |
+| `scipy`      | ≥1.13.0         | Scientific computing          |
+| `sympy`      | ≥1.14.0         | Symbolic mathematics          |
+| `pandas`     | ≥2.3.3          | Tabular data handling         |
+| `matplotlib` | ≥3.9.4          | Plotting                      |
+| `h5py`       | ≥3.9.0          | HDF5 file support             |
+| `rich`       | ≥15.0.0         | Rich terminal output          |
+| `pygments`   | ≥2.19.2         | Syntax highlighting           |
+| `ipykernel`  | ≥7.2.0          | Jupyter kernel support        |
+| `marimo`     | ≥0.23.8         | Interactive notebooks         |
 
 ### Development Dependencies
 
@@ -104,210 +141,84 @@ When installing with `[dev]`, the following additional packages are installed:
 
 #### Testing Tools
 
-- `pytest (≥7.0)` - Testing framework
-- `pytest-cov` - Code coverage reporting
-- `ruff` - Fast Python linter and formatter
-- `check-jsonschema` - JSON schema validation
+| Package            | Minimum Version | Purpose                          |
+| ------------------ | --------------- | -------------------------------- |
+| `pytest`           | ≥7.0            | Testing framework                |
+| `pytest-cov`       | —               | Code coverage reporting          |
+| `ruff`             | —               | Fast Python linter and formatter |
+| `check-jsonschema` | —               | JSON schema validation           |
 
 #### Documentation Tools
 
-- `mkdocs (≥1.5.3)` - Documentation generator
-- `mkdocs-material (≥9.5.0)` - Material theme for MkDocs
-- `mkdocstrings[python] (≥0.24.0)` - API documentation from docstrings
-- `mkdocstrings-python (≥1.7.0)` - Python handler for mkdocstrings
-- `mkdocs-git-revision-date-localized-plugin (≥1.2.0)` - Git revision dates in docs
-- `mkdocs-git-authors-plugin (≥0.7.0)` - Git authors information
-- `mkdocs-minify-plugin (≥0.7.0)` - Minification for HTML/CSS/JS
-- `pymdown-extensions (≥10.5)` - Advanced Markdown extensions
-- `markdown (≥3.5.0)` - Markdown parser
-- `pillow (≥10.0.0)` - Image processing for docs
-- `cairosvg (≥2.7.0)` - SVG processing for docs
-
-## Verifying Your Development Setup
-
-After installation, verify everything is working:
-
-```bash
-# Check JAFF version
-python -c "import jaff; print(jaff.__version__)"
-
-# Test the CLI
-jaffgen --help
-
-# Run the test suite
-pytest
-
-# Check code style
-ruff check .
-```
-
-## Running Tests
-
-JAFF uses pytest for testing. See the [Testing Guide](testing.md) for details.
-
-### Run All Tests
-
-```bash
-pytest
-```
-
-### Run with Coverage
-
-```bash
-pytest --cov=jaff --cov-report=html
-```
-
-This generates an HTML coverage report in `htmlcov/index.html`.
-
-### Run Specific Tests
-
-```bash
-# Run tests in a specific file
-pytest tests/test_network.py
-
-# Run tests matching a pattern
-pytest -k "test_reaction"
-
-# Run with verbose output
-pytest -v
-```
-
-### Using uv to Run Tests
-
-```bash
-# uv can run commands in the virtual environment
-uv run pytest
-
-# With coverage
-uv run pytest --cov=jaff
-```
-
-## Building Documentation
-
-JAFF uses MkDocs with the Material theme for documentation.
-
-### Build Documentation Locally
-
-```bash
-# Serve documentation with live reload (recommended for development)
-mkdocs serve
-```
-
-Then open your browser to `http://127.0.0.1:8000`. The documentation will automatically rebuild when you save changes.
-
-### Build Static Documentation
-
-```bash
-# Build static site in site/ directory
-mkdocs build
-```
-
-### Using uv to Build Documentation
-
-```bash
-# Serve with live reload
-uv run mkdocs serve
-
-# Build static site
-uv run mkdocs build
-```
-
-### Documentation Commands
-
-```bash
-# Serve with live reload (auto-updates on changes)
-mkdocs serve
-
-# Build static site
-mkdocs build
-
-# Deploy to GitHub Pages (maintainers only)
-mkdocs gh-deploy
-
-# Validate documentation links
-mkdocs build --strict
-```
-
-## Code Style and Linting
-
-JAFF uses Ruff for linting and formatting.
-
-### Check Code Style
-
-```bash
-# Check for linting issues
-ruff check .
-
-# Check formatting
-ruff format --check .
-```
-
-### Auto-Fix Issues
-
-```bash
-# Auto-fix linting issues where possible
-ruff check --fix .
-
-# Auto-format code
-ruff format .
-
-# Organize imports
-ruff check --select I --fix
-```
-
-### Using uv
-
-```bash
-# Check with uv
-uv run ruff check .
-uv run ruff format --check .
-
-# Fix with uv
-uv run ruff check --fix .
-uv run ruff format .
-
-# Organize imports with uv
-ruff check --select I --fix
-```
+| Package                | Minimum Version | Purpose                           |
+| ---------------------- | --------------- | --------------------------------- |
+| `zensical`             | —               | Documentation static-site generator |
+| `mkdocstrings[python]` | ≥0.24.0         | API documentation from docstrings |
+| `pymdown-extensions`   | ≥10.5           | Advanced Markdown extensions      |
+| `pygments`             | ≥2.19.2         | Syntax highlighting               |
 
 ## Updating Dependencies
 
-### Update Development Installation
+After pulling new changes, refresh your editable install:
+
+=== "pip"
+
+    ```bash
+    git pull
+    pip install -e ".[dev]" --upgrade
+    ```
+
+=== "uv"
+
+    ```bash
+    git pull
+    # uv automatically resolves to the latest compatible versions
+    uv pip install -e ".[dev]" --upgrade
+    ```
+
+## Building Documentation
+
+JAFF uses [Zensical](https://zensical.org/) as a static site generator for the documentation.
 
 ```bash
-# Pull latest changes
-git pull
+# Serve with live reload (recommended during development)
+zensical serve
 
-# Update dependencies
-pip install -e ".[dev]" --upgrade
+# Build static site into site/
+zensical build
+
+# Build with strict link validation
+zensical build --strict
+
+# Deploy to GitHub Pages (maintainers only)
+zensical gh-deploy
 ```
 
-With uv:
-
-```bash
-# Pull latest changes
-git pull
-
-# Update dependencies (uv automatically resolves to latest compatible versions)
-uv pip install -e ".[dev]" --upgrade
-```
+When serving, open `http://127.0.0.1:8000`. The site rebuilds automatically on save.
 
 ## Working with uv (Recommended)
 
-[uv](https://github.com/astral-sh/uv) is a fast Python package installer and resolver written in Rust. It's significantly faster than pip for installing packages.
+[uv](https://github.com/astral-sh/uv) is a fast Python package installer and resolver written in Rust, significantly faster than pip.
 
 ### Install uv
 
-```bash
-# macOS and Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
+=== "macOS / Linux"
 
-# Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
 
-# Or with pip
-pip install uv
-```
+=== "Windows"
+
+    ```powershell
+    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install uv
+    ```
 
 ### Common uv Commands
 
@@ -315,95 +226,75 @@ pip install uv
 # Create virtual environment
 uv venv
 
-# Install package
-uv pip install package_name
+# Install a package
+uv pip install <package_name>
 
-# Install from requirements
-uv pip install -r requirements.txt
-
-# Install in editable mode
+# Install JAFF in editable mode
 uv pip install -e ".[dev]"
 
-# Run command in virtual environment
-uv run pytest
-uv run mkdocs serve
+# Run a command inside the virtual environment
 uv run python script.py
-
-# Compile requirements (for reproducibility)
-uv pip compile pyproject.toml -o requirements.txt
 ```
 
 ## IDE Setup
 
-### VS Code
+=== "VS Code"
 
-Recommended extensions:
+    Recommended extensions:
 
-- Python
-- Pylance
-- Ruff
-- Even Better TOML
+    - Python
+    - Pylance
+    - Ruff
+    - Even Better TOML
 
-Settings (`.vscode/settings.json`):
+    Settings (`.vscode/settings.json`):
 
-```json
-{
-    "python.defaultInterpreterPath": ".venv/bin/python",
-    "python.testing.pytestEnabled": true,
-    "python.testing.unittestEnabled": false,
-    "editor.formatOnSave": true,
-    "python.linting.enabled": true,
-    "ruff.format.args": ["--config", "pyproject.toml"]
-}
-```
+    ```json
+    {
+        "python.defaultInterpreterPath": ".venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "editor.formatOnSave": true,
+        "python.linting.enabled": true,
+        "ruff.format.args": ["--config", "pyproject.toml"]
+    }
+    ```
 
-### PyCharm
+=== "Zed"
 
-1. Set Python interpreter to your virtual environment
-2. Enable pytest as the test runner
-3. Install the Ruff plugin (if available)
+    Settings (`.zed/settings.json`):
 
-### Zed
+    ```json
+    {
+        "languages": {
+            "Python": {
+                "language_servers": ["pyright"],
+                "format_on_save": true
+            }
+        },
 
-Settings (`.zed/settings.json`):
+        "python": {
+            "interpreter": ".venv/bin/python"
+        },
 
-```json
-{
-    "languages": {
-        "Python": {
-            "language_servers": ["pyright"],
-            "format_on_save": true
-        }
-    },
+        "formatter": {
+            "external": {
+                "command": "ruff",
+                "arguments": ["format", "--config", "pyproject.toml", "-"]
+            }
+        },
 
-    "python": {
-        "interpreter": ".venv/bin/python"
-    },
-
-    "formatter": {
-        "external": {
-            "command": "ruff",
-            "arguments": ["format", "--config", "pyproject.toml", "-"]
-        }
-    },
-
-    "lint": {
-        "external": {
-            "command": "ruff",
-            "arguments": ["check", "--config", "pyproject.toml", "-"]
+        "lint": {
+            "external": {
+                "command": "ruff",
+                "arguments": ["check", "--config", "pyproject.toml", "-"]
+            }
         }
     }
-}
-```
+    ```
 
-## Contributing
+## Next Steps
 
-Before submitting a pull request:
-
-1. **Run tests**: `pytest`
-2. **Lint code**: `ruff check .`
-3. **Format code**: `ruff format .`
-4. **Build docs**: `mkdocs build --strict`
-5. **Update documentation** if you've added features
-
-See [Contributing Guide](contributing.md) for detailed contribution guidelines.
+- **Running tests** — see the [Testing Guide](testing.md).
+- **Code style and linting** — see the [Code Style Guide](code-style.md).
+- **Submitting changes** — see the [Contributing Guide](contributing.md).

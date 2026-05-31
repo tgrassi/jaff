@@ -173,7 +173,7 @@
         "dE": {
           "$ref": "#/$defs/encoded_value"
         },
-        "dRad_dt": {
+        "dRad": {
           "$ref": "#/$defs/encoded_value"
         },
         "custom_rad_rate": {

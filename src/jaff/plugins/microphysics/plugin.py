@@ -1,9 +1,7 @@
 import os
 import re
 
-from jaff import Codegen
-from jaff.network import Network
-from jaff.preprocessor import Preprocessor
+from jaff import Codegen, Network, Preprocessor
 
 
 def main(

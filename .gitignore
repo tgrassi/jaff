@@ -34,6 +34,7 @@ MANIFEST
 builds/
 site/
 generated/
+__marimo__/
 
 # PyInstaller
 *.manifest

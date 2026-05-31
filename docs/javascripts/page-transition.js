@@ -1,8 +1,5 @@
 (function () {
-    let firstLoad = true;
-
-    function init() {
-        if (firstLoad) { firstLoad = false; return; }
+    function animate() {
         const content = document.querySelector(".md-content__inner");
         if (!content) return;
         content.classList.remove("jaff-page-enter");
@@ -10,9 +7,18 @@
         content.classList.add("jaff-page-enter");
     }
 
-    if (typeof document$ !== "undefined") {
-        document$.subscribe(init);
+    // Run on full page loads (we navigate via window.location for sidebar slide animation).
+    // Also subscribe to document$ for any remaining instant-nav transitions.
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", animate);
     } else {
-        document.addEventListener("DOMContentLoaded", init);
+        animate();
+    }
+    if (typeof document$ !== "undefined") {
+        let first = true;
+        document$.subscribe(() => {
+            if (first) { first = false; return; }
+            animate();
+        });
     }
 })();

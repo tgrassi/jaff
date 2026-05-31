@@ -1,44 +1,61 @@
 ---
 tags:
     - Development
-icon: lucide/chart-no-axes-gantt
+icon: phosphor/chart-bar
 ---
 
 # Code Style
 
 ## Python Version
 
-JAFF supports Python 3.9 and higher. Write code that is compatible with Python 3.9+.
+JAFF requires Python 3.11 and higher (`requires-python = ">=3.11"` in `pyproject.toml`).
+
+Start every module with `from __future__ import annotations`, then use **built-in
+generics** (`list`, `dict`, `tuple`) and **PEP 604 unions** (`X | None`) — not the
+legacy `typing` aliases.
 
 ```python
-# Good - use modern type hints
-from typing import List, Dict, Optional
+# Good - built-in generics and PEP 604 unions
+from __future__ import annotations
 
-def process(items: List[str]) -> Dict[str, int]:
+def process(items: list[str]) -> dict[str, int]:
     pass
 
-# Avoid - Python 3.8 syntax
-def process(items: list[str]) -> dict[str, int]:  # Requires 3.9+
+def lookup(key: str) -> int | None:
+    pass
+
+# Avoid - legacy typing aliases
+from typing import List, Dict, Optional
+
+def process(items: List[str]) -> Optional[Dict[str, int]]:
     pass
 ```
 
 ## Code Formatting
 
-Use Ruff for both formatting and linting, replacing Black entirely.
+Use Ruff for both formatting and linting. The formatter config lives in
+`pyproject.toml` under `[tool.ruff]`:
+
+- **Line length:** 90 characters
+- **Quote style:** double quotes
+- **Indent:** 4 spaces
+
+Run `ruff format` (it reads the config automatically — no need to pass flags):
 
 ```bash
 # Format all code
 ruff format src/ tests/
 
-# Check formatting without modifying (Black --check equivalent)
+# Check formatting without modifying
 ruff format --check src/
 
 # Format specific file
 ruff format src/jaff/network.py
-## Code Formatting
 ```
 
 ## Naming Conventions
+
+Follow PEP 8 naming throughout.
 
 ### Variables and Functions
 
@@ -105,7 +122,11 @@ class Network:
 
 ## Type Hints
 
+Annotate every public function — both parameters and return type.
+
 ### Always Use Type Hints
+
+Untyped signatures hide intent and disable static checking. Always declare types.
 
 ```python
 # Good
@@ -119,63 +140,84 @@ def compute_rate(temperature, alpha):
 
 ### Import Types
 
+Use built-in generics and `X | None`. Only import from `typing` for names that
+have no built-in form (e.g. `Any`, `TypedDict`, `cast`, `TYPE_CHECKING`).
+
 ```python
-from typing import List, Dict, Optional, Union, Tuple, Any
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any
+
 import numpy as np
 
 def process_species(
-    names: List[str],
+    names: list[str],
     masses: np.ndarray,
-    options: Optional[Dict[str, Any]] = None
-) -> Tuple[List[str], np.ndarray]:
+    options: dict[str, Any] | None = None,
+) -> tuple[list[str], np.ndarray]:
     pass
 ```
 
 ### Complex Types
 
+Name recurring or compound types with aliases to keep signatures readable.
+
 ```python
-from typing import List, Dict, Union, Optional
+from __future__ import annotations
 
 # Type aliases for clarity
-SpeciesDict = Dict[str, int]
-RateExpression = Union[str, float]
+SpeciesDict = dict[str, int]
+RateExpression = str | float
 
 def load_network(
     filename: str,
-    species_map: Optional[SpeciesDict] = None
+    species_map: SpeciesDict | None = None,
 ) -> Network:
     pass
 ```
 
 ## Docstrings
 
-### Google Style
+Every public module, class, and function gets a docstring.
 
-Use Google-style docstrings:
+### NumPy Style
+
+Use **NumPy-style** (numpydoc) docstrings with underlined sections
+(`Parameters`, `Returns`, `Raises`, `Notes`, `Example`). Cross-reference other
+objects with Sphinx roles — `:class:`, `:meth:`, `:func:` — so the rendered API
+docs link correctly.
 
 ```python
 def compute_rates(network: Network, temperature: float) -> np.ndarray:
     """Compute reaction rate coefficients.
 
-    This function calculates rate coefficients for all reactions
-    in the network at the specified temperature.
+    Calculates rate coefficients for all reactions in the network at the
+    specified temperature using :meth:`~jaff.core.network.Network.calculate_rates`.
 
-    Args:
-        network: Chemical reaction network
-        temperature: Gas temperature in Kelvin
+    Parameters
+    ----------
+    network : Network
+        Chemical reaction network.
+    temperature : float
+        Gas temperature in Kelvin.
 
-    Returns:
-        Array of rate coefficients in cm³/s
+    Returns
+    -------
+    np.ndarray
+        Array of rate coefficients in cm³/s.
 
-    Raises:
-        ValueError: If temperature is negative
+    Raises
+    ------
+    ValueError
+        If *temperature* is negative.
 
-    Example:
-        >>> net = Network("network.dat")
-        >>> rates = compute_rates(net, 100.0)
-        >>> print(rates[0])
-        1.2e-10
+    Example
+    -------
+    >>> net = Network("network.dat")
+    >>> rates = compute_rates(net, 100.0)
+    >>> print(rates[0])
+    1.2e-10
     """
     if temperature < 0:
         raise ValueError("Temperature must be non-negative")
@@ -184,51 +226,65 @@ def compute_rates(network: Network, temperature: float) -> np.ndarray:
 
 ### Class Docstrings
 
+Document constructor arguments in the **class** docstring under a `Parameters`
+section (not in `__init__`), matching :class:`~jaff.codegen.codegen.Codegen`.
+
 ```python
 class Codegen:
     """Multi-language code generator for chemical networks.
 
-    This class generates optimized code for evaluating reaction rates,
-    ODEs, and Jacobians in multiple programming languages.
+    Generates code for evaluating reaction rates, ODEs, and Jacobians in
+    multiple target languages.
 
-    Attributes:
-        net: Chemical reaction network
-        lang: Target programming language
-        ioff: Array indexing offset (0 or 1)
+    Parameters
+    ----------
+    network : Network
+        Parsed chemical reaction network.
+    lang : str, optional
+        Target language alias (``"c++"``, ``"c"``, ``"fortran"``, ``"python"``,
+        …).  Default is ``"c++"``.
 
-    Example:
-        >>> net = Network("network.dat")
-        >>> cg = Codegen(network=net, lang="c++")
-        >>> rates = cg.get_rates(use_cse=True)
+    Raises
+    ------
+    ValueError
+        If *lang* is not a supported language.
+
+    Example
+    -------
+    >>> net = Network("network.dat")
+    >>> cg = Codegen(network=net, lang="c++")
+    >>> rates = cg.get_rates_str(use_cse=True)
     """
 
-    def __init__(self, network: Network, lang: str = "c++"):
-        """Initialize code generator.
-
-        Args:
-            network: Chemical reaction network
-            lang: Target language (c++, c, fortran, python)
-        """
-        pass
+    def __init__(self, network: Network, lang: str = "c++") -> None:
+        ...
 ```
 
 ### Module Docstrings
 
+Open each module with a one-line summary followed by a short description.
+Reference the key classes the module exposes with `:class:` roles.
+
 ```python
 """Chemical reaction network module.
 
-This module provides the Network class for loading and managing
+Exposes the :class:`~jaff.core.network.Network` class for loading and managing
 chemical reaction networks from various file formats.
 
-Example:
-    >>> from jaff import Network
-    >>> net = Network("network.dat")
+Example
+-------
+>>> from jaff import Network
+>>> net = Network("network.dat")
 """
 ```
 
 ## Error Handling
 
+Fail loudly with specific exceptions and descriptive messages.
+
 ### Specific Exceptions
+
+Catch the narrowest exception that applies — never a bare `except:`.
 
 ```python
 # Good
@@ -248,6 +304,8 @@ except:  # Too broad
 
 ### Custom Exceptions
 
+Define a domain exception hierarchy and raise it from a meaningful base.
+
 ```python
 class NetworkError(Exception):
     """Base exception for network errors."""
@@ -265,6 +323,8 @@ def load_network(filename: str) -> Network:
 ```
 
 ### Error Messages
+
+State what was expected and what was actually received.
 
 ```python
 # Good - descriptive
@@ -363,7 +423,12 @@ class Network:
 
 ## Testing Style
 
+See the [Testing Guide](testing.md) for the full workflow; the rules below are
+style only.
+
 ### Test Function Names
+
+Name tests after the behaviour they verify, not `test1`/`test2`.
 
 ```python
 # Good - descriptive
@@ -380,6 +445,8 @@ def test1():
 
 ### Test Organization
 
+Group related tests in a `Test<Subject>` class.
+
 ```python
 class TestNetwork:
     """Tests for Network class."""
@@ -395,6 +462,8 @@ class TestNetwork:
 
 ### Assertions
 
+Assert concrete values, not bare truthiness.
+
 ```python
 # Good - clear assertions
 assert len(net.species) == 35
@@ -407,7 +476,11 @@ assert x
 
 ## Performance
 
+Prefer the idiomatic, fast construct when it costs no clarity.
+
 ### List Comprehensions
+
+Build lists with comprehensions instead of `append` loops.
 
 ```python
 # Good - fast
@@ -421,6 +494,8 @@ for s in network.species:
 
 ### String Formatting
 
+Use f-strings over concatenation.
+
 ```python
 # Good - f-strings (fast, readable)
 message = f"Network has {n} species"
@@ -431,7 +506,11 @@ message = "Network has " + str(n) + " species"
 
 ## Best Practices
 
+General Python habits the codebase follows.
+
 ### Use Context Managers
+
+Manage resources with `with` so they always close, even on error.
 
 ```python
 # Good
@@ -445,6 +524,8 @@ f.close()
 ```
 
 ### Use Pathlib
+
+Use `pathlib.Path` for filesystem paths instead of `os.path`.
 
 ```python
 from pathlib import Path
@@ -464,9 +545,11 @@ if os.path.exists(path):
 
 ### Early Returns
 
+Return early to handle edge cases first and avoid deep nesting.
+
 ```python
 # Good - early return
-def process(value: Optional[int]) -> int:
+def process(value: int | None) -> int:
     if value is None:
         return 0
 
@@ -504,4 +587,4 @@ Before submitting code:
 
 - [Testing Guide](testing.md)
 - [PEP 8](https://pep8.org/)
-- [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
+- [numpydoc style guide](https://numpydoc.readthedocs.io/en/latest/format.html)

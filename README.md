@@ -14,7 +14,7 @@ For detailed instructons, please refer to the [Documentation](https://jaff-chemi
 ### From source
 
 ```bash
-git clone https://github.com/tgrassi/jaff.git
+git clone https://github.com/jaff-chemistry/jaff.git
 cd jaff
 pip install .
 ```
@@ -22,7 +22,7 @@ pip install .
 ### For development
 
 ```bash
-git clone https://github.com/tgrassi/jaff.git
+git clone https://github.com/jaff-chemistry/jaff.git
 cd jaff
 pip install -e .  # Editable install
 ```

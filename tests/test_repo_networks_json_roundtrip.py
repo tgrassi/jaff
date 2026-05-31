@@ -13,8 +13,8 @@ import sympy
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import jaff.network as jn
-from jaff.network import Network
+import jaff.core.network as jn
+from jaff import Network
 
 
 @pytest.mark.skipif(

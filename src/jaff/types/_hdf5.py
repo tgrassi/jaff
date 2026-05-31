@@ -1,0 +1,378 @@
+"""
+HDF5 in-memory dictionary representation.
+
+This module provides :class:`HDF5Dict`, a :class:`dict` subclass that can be
+constructed directly from an HDF5 file (or an open :mod:`h5py` file handle)
+and mirrors its group/dataset hierarchy as nested Python dictionaries.
+
+Schema
+------
+Each HDF5 dataset is represented by a **leaf dictionary** with the following
+keys:
+
+``_kind``
+    ``"linear"`` for a plain N-D array; ``"compound"`` for a NumPy
+    structured-dtype (record) array.
+``_data``
+    The actual data as a NumPy array (result of ``dataset[()]``).
+``_dtype``
+    For ``"linear"``: a JAFF dtype token string (e.g. ``"f64"``).
+    For ``"compound"``: a ``{field_name: dtype_token}`` mapping.
+``_attrs``
+    ``{attr_name: attr_value}`` dictionary of HDF5 dataset attributes.
+    May be empty; omitted entirely if the dataset has no attributes.
+``_name``
+    Optional human-readable name, read from the ``_name`` HDF5 attribute
+    if it was previously stored by :class:`~jaff.drivers.HDF5`.
+
+HDF5 groups are represented as plain nested dictionaries.  A group's HDF5
+attributes (if any) are stored under its ``_attrs`` key.  File-level
+attributes are stored under the top-level ``_attrs`` key.
+
+Dtype token mapping
+-------------------
+:meth:`HDF5Dict._to_np` maps JAFF token strings (``"f64"``, ``"i32"``, etc.)
+to NumPy dtypes.  :meth:`HDF5Dict._from_np` provides the inverse mapping.
+
+Examples
+--------
+>>> from pathlib import Path
+>>> hd = HDF5Dict(Path("rates.hdf5"))
+>>> hd["/temperatures"]["_kind"]
+'linear'
+>>> hd["/temperatures"]["_dtype"]
+'f64'
+"""
+
+from contextlib import nullcontext
+from pathlib import Path
+from typing import Any
+
+import h5py
+import numpy as np
+
+
+class HDF5Dict(dict):
+    """
+    Dictionary representation of an HDF5 file hierarchy.
+
+    Can be constructed from an HDF5 file path, an open :class:`h5py.File`
+    handle, or a plain Python dictionary (which is stored as-is without
+    any HDF5 parsing).
+
+    The nested structure mirrors the HDF5 group hierarchy.  Leaf nodes
+    (datasets) follow the schema described in the module docstring.
+
+    Parameters
+    ----------
+    h5obj : h5py.File, Path, str, or dict
+        Source to build from:
+
+        * ``h5py.File`` — read from an already-open file handle.
+        * ``Path`` or ``str`` — open and parse the file at the given path.
+        * ``dict`` — use directly without any HDF5 parsing.
+
+    Raises
+    ------
+    FileNotFoundError
+        If *h5obj* is a path that does not exist on the filesystem.
+
+    Examples
+    --------
+    >>> hd = HDF5Dict(
+    ...     {"rates": {"_kind": "linear", "_data": arr, "_dtype": "f64", "_attrs": {}}}
+    ... )
+    >>> hd2 = HDF5Dict(Path("output.hdf5"))
+    """
+
+    def __init__(self, h5obj: "h5py.File | Path | str | dict"):
+        """Build the HDF5Dict from an HDF5 file path, open file handle, or plain dict.
+
+        Parameters
+        ----------
+        h5obj : h5py.File, Path, str, or dict
+            Source to build from.  Plain dicts are stored directly without
+            any HDF5 parsing.
+
+        Raises
+        ------
+        FileNotFoundError
+            If *h5obj* is a path that does not exist on the filesystem.
+        """
+        # Fast path: if passed a plain dict, wrap it directly.
+        if isinstance(h5obj, dict):
+            super().__init__(h5obj)
+            return
+
+        if isinstance(h5obj, (str, Path)):
+            h5path = Path(h5obj)
+            if not h5path.exists():
+                raise FileNotFoundError(h5path)
+
+        # Use a no-op context manager if the caller already holds an open
+        # h5py.File; otherwise open the file ourselves.
+        cm = nullcontext(h5obj) if isinstance(h5obj, h5py.File) else h5py.File(h5obj, "r")
+        result = {}
+
+        with cm as f:
+            # Store file-level attributes (if any) at the top level.
+            if f.attrs:
+                result["_attrs"] = dict(f.attrs)
+            # Walk every group and dataset, building the nested dict.
+            f.visititems(lambda name, obj: self.__build_nested_dict(result, name, obj))
+
+        super().__init__(result)
+
+    # ------------------------------------------------------------------
+    # Flatten / nest conversions
+    # ------------------------------------------------------------------
+
+    def flatten(self, d: dict = {}, parent_key: str = "") -> dict:
+        """
+        Convert a nested HDF5Dict to a flat ``{absolute_path: leaf_dict}`` mapping.
+
+        Leaf dictionaries (those whose keys start with ``"_"``) are collected
+        under their slash-separated absolute HDF5 path.  Intermediate groups
+        are traversed recursively.  The root group is represented by the key
+        ``"/"`` when it contains endpoint data.
+
+        Parameters
+        ----------
+        d : dict, optional
+            Sub-dictionary to flatten.  Defaults to ``self``.
+        parent_key : str, optional
+            Current path prefix used during recursion.
+
+        Returns
+        -------
+        dict
+            Flat ``{path: leaf_dict}`` mapping where every key is an absolute
+            HDF5 path string.
+
+        Examples
+        --------
+        >>> hd = HDF5Dict(Path("rates.hdf5"))
+        >>> flat = hd.flatten()
+        >>> list(flat.keys())
+        ['/temperatures', '/rates/k1', '/rates/k2']
+        """
+        if not d:
+            d = self
+
+        items = {}
+        endpoint_data = {}
+        has_endpoint = False
+
+        # Collect all keys that start with "_" — these form the leaf payload.
+        for k, v in d.items():
+            if k.startswith("_"):
+                endpoint_data[k] = v
+                has_endpoint = True
+
+        # Store the leaf payload under its absolute path (root uses "/").
+        if has_endpoint:
+            items[parent_key or "/"] = endpoint_data
+
+        # Recurse into non-metadata child dictionaries.
+        for k, v in d.items():
+            if not k.startswith("_") and isinstance(v, dict):
+                new_key = f"{parent_key}/{k}" if parent_key != "/" else f"/{k}"
+                new_key = new_key.replace("//", "/")
+                items.update(self.flatten(v, new_key))
+
+        return items
+
+    def nested(self, d: dict = {}) -> dict:
+        """
+        Convert a flat ``{absolute_path: leaf_dict}`` mapping back to a nested dict.
+
+        This is the inverse of :meth:`flatten`.  The root key ``"/"`` populates
+        the top level directly; all other keys are split on ``"/"`` to
+        reconstruct the group hierarchy.
+
+        Parameters
+        ----------
+        d : dict, optional
+            Flat dictionary to convert.  Defaults to ``self``.
+
+        Returns
+        -------
+        dict
+            Nested dictionary mirroring the original HDF5 group structure.
+        """
+        if not d:
+            d = self
+
+        nested_dict = {}
+        for path, data in d.items():
+            if path == "/":
+                # Root-level attributes / data go directly into the top dict.
+                nested_dict.update(data)
+                continue
+
+            # Split the path and navigate/create intermediate group dicts.
+            parts = [p for p in path.split("/") if p]
+            current = nested_dict
+            for part in parts[:-1]:
+                current = current.setdefault(part, {})
+
+            if parts:
+                leaf = parts[-1]
+                if leaf not in current:
+                    current[leaf] = {}
+                current[leaf].update(data)
+
+        return nested_dict
+
+    # ------------------------------------------------------------------
+    # HDF5 parsing internals
+    # ------------------------------------------------------------------
+
+    def __build_nested_dict(
+        self, root: dict, name: str, obj: "h5py.Group | h5py.Dataset"
+    ) -> None:
+        """
+        Callback for :meth:`h5py.File.visititems` — populate *root* in-place.
+
+        Navigates to the correct nesting level using the slash-separated
+        *name*, then either inserts a dataset leaf dict or updates a group
+        node with its HDF5 attributes.
+
+        Parameters
+        ----------
+        root : dict
+            Top-level result dictionary being built.
+        name : str
+            Slash-separated path of the HDF5 object (as provided by
+            :meth:`h5py.File.visititems`).
+        obj : h5py.Group or h5py.Dataset
+            The HDF5 object at *name*.
+
+        Returns
+        -------
+        None
+        """
+        # Navigate to the parent node, creating intermediate group dicts.
+        parts = name.split("/")
+        current = root
+        for part in parts[:-1]:
+            current = current.setdefault(part, {})
+
+        leaf_key = parts[-1]
+
+        if isinstance(obj, h5py.Dataset):
+            # Read all dataset attributes; extract the optional _name tag.
+            attrs = dict(obj.attrs)
+            ds_name = attrs.pop("_name", None)
+            node = {
+                "_kind": "compound" if obj.dtype.fields else "linear",
+                "_data": obj[()],  # Read all data into memory
+                "_attrs": attrs,
+            }
+            if ds_name is not None:
+                node["_name"] = ds_name
+            # Encode the dtype as a JAFF token or raw dtype string.
+            if obj.dtype.fields:
+                # Structured dtype: encode each field separately.
+                node["_dtype"] = {
+                    n: self.__decode_dtype(obj.dtype[n]) for n in obj.dtype.names
+                }
+            else:
+                node["_dtype"] = self.__decode_dtype(obj.dtype)
+
+            current[leaf_key] = node
+        else:
+            # Group node: ensure the dict key exists and attach attributes.
+            group_node = current.setdefault(leaf_key, {})
+            if obj.attrs:
+                group_node["_attrs"] = dict(obj.attrs)
+
+    def __decode_dtype(self, dtype) -> str:
+        """
+        Convert a NumPy dtype to a JAFF dtype token string.
+
+        Uses the reverse mapping from :meth:`_from_np`.  Falls back to
+        ``"s"`` for string/bytes/object dtypes, or the raw NumPy dtype string
+        for anything else.
+
+        Parameters
+        ----------
+        dtype : numpy.dtype
+            NumPy dtype to encode.
+
+        Returns
+        -------
+        str
+            JAFF dtype token (e.g. ``"f64"``) or a raw dtype string.
+        """
+        dt = np.dtype(dtype)
+        if dt in self._from_np():
+            return self._from_np()[dt]
+        # String, bytes, and object dtypes all map to the generic "s" token.
+        return "s" if dt.kind in ("S", "U", "O") else str(dt)
+
+    # ------------------------------------------------------------------
+    # Dtype mapping tables
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _to_np() -> dict[str, Any]:
+        """
+        Return the mapping from JAFF dtype token strings to NumPy dtypes.
+
+        Includes ``"f128"`` only on platforms where :attr:`numpy.float128`
+        is available (typically Linux/macOS x86-64).
+
+        Returns
+        -------
+        dict[str, Any]
+            Keys are JAFF token strings; values are NumPy dtype objects or
+            type constructors.
+
+        Notes
+        -----
+        Supported tokens: ``"i8"``, ``"i16"``, ``"i32"``, ``"i64"``,
+        ``"u8"``, ``"u16"``, ``"u32"``, ``"u64"``, ``"f16"``, ``"f32"``,
+        ``"f64"``, ``"f128"`` (platform-dependent), ``"c64"``, ``"c128"``,
+        ``"b"`` (bool), ``"s"`` (variable-length UTF-8 string).
+        """
+        mapping = {
+            "i8": np.int8,
+            "i16": np.int16,
+            "i32": np.int32,
+            "i64": np.int64,
+            "u8": np.uint8,
+            "u16": np.uint16,
+            "u32": np.uint32,
+            "u64": np.uint64,
+            "f16": np.float16,
+            "f32": np.float32,
+            "f64": np.float64,
+            "c64": np.complex64,
+            "c128": np.complex128,
+            "b": np.bool_,
+            "s": h5py.string_dtype(),
+        }
+
+        # f128 is only available on some platforms (e.g. Linux x86-64).
+        if hasattr(np, "float128"):
+            mapping["f128"] = np.float128
+
+        return mapping
+
+    @staticmethod
+    def _from_np() -> dict:
+        """
+        Return the inverse mapping from NumPy dtypes to JAFF token strings.
+
+        Derives the mapping by inverting :meth:`_to_np`, omitting the ``"s"``
+        (string) entry because :class:`h5py.string_dtype` is not a regular
+        NumPy dtype and cannot be used as a dict key.
+
+        Returns
+        -------
+        dict
+            Keys are :class:`numpy.dtype` instances; values are JAFF token
+            strings (e.g. ``numpy.dtype("float64")`` → ``"f64"``).
+        """
+        return {np.dtype(v): k for k, v in HDF5Dict._to_np().items() if k != "s"}
