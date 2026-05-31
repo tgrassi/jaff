@@ -22,8 +22,8 @@ Typical usage
     from jaff.drivers import JaffDb
 
     with JaffDb() as db:
-        table = db.table("verner96")
-        rows = table.rows(cols=["nion", "ne", "sigma0"], conditions="nion = 1")
+        table = db.table("verner_cross_sections")
+        rows = table.rows(cols=["reaction", "xsecs"], conditions="Z = 1")
 """
 
 from __future__ import annotations
@@ -591,7 +591,7 @@ class JaffDb(Db):
     ::
 
         with JaffDb() as db:
-            table = db.table("verner96")
+            table = db.table("verner_cross_sections")
             rows = table.all_rows()
 
     Parameters

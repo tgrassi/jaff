@@ -60,7 +60,7 @@ class ConfigTable:
     file : Path
         Path to the ``jaff.toml`` file; used for error messages.
     network_file : Path
-        Path to the ``.jet`` network file.  Its parent directory and stem are
+        Path to the network file.  Its parent directory and stem are
         used to resolve the ``"default"`` source path.
 
     Raises

@@ -12,13 +12,15 @@ into a format-independent ``parsedListProps`` dict with keys:
 
 Supported file formats
 ----------------------
-The parser auto-detects the format from line patterns, in this priority order:
+The parser auto-detects the format from line patterns.  KROME ``@format:`` /
+``@var:`` headers and the PRIZMO ``VARIABLES { }`` block are matched first;
+reaction lines are then matched in this priority order:
 
-1. **KROME** — comma-separated, declared via ``@format:`` header.
-   Variable aliases via ``@var:``.
-2. **PRIZMO** — arrow-notation (``->``) with optional temperature range in
+1. **PRIZMO** — arrow-notation (``->``) with optional temperature range in
    ``[tmin, tmax]`` brackets.  Variables in a ``VARIABLES { }`` block.
-3. **UDFA** — colon-delimited, fixed-column database from the UMIST project.
+2. **UDFA** — colon-delimited, fixed-column database from the UMIST project.
+3. **KROME** — comma-separated, declared via ``@format:`` header.
+   Variable aliases via ``@var:``.
 4. **UCLCHEM** — comma-separated with a ``NAN`` sentinel, includes grain
    surface reactions.
 5. **KIDA** — fixed-width column format from the KIDA database.

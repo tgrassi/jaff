@@ -13,7 +13,7 @@ The serialized form of a reaction is::
 
 where species names are sorted alphabetically and joined with ``"_"``.
 For example ``H + H2O+ -> H2O + H+`` serializes as
-``"H_H2Oj__H2O_Hj"``.  This canonical form is used for equality testing,
+``"H_H2O+__H+_H2O"``.  This canonical form is used for equality testing,
 hashing, and duplicate detection.
 
 Reaction types
@@ -175,7 +175,7 @@ class Reaction:
         Returns
         -------
         str
-            String including verbatim form, temperature bounds, and energy change.
+            String of the form ``"ReactionObject(<verbatim>)"``.
         """
         return f"ReactionObject({self.verbatim})"
 
@@ -396,7 +396,7 @@ class Reaction:
         -------
         bool
         """
-        return (
+        return abs(
             np.sum([r.mass for r in self.reactants])
             - np.sum([p.mass for p in self.products])
         ) < 9.1093837e-28
@@ -727,7 +727,7 @@ class Reactions(Catalogue[Reaction]):
     """Ordered, doubly-indexed catalogue of ``Reaction`` objects.
 
     Reactions can be looked up by verbatim string (``reactions["H + H2O+ -> H2 + OH+"]``)
-    or by serialized form (``reactions["H_H2Oj__H2_OHj"]``).
+    or by serialized form (``reactions["H_H2O+__H2_OH+"]``).
     """
 
     def __init__(self, reactions: list[Reaction] | None = None):

@@ -243,10 +243,11 @@ class Codegen:
         (``fidx``) to its position in the density array, followed by the total
         species count (``nspecs``) and reaction count (``nreactions``).
 
-        Example output for C++ with two species H and H2::
+        Example output for C++ with two species H and H2 (``fidx`` names are
+        lower-cased)::
 
-            const int idx_H  = 0;
-            const int idx_H2 = 1;
+            const int idx_h  = 0;
+            const int idx_h2 = 1;
             const int nspecs = 2;
             const int nreactions = 5;
 

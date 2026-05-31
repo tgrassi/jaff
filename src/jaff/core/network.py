@@ -759,8 +759,9 @@ class Network:
         """Warn if duplicate reactions (same species, same type, same T range) are found.
 
         Two reactions are considered true duplicates when their serialized
-        forms match, their temperature ranges overlap, they have the same
-        reaction type, and they are not merely isomer variants of each other.
+        forms match, their temperature ranges are identical, they have the
+        same reaction type, and they are not merely isomer variants of each
+        other.
 
         Parameters
         ----------

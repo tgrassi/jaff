@@ -119,7 +119,7 @@ class Element:
         KeyError
             If *symbol* is not present in the mass dictionary.
         """
-        if getattr(self, "__initialized", False):
+        if getattr(self, "_initialized", False):
             return
 
         mass_dict = self.__get_mass_dict()
@@ -134,7 +134,7 @@ class Element:
         self.protons: int = mass_dict[symbol]["protons"]
         self.neutrons: int = mass_dict[symbol]["neutrons"]
         self.electrons: int = mass_dict[symbol]["electrons"]
-        self.__initialized = True
+        self._initialized = True
 
     def __repr__(self) -> str:
         """Return detailed string representation of this element.
@@ -311,13 +311,13 @@ class Elements(Catalogue):
             One or more species whose constituent atoms define the element set.
             Plain strings are converted to ``Specie`` objects on the fly.
         """
-        if getattr(self, "__initialized", False):
+        if getattr(self, "_initialized", False):
             return
 
         self.species: list[Specie] = self.__get_species_list(species)
 
         self.__set_elements()
-        self.__initalized = True
+        self._initialized = True
 
     def __repr__(self):
         return f"Catalogue({self.symbols()!r})"

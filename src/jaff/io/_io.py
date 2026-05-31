@@ -702,7 +702,6 @@ def write_data_table(
         fname = Path(fname)
 
     supported_formats = ["auto", "hdf5", "txt"]
-    supported_extensions = [".hdf", ".hdf5", ".txt"]
 
     if format not in supported_formats:
         raise ValueError(
@@ -713,8 +712,10 @@ def write_data_table(
     if format in supported_formats and format != "auto":
         out_type = supported_formats[supported_formats.index(format)]
     elif format == "auto":
-        if fname.suffix in supported_extensions:
-            out_type = supported_extensions[supported_extensions.index(fname.suffix)]
+        # Map each recognised extension to its canonical output format.
+        ext_to_type = {".hdf": "hdf5", ".hdf5": "hdf5", ".txt": "txt"}
+        if fname.suffix in ext_to_type:
+            out_type = ext_to_type[fname.suffix]
         else:
             raise ValueError(
                 f"Cannot deduce output type from extension for file: {fname}\n"

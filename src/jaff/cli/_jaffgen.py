@@ -587,8 +587,8 @@ class JaffGen:
         """
         Resolve, create if necessary, and store the output directory path.
 
-        Falls back to ``<jaff_package>/generated/`` when *output_dir* is
-        ``None``.
+        Falls back to ``<repo_root>/generated/`` (the directory two levels
+        above the ``jaff`` package) when *output_dir* is ``None``.
 
         Parameters
         ----------
@@ -603,7 +603,7 @@ class JaffGen:
         if output_dir is None:
             self.logger.warning("No output directory has been supplied.")
             self.logger.warning(
-                f"Files will be generated at {self.jaff_dir / 'generated'}"
+                f"Files will be generated at {self.jaff_dir.parent.parent / 'generated'}"
             )
 
         outdir: Path = (

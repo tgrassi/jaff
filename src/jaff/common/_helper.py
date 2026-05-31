@@ -81,7 +81,7 @@ def f90_convert(expr: str) -> str:
     """
     Convert a Fortran-style numeric expression string to Python/C syntax.
 
-    Applies two transformations:
+    Applies three transformations:
 
     1. Replaces ``dexp(`` with ``exp(`` (Fortran intrinsic → standard name).
     2. Replaces the Fortran double-precision exponent marker ``d`` with ``e``

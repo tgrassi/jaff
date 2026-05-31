@@ -141,7 +141,7 @@ class Specie:
         Returns
         -------
         str
-            String including name, mass, and index.
+            String of the form ``"SpecieObject(<name>)"``.
         """
         return f"SpecieObject({self.name!r})"
 
@@ -658,8 +658,6 @@ class Species(Catalogue[Specie]):
         attr : str, optional
             If given, return the named attribute of each charged species.
             Must be one of the values in ``Specie._ATTRS``.
-        mass : bool, optional
-            Unused; reserved for future filtering by mass threshold.
         ne : bool, optional
             If ``True``, exclude the electron species (``"e-"``),
             by default ``False``.

@@ -137,7 +137,8 @@ class NotJaffFileError(Exception):
         file : Path or None, optional
             The offending file path, appended to *message* when provided.
         """
-        message = f"{message}\n{'File: {file}' if file is not None else ''}"
+        if file is not None:
+            message = f"{message}\nFile: {file}"
 
         super().__init__(message)
 

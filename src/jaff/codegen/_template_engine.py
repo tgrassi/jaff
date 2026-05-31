@@ -95,7 +95,7 @@ class TemplateParser:
     Examples
     --------
     >>> net = Network("networks/react_COthin")
-    >>> parser = Fileparser(net, Path("template.cpp"))
+    >>> parser = TemplateParser(net, Path("template.cpp"))
     >>> output = parser.parse_file()
     """
 
