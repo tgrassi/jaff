@@ -49,5 +49,15 @@ window.MathJax = {
 };
 
 document$.subscribe(() => {
-  MathJax.typesetPromise();
+  if (typeof MathJax === "undefined" || !MathJax.startup) {
+    return; // MathJax not loaded yet; startup.ready typesets the initial page.
+  }
+  MathJax.startup.promise = MathJax.startup.promise
+    .then(() => {
+      MathJax.startup.output.clearCache();
+      MathJax.typesetClear();
+      MathJax.texReset();
+      return MathJax.typesetPromise();
+    })
+    .catch((err) => console.error("MathJax typeset failed:", err));
 });
