@@ -873,7 +873,7 @@ class NetworkParser:
         rates_dict = {
             1: (
                 f"{ka:.2e} * crate"
-                if "crp" not in rr
+                if "CRP" not in rr
                 else f"{ka:.2e} * crate * 2.0 * nH2 / nH"
             ),
             2: f"{ka:.2e} * chi * exp(-{kc:.2e} * av)",
