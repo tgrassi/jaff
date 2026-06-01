@@ -150,7 +150,8 @@
     logT4 = log(tgas/10**4, 10)
     ncrH = 10**(3 - 0.416 * logT4 - 0.327 * logT4**2)
     ncrH2 = 10**(4.845 - 1.3 * logT4 + 1.62 * logT4**2)
-    ncr = Min(1 / ( (nH0/nH) / ncrH + (nH2/nH) / ncrH2 ), 1e100)
+    div_ncr = (nH0/nH) / ncrH + (nH2/nH) / ncrH2
+    ncr = Piecewise((1e50, div_ncr < 1e-50), (1 / div_ncr, True))
     n2ncr = nH / ncr
     return n2ncr
 
@@ -323,7 +324,7 @@
     k = (k1 + tgas**-1.5 * k2) / ne
     return k
 
-@function chemRate20(tgas, ne, nH2)
+@function chemRate20(tgas, ne, nH, nH2)
     # Reaction 20: O + H3+ + e- -> H2 + OHx
     # tgas Gas temperature in K
     # ne Number density of free electrons in cm^-3
@@ -334,7 +335,10 @@
     # equal to k_JAFF ne nO nH3+
 
     # Branching ratios
-    H2Oplus_ratio = Min(6e-10 / (5.3e-6 / sqrt(tgas)) * (nH2/ne), 1e10)
+    H2Oplus_ratio = Piecewise( \
+        (1e10, ne/nH < 1e-50), \
+        (6e-10 / (5.3e-6 / sqrt(tgas)) * (nH2/ne), True) \
+    )
     fac_H2Oplus_H2 = H2Oplus_ratio / (H2Oplus_ratio + 1)
     fac_H2Oplus_e = 1 / (H2Oplus_ratio + 1)
 
