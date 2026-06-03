@@ -447,6 +447,17 @@ class Radiation:
         # Convert the stored string representation back to a SymPy expression.
         return sp.sympify(rows[0]["xsecs"])
 
+    def get_leiden_xsec(self, reaction: Reaction) -> sp.Basic | None:
+        with JaffDb() as jdb:
+            table = jdb.table("verner_cross_sections")
+            rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")
+
+        if not rows:
+            return None
+
+        # Convert the stored string representation back to a SymPy expression.
+        return sp.sympify(rows[0]["xsecs"])
+
     def ordered_index(self, idx: int, order: int) -> tuple[int, int]:
         """
         Map a band index to positions in the flat radiation ODE output array.
