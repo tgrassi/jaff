@@ -33,7 +33,7 @@ This is a complete reference for all public APIs in JAFF.
 
 - :phosphor-flask:{ .sm .middle } **Physics**
 
-    Physical and astronomical constants in CGS, SI, Gaussian, and natural units.
+    Physical constants, unit conversion (`convert`, `Quantity`), and photo cross-section lookup.
 
     [:octicons-arrow-right-24: jaff.physics](physics/index.md)
 
@@ -41,7 +41,7 @@ This is a complete reference for all public APIs in JAFF.
 
 ## Module Overview
 
-JAFF's public API is organized into four subpackages: `core` (network data model), `codegen` (source code generation), `drivers` (file I/O), and `physics` (physical constants).
+JAFF's public API is organized into four subpackages: `core` (network data model), `codegen` (source code generation), `drivers` (file I/O), and `physics` (constants, unit conversion, and photochemistry).
 
 ```mermaid
 classDiagram
@@ -64,6 +64,8 @@ classDiagram
     }
     class physics {
         Constants
+        units
+        photochemistry
     }
     jaff --> core
     jaff --> codegen

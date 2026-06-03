@@ -64,4 +64,3 @@ _FileNotFoundError_
 | `dEdt_other`      | `sympy.Basic`       | Additional heating/cooling rate from the `heatingcoolingrate` auxiliary function, if present |
 | `dRad_dt_extra`   | `sympy.Basic`       | Extra radiation moment source terms from `@function` definitions                             |
 | `radiation`       | `Radiation or None` | Radiation field object; `None` when no radiation bands are specified                         |
-| `photochemistry`  | `Photochemistry`    | Cross-section database used to populate `xsecs_dict` on photo-reactions                      |

@@ -45,7 +45,8 @@ nav = [
       "user-guide/code-generation/template-syntax.md",
       "user-guide/code-generation/jaff-toml.md",
       "user-guide/code-generation/jaffgen.md",
-      "user-guide/code-generation/table-interpolation.md"
+      "user-guide/code-generation/table-interpolation.md",
+      "user-guide/code-generation/worked-example.md",
     ] },
     { "Advanced Code Generation" = [
       "user-guide/advanced-code-generation/index.md",
@@ -121,7 +122,7 @@ nav = [
         "api/core/reaction/has_product.md",
         "api/core/reaction/get_code.md",
         "api/core/reaction/get_sympy.md",
-        "api/core/reaction/plot.md",
+        "api/core/reaction/plot_rate_coefficient.md",
         "api/core/reaction/plot_xsecs.md"
       ] },
       { "core.Reactions" = [
@@ -240,7 +241,8 @@ nav = [
     ] },
     { "Physics" = [
       "api/physics/index.md",
-      { "physics.Constants" = ["api/physics/constants/index.md"] }
+      { "physics.Constants" = ["api/physics/constants/index.md"] },
+      { "physics.units" = ["api/physics/units/index.md"] }
     ] }
   ] },
   { "Development" = [

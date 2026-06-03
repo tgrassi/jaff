@@ -49,5 +49,12 @@ window.MathJax = {
 };
 
 document$.subscribe(() => {
-  MathJax.typesetPromise();
+  if (!(window.MathJax && MathJax.startup && MathJax.startup.promise)) return;
+
+  MathJax.startup.promise = MathJax.startup.promise.then(() => {
+    MathJax.startup.output.clearCache();
+    MathJax.typesetClear();
+    MathJax.texReset();
+    return MathJax.typesetPromise();
+  });
 });

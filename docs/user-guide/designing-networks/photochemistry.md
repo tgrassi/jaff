@@ -24,7 +24,7 @@ $$
 \mathcal{R} = \prod_i {n_i}^{\alpha} \int_0^\infty \sigma(E_\nu)\, c\, \dfrac{ \partial n_\gamma}{\partial E_\nu}\, dE_{\nu}
 $$
 
-where $\sigma(E_\nu)$ is the reaction cross section ($\text{cm}^2$), $c$ is the speed of light ($\text{cm s}^{-1}$), and $n_\gamma$ is the photon number density ($\text{cm}^{-3}$). The subscript $\gamma$ signifies the local radiation field and a subscript of $\nu$ signifies the frequency of the photon. The cross-sections used for photo-ionization reactions are the analytical forms used in [Verner et al. 1996](https://ui.adsabs.harvard.edu/abs/1996ApJ...465..487V/abstract).
+where $\sigma(E_\nu)$ is the reaction cross section ($\text{cm}^2$), $c$ is the speed of light ($\text{cm s}^{-1}$), and $n_\gamma$ is the photon number density ($\text{cm}^{-3}$). The subscript $\gamma$ signifies the local radiation field and a subscript of $\nu$ signifies the frequency of the photon. JAFF uses high-resolution cross-section tables from the [Leiden Observatory Database](https://home.strw.leidenuniv.nl/~ewine/photo/index.html) and the [NORAD Database](https://norad.astronomy.osu.edu/) for photo-dissociaton and photo-ionization reactions respectively to store and calculate band averaged cross-sections.
 
 When the radiation energy density per band is calculated, JAFF replaces the continuous integral with a sum over discrete **radiation frequency bands**:
 
@@ -108,46 +108,61 @@ In the `PRIZMO` format, append `PHOTO` followed by the energy threshold (eV) ins
 H -> H+ + E    []    PHOTO, 13.60
 ```
 
-JAFF will look up the matching cross-section file in the Leiden database and integrate it over the configured radiation bands.
+JAFF will look up the matching cross section in its bundled database and integrate it over the configured radiation bands.
 
 ---
 
-## Cross-Section Data — Leiden Database
+## Cross-Section Data
 
-JAFF ships with photoionisation and photodissociation cross sections from the **Leiden Observatory PDR database** ([van Dishoeck et al.](https://home.strw.leidenuniv.nl/~ewine/photo/)).
+JAFF bundles cross sections from three sources. At network-load time the
+serialized reaction key (`Reactant1_Reactant2__Product1_Product2`, the
+[serialized form of the reaction](../../api/core/reaction/index.md)) is looked
+up in `jaff.db`, and the cross-section arrays are attached to the reaction's
+[`xsecs_dict`](../working-with-networks/reactions.md).
 
-### File-naming convention
+| Source                                                                                         | Processes                                           | Notes                        |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- |
+| **Leiden** PDR database ([van Dishoeck et al.](https://home.strw.leidenuniv.nl/~ewine/photo/)) | photoabsorption, photodissociation, photoionization | Tabulated cross sections     |
+| **NORAD** / OP ([Nahar, OSU](https://norad.astronomy.osu.edu/))                                | photoionization (ground state)                      | Tabulated, per ion Z = 1..26 |
+| **Verner et al. 1996** ([ADS](https://ui.adsabs.harvard.edu/abs/1996ApJ...465..487V/abstract)) | photoionization                                     | Analytic fits σ(E)           |
 
-Cross-section files live in `src/jaff/data/xsecs/` and follow the pattern:
+### Storage layout
+
+Tabulated cross sections ship as two collapsed HDF5 files, one group per
+serialized reaction, all datasets co-sorted by ascending photon energy:
 
 ```text
-Reactant1_Reactant2__Product1_Product2.dat
+src/jaff/data/xsecs/leiden/leiden.hdf5   # one group per reaction (abs/diss/ion)
+src/jaff/data/xsecs/norad/norad.hdf5     # one group per reaction (ionization)
+src/jaff/data/xsecs/verner/verner_1996.csv   # analytic-fit parameters
 ```
 
-which is the [serialized form of the reaction](../../api/core/reaction/index.md)
+`photon_energy` is stored in **eV** and every cross-section dataset
+(`photoabsorption` / `photodissociation` / `photoionization`) in **cm²**.
 
-The double underscore `__` separates reactants from products. Species names are sorted alphabetically on each side.
+These assets feed two SQLite tables in `jaff.db`, which is what JAFF actually
+queries at runtime (see [Codebase Structure](../../development/codebase-structure.md)):
 
-### File format
+- `photo_reaction_cross_sections` — one row per reaction, with `pa`/`pi`/`pd`
+  process flags and a `file.hdf5::<group>` pointer into the Leiden or NORAD
+  HDF5 file.
+- `verner_cross_sections` — the Verner analytic σ(E) expression as a
+  SymPy-parseable string (symbol `E`, photon energy in erg, σ in cm²).
 
-The last `#`-prefixed comment line in each file is the column header. Two columns are required:
+### What lands on the reaction
 
-| Column name contains | Content                                                                   |
-| -------------------- | ------------------------------------------------------------------------- |
-| `wave`               | Wavelength in nanometres (nm)                                             |
-| `ion` **or** `dis`   | Cross section in cm² (selection depends on the reaction's charge balance) |
-
-### Energy conversion
-
-Wavelengths are converted to photon energies in erg:
-
-$$
-E \;[\text{erg}] = \frac{h \cdot c}{\lambda \;[\text{nm}] \times 10^{-7}}
-$$
+For tabulated sources, `reaction.xsecs_dict` is an `XsecsProps` dict carrying
+the `photon_energy` grid (eV) plus any of `photo_absorption`,
+`photo_dissociation`, `photo_ionization` (cm² arrays, or `None`). The radiation
+integrator reads these arrays directly and integrates them numerically over
+each band; for photoionization it falls back to the Verner analytic fit when no
+tabulated entry exists.
 
 <!-- prettier-ignore -->
 !!! note "Threshold energy"
-    For the Leiden cross-sections, the `PHOTO, <eV>` threshold in the `.jet` file is used to select which cross-section file to load and which band edges apply to this reaction. Reactions whose threshold lies above the upper edge of a band are not assigned a rate coefficient for that band.
+    The `PHOTO, <eV>` threshold in the network file selects which band edges
+    apply to a reaction. Reactions whose threshold lies above the upper edge of
+    a band are not assigned a rate coefficient for that band.
 
 ---
 
@@ -169,6 +184,21 @@ photo = net.reactions.photo_reactions()
 for rxn in photo:
     print(rxn.verbatim)
 
+# Cross sections are attached at load time
+rxn = photo[0]
+rxn.xsecs_dict["photon_energy"]     # eV grid
+rxn.xsecs_dict["photo_ionization"]  # cm² array (or None)
+rxn.plot_xsecs()                    # visualise σ(E)
+
 # Symbolic radiation ODEs
 print(net.sradodes())
+```
+
+Cross-section lookup is also exposed directly via `jaff.physics.photochemistry`:
+
+```python
+from jaff.physics import photochemistry
+
+photochemistry.get_xsec(rxn)         # XsecsProps from the tabulated databases
+photochemistry.get_verner_xsec(rxn)  # analytic Verner σ(E) (sympy) or None
 ```

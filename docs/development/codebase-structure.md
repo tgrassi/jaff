@@ -21,11 +21,16 @@ src/jaff/
 │   ├── _auxiliary_engine.py    # .jfunc auxiliary function parser
 │   └── _typing/                # TypedDicts for all core types
 │
-├── physics/                    # Symbolic ODE/flux generation
+├── physics/                    # Symbolic ODE/flux generation + physics helpers
 │   ├── _equations.py           # get_sfluxes, get_sodes, get_sradodes
-│   ├── _photochemistry.py      # Photoionisation / photodissociation
+│   ├── _photochemistry.py      # get_xsec / get_verner_xsec — cross-section lookup
 │   ├── _radiation.py           # Radiation moment equations
+│   ├── _units.py               # Unit registry, convert(), Quantity
+│   ├── _typing/                # TypedDicts (XsecsProps, Numeric, ...)
 │   └── constants.py            # Physical constants (CGS)
+│
+├── plotting/                   # Publication-style matplotlib wrapper
+│   └── plotter.py              # Plotter — plot / plot_xsec (house rcParams)
 │
 ├── codegen/                    # Code generation pipeline
 │   ├── codegen.py              # SymPy → C/C++/Fortran/Python/Rust/Julia/R
@@ -72,18 +77,25 @@ src/jaff/
 │   └── _welcome.py             # MOTD / version banner
 │
 ├── errors/
-│   └── _parser.py              # ParserError hierarchy
+│   ├── _parser.py              # ParserError hierarchy
+│   └── _units.py               # UnitsError / UnknownUnitError / IncompatibleUnitsError
 │
 ├── data/                       # Bundled raw data assets
 │   ├── atom_mass.csv           # Element mass table
-│   └── xsecs/                  # Photo cross-section data (Verner fits, .dat tables)
+│   └── xsecs/                  # Photo cross-section data
+│       ├── leiden/leiden.hdf5  # Leiden PDR cross sections (one group per reaction)
+│       ├── norad/norad.hdf5    # NORAD/OP ground-state photoionisation
+│       └── verner/verner_1996.csv  # Verner (1996) analytic-fit parameters
 │
 ├── db/                         # Prebuilt SQLite database
-│   └── jaff.db                 # Reaction/species/mass tables, built from data/
+│   └── jaff.db                 # Reaction/species/mass + cross-section tables, built from data/
 │
 └── _utils/                     # Standalone maintenance scripts
-    ├── generate_mass_table.py        # Build mass tables in jaff.db from data/atom_mass.csv
-    └── generate_ion_xsecs_table.py   # Build ion cross-section tables in jaff.db from data/xsecs/
+    ├── generate_mass_table.py          # Build mass tables in jaff.db from data/atom_mass.csv
+    ├── download_nahar_xsecs.py         # Download NORAD/OP ground-state photoionisation .dat files
+    ├── collapse_xsecs_hdf5.py          # Merge per-reaction files into leiden.hdf5 / norad.hdf5
+    ├── generate_photo_xsecs_table.py   # Build photo_reaction_cross_sections table in jaff.db
+    └── generate_verner_xsecs_table.py  # Build verner_cross_sections table in jaff.db
 ```
 
 ## Architecture Diagram
@@ -165,10 +177,17 @@ Networks can be saved as gzip-compressed JSON (`.jaff` files) via `io/_io.py`. O
 
 `src/jaff/_utils/` holds standalone, easy-to-run scripts for maintaining the bundled data. They are **not** part of the runtime data flow — they are run by hand (or during maintenance) to regenerate the assets in `data/` and `db/jaff.db`.
 
+The cross-section scripts are ordered as a pipeline: download raw NORAD data,
+collapse the per-reaction files into combined HDF5 files, then build the
+SQLite lookup tables that JAFF queries at runtime.
+
 | Script | Purpose |
 |--------|---------|
 | `generate_mass_table.py` | Read `data/atom_mass.csv` and (re)build the element mass tables inside `db/jaff.db`. |
-| `generate_ion_xsecs_table.py` | Compute photoionisation cross-sections (Verner fits) from `data/xsecs/` and (re)build the cross-section tables in `db/jaff.db`. |
+| `download_nahar_xsecs.py` | Download NORAD/OP (Nahar, OSU) ground-state photoionisation cross sections (Z = 1..26) into `data/xsecs/op/` using serialized reaction names. |
+| `collapse_xsecs_hdf5.py` | Merge the per-reaction Leiden and NORAD files into combined `leiden.hdf5` / `norad.hdf5` (one group per reaction, photon energy in eV, σ in cm²). |
+| `generate_photo_xsecs_table.py` | Build the `photo_reaction_cross_sections` table in `db/jaff.db` from the collapsed HDF5 files (process flags + `file.hdf5::<group>` pointers). |
+| `generate_verner_xsecs_table.py` | Build the `verner_cross_sections` table in `db/jaff.db` from the Verner (1996) analytic-fit parameters in `data/xsecs/verner/`. |
 
 Run a script as a module from the project root, e.g.:
 

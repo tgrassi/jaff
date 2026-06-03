@@ -6,13 +6,32 @@ icon: phosphor/atom
 
 # jaff.physics
 
-Jaff provides physical constants in four unit systems for astrochemical and physical calculations.
+Physical constants, unit conversion, and photochemical cross-section lookup for
+astrochemical calculations.
 
 ## Classes
 
 | Class                             | Description                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------------ |
 | [`Constants`](constants/index.md) | Frozen dataclass of physical and astronomical constants in a given unit system |
+| [`Quantity`](units/index.md)      | A `(value, unit)` value object with conversion, attribute access, and arithmetic |
+
+## Submodules
+
+| Submodule                            | Description                                                                  |
+| ------------------------------------ | ---------------------------------------------------------------------------- |
+| `constants`                          | Pre-built physical-constant instances (see below)                            |
+| [`units`](units/index.md)            | Unit registry, the `convert()` function, and the `Quantity` value object     |
+| `photochemistry`                     | Photo cross-section lookup from the bundled databases (see below)            |
+
+## Photochemistry functions
+
+`jaff.physics.photochemistry` resolves a reaction's cross sections from `jaff.db`:
+
+| Function                       | Returns                  | Description                                                       |
+| ------------------------------ | ------------------------ | ----------------------------------------------------------------- |
+| `get_xsec(reaction)`           | `XsecsProps or None`     | Tabulated cross sections (Leiden / NORAD): `photon_energy` (eV) plus `photo_absorption`/`photo_ionization`/`photo_dissociation` (cm²) |
+| `get_verner_xsec(reaction)`    | `sympy.Basic or None`    | Analytic Verner (1996) σ(E) expression (symbol `E` in erg, σ in cm²) |
 
 ## Available Instances
 
