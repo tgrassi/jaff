@@ -136,7 +136,7 @@ def get_bounds(expr: Basic, sym: Basic):
 
 def smart_integrate(
     expr: Basic, sym: Basic, bounds: tuple[float | int | Basic, float | int | Basic]
-):
+) -> float:
     """
     Adaptively integrate a (piecewise) SymPy expression over a possibly symbolic interval.
 
@@ -220,6 +220,31 @@ def smart_integrate(
     val, _ = quad(f_num, a, b, points=sub_points, limit=200)
 
     return val
+
+
+def arr_integrate(
+    y: np.ndarray, x: np.ndarray, bounds: tuple[float | int | Basic, float | int | Basic]
+) -> float:
+    # Assumes data is sorted (ascending in x).
+    lower, upper = bounds
+    t_low = float(lower) if not isinstance(lower, Basic) else -np.inf
+    t_high = float(upper) if not isinstance(upper, Basic) else np.inf
+
+    t_low = max(t_low, x[0])
+    t_high = min(t_high, x[-1])
+    if t_high <= t_low:
+        return 0.0
+
+    i_low = np.searchsorted(x, t_low)
+    i_high = np.searchsorted(x, t_high)
+
+    x_seg = x[i_low:i_high]
+    y_seg = y[i_low:i_high]
+
+    x_seg = np.r_[t_low, x_seg, t_high]
+    y_seg = np.r_[np.interp(t_low, x, y), y_seg, np.interp(t_high, x, y)]
+
+    return np.trapezoid(y_seg, x_seg)
 
 
 def safe_integrate():
