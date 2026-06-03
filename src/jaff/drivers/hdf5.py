@@ -68,19 +68,22 @@ class HDF5:
     # Public interface
     # ------------------------------------------------------------------
 
-    def to_dict(self, h5file: h5py.File | Path | str) -> HDF5Dict:
+    def to_dict(self, h5file: h5py.File | h5py.Group | Path | str) -> HDF5Dict:
         """
-        Load an HDF5 file into a nested :class:`~jaff.types.HDF5Dict`.
+        Load an HDF5 file (or sub-group) into a nested :class:`~jaff.types.HDF5Dict`.
 
         Parameters
         ----------
-        h5file : h5py.File, Path, or str
-            An open :class:`h5py.File` or a path to an HDF5 file on disk.
+        h5file : h5py.File, h5py.Group, Path, or str
+            An open :class:`h5py.File`, an open :class:`h5py.Group` (parsed
+            from that group onward), or a path to an HDF5 file on disk.  A
+            ``"file.h5::/internal/group"`` string (``::`` delimiter) parses
+            from the named internal group onward.
 
         Returns
         -------
         HDF5Dict
-            Nested dictionary representation of the HDF5 file contents.
+            Nested dictionary representation of the HDF5 contents.
         """
         return HDF5Dict(h5file)
 
