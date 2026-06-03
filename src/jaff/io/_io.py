@@ -385,6 +385,18 @@ def from_jaff_file(filename: str | Path, errors=False):
         original_string = rj.get("original_string") or ""
         xsecs = rj.get("xsecs")
 
+        # Cross-section arrays are JSON-serialized as plain lists; restore them
+        # to numpy arrays so the loaded XsecsProps matches the in-memory type.
+        if isinstance(xsecs, dict):
+            for key in (
+                "photon_energy",
+                "photo_absorption",
+                "photo_ionization",
+                "photo_dissociation",
+            ):
+                if xsecs.get(key) is not None:
+                    xsecs[key] = np.asarray(xsecs[key], dtype=float)
+
         net_data["reactions"].append(
             {
                 "reactants": reactants,

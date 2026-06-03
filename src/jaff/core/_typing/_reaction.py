@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, TypedDict
 from sympy import Basic
 
 if TYPE_CHECKING:
+    from ...physics._typing._photochemistry import XsecsProps
     from .. import Network, Reaction, Specie, Species
 else:
     Specie = "Specie"
@@ -23,6 +24,6 @@ ReactionProps = TypedDict(
         "tmin": float | None,
         "tmax": float | None,
         "original_string": str,
-        "xsecs_dict": dict[str, float],
+        "xsecs_dict": "XsecsProps",
     },
 )

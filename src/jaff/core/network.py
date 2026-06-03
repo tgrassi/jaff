@@ -44,12 +44,12 @@ from ..errors import ParserError
 from ..io import JaffLogger, jaff_progress
 from ..io._io import JaffProps, from_jaff_file, to_jaff_file, write_data_table
 from ..physics import (
-    Photochemistry,
     Radiation,
     constants,
     get_sfluxes,
     get_sodes,
     get_sradodes,
+    photochemistry,
 )
 from ._auxiliary_engine import AuxiliaryFunctionParser, FunctionsDict
 from ._network_engine import NetworkParser
@@ -91,8 +91,6 @@ class Network:
         Extra radiation moment source terms from ``@function`` definitions.
     radiation : Radiation | None
         Radiation field object; ``None`` when no radiation bands are specified.
-    photochemistry : Photochemistry
-        Cross-section database used to populate ``xsecs_dict`` on photo-reactions.
     mass_dict : dict[str, ElementProps]
         Element mass dictionary used during species construction.
     """
@@ -189,7 +187,6 @@ class Network:
 
         self.mass_dict: dict[str, ElementProps] = load_mass_dict()
         Species.configure(self.mass_dict)
-        self.photochemistry = Photochemistry()
 
         if not loaded_from_jaff_file:
             self.__load_network(fname, funcfile, replace_nH)
@@ -309,6 +306,9 @@ class Network:
             )
             self.reactions.add(rea)
 
+            if is_photoreaction:
+                rea.xsecs_dict = photochemistry.get_xsec(rea)
+
             if is_photoreaction and self.radiation is not None:
                 if aux_chem_rate not in aux_funcs:
                     self.radiation.set_reaction_rate_coefficient(rea)
@@ -322,9 +322,6 @@ class Network:
                         "necessary to weigh the first moment radiation equations\n"
                         f"Please add a custom deltaRad function for reaction {i}"
                     )
-
-            if rea.rtype() == "photo":
-                rea.xsecs_dict = self.photochemistry.get_xsec(rea)
 
         if "heatingcoolingrate" in aux_funcs:
             self.dEdt_other = aux_funcs["heatingcoolingrate"]["def"]
@@ -378,7 +375,7 @@ class Network:
                     self.radiation.set_custom_rate(rea)
                     continue
 
-                self.radiation.set_custom_rate(rea)
+                self.radiation.set_reaction_rate_coefficient(rea)
 
     def __normalize_nework_extras(self, replace_nH):
         """Standardize convenience symbols in all rate and auxiliary expressions.
