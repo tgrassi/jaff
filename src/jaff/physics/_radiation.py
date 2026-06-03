@@ -49,10 +49,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+import numpy as np
 import sympy as sp
 
-from ..common._integrators import smart_integrate
-from ..drivers.sqlite import JaffDb
+from jaff.physics._typing._photochemistry import XsecsProps
+
+from ..common._integrators import arr_integrate, smart_integrate
 from ._typing import RadiationGroupReactionProps
 
 if TYPE_CHECKING:
@@ -131,7 +133,7 @@ class RadiationGroup:
         self.dE: float | sp.Basic = self.upper - self.lower
         self.props: dict[Reaction, RadiationGroupReactionProps] = {}
         # Populated on the first call to set_reaction_rate_coefficient for this band.
-        self.eavg: sp.Basic | None = None
+        self.eavg: float | None = None
 
     def __repr__(self):
         """Return detailed string representation of this radiation group.
@@ -283,23 +285,36 @@ class Radiation:
         :func:`~jaff.common._integrators.smart_integrate`, which falls back
         to numerical quadrature when SymPy cannot find a closed form.
         """
-        xsec = self.get_verner_xsec(reaction)
+        xsec: XsecsProps | None = reaction.xsecs_dict
         if xsec is None:
             return
 
-        E = sp.Symbol("E")
+        if xsec["photo_ionization"] is None and xsec["photo_dissociation"] is None:
+            return
+
+        if xsec["_equations"]["pi"]:
+            pr_xsec = xsec["photo_ionization"]
+        elif xsec["_equations"]["pd"]:
+            pr_xsec = xsec["photo_dissociation"]
+        else:
+            return
+
+        assert isinstance(xsec["photon_energy"], np.ndarray)
 
         # Photon-number spectrum: n(E) ∝ E^(α-2) used for weighing the cross-section
         # where α = powerlaw_idx.  The factor E^(α-2) arises from
         # n(E) = u(E)/E and u(E) ∝ E^(α-1).
+        E = xsec["photon_energy"]
+        E_sym = sp.Symbol("E")
         n_profile = E ** (self.powerlaw_idx - 2)
-        n_tot = smart_integrate(n_profile, E, (self.bands[0], self.bands[-1]))
+        n_profile_sym = E_sym ** (self.powerlaw_idx - 2)
+        n_tot = smart_integrate(n_profile_sym, E_sym, (self.bands[0], self.bands[-1]))
         k_tot = sp.Float(0.0)  # Accumulates total rate coefficient over all bands
 
         # Total cross section integrated over the full spectrum (cm²),
         # stored on the reaction for later reference
         xsec_tot = (
-            smart_integrate(xsec * n_profile, E, (self.bands[0], self.bands[-1])) / n_tot
+            arr_integrate(pr_xsec * n_profile, E, (self.bands[0], self.bands[-1])) / n_tot
         )
         reaction.rad_xsecs = xsec_tot
 
@@ -313,24 +328,32 @@ class Radiation:
             upper = self.bands[i + 1]
 
             # ∫ n(E) dE over the band — used as normalisation for averages.
-            n_tot = smart_integrate(n_profile, E, (lower, upper))
+            n_tot = smart_integrate(n_profile_sym, E_sym, (lower, upper))
 
             # Photon-number-weighted average cross section in the band:
             # <σ>_i = ∫ σ(E) n(E) dE / ∫ n(E) dE
-            xsec_avg = smart_integrate(xsec * n_profile, E, (lower, upper)) / n_tot
+            pr_xsec_avg = arr_integrate(pr_xsec * n_profile, E, (lower, upper)) / n_tot
+            rad_xsec_avg = (
+                (
+                    arr_integrate(xsec["photo_absorption"] * n_profile, E, (lower, upper))
+                    / n_tot
+                )
+                if xsec["_equations"]["pa"]
+                else pr_xsec_avg
+            )
 
             # Integral of the user-supplied radiation energy source per reaction
             # per photon energy dRad over the band (erg per band).
-            delta_rad_band = smart_integrate(reaction.dRad, E, (lower, upper))
+            delta_rad_band = smart_integrate(reaction.dRad, E_sym, (lower, upper))
 
             # Symbolic rate coefficient: k_i = c · den[i] · <σ>_i
             # (units: s⁻¹ for photon-density mode, cm³ s⁻¹ for two-body)
-            k = self.c * den[sp.Idx(i)] * xsec_avg
+            k = self.c * den[sp.Idx(i)] * rad_xsec_avg
 
             self.groups[i].props[reaction] = {
                 "k": k,
-                "xsec": xsec_avg,
-                "xsec_frac": xsec_avg / xsec_tot,  # fraction of total cross section
+                "xsec": rad_xsec_avg,
+                "xsec_frac": rad_xsec_avg / xsec_tot,  # fraction of total cross section
                 "delta_rad": delta_rad_band,
             }
 
@@ -338,12 +361,16 @@ class Radiation:
             # across all reactions): <E>_i = ∫ E n(E) dE / ∫ n(E) dE
             if self.groups[i].eavg is None:
                 self.groups[i].eavg = (
-                    smart_integrate(E * n_profile, E, (lower, upper)) / n_tot
+                    smart_integrate(E_sym * n_profile_sym, E_sym, (lower, upper)) / n_tot
                 )
 
             # In energy-density mode, convert from "per erg" to "per photon"
             # by dividing by the band-average energy <E>_i.
-            k_tot += k / (self.groups[i].eavg if self.energy_density else 1)
+            k_tot += (
+                k
+                * (1.0 if not xsec["_equations"]["pa"] else (pr_xsec_avg / rad_xsec_avg))
+                / (self.groups[i].eavg if self.energy_density else 1)
+            )
 
         reaction.rate = k_tot
 
@@ -386,7 +413,7 @@ class Radiation:
             reaction.dRad, E, (self.bands[0], self.bands[-1])
         )
         # Guard against zero-denominator case (no radiation coupling).
-        delta_rad_total_is_zero = delta_rad_total.equals(0)
+        delta_rad_total_is_zero = delta_rad_total == 0.0
 
         for i, lower in enumerate(self.bands[:-1]):
             upper = self.bands[i + 1]
@@ -394,69 +421,17 @@ class Radiation:
             delta_rad_band = smart_integrate(reaction.dRad, E, (lower, upper))
             # Fraction of the total radiation coupling attributed to this band.
             xsec_frac = (
-                sp.Float(0.0)
-                if delta_rad_total_is_zero
-                else delta_rad_band / delta_rad_total
+                0.0 if delta_rad_total_is_zero else delta_rad_band / delta_rad_total
             )
             # Scale the total user-supplied rate by the band fraction.
-            k = reaction.rate * xsec_frac
+            k = reaction.rate * xsec_frac  # type: ignore
 
             self.groups[i].props[reaction] = {
                 "k": k,
-                "xsec": None,  # No Verner cross section for custom reactions
+                "xsec": None,  # No tabulated cross section for custom reactions
                 "xsec_frac": xsec_frac,
                 "delta_rad": delta_rad_band,
             }
-
-    def get_verner_xsec(self, reaction: Reaction) -> sp.Basic | None:
-        """
-        Query the JAFF database for the Verner photoionisation cross section.
-
-        Verner cross sections are analytic fits to photoionisation cross
-        sections from Verner et al. (1996) stored as SymPy-parseable strings
-        in the ``verner_cross_sections`` SQLite table.
-
-        Parameters
-        ----------
-        reaction : Reaction
-            Reaction whose serialised key is used as the database look-up.
-
-        Returns
-        -------
-        sympy.Basic or None
-            The SymPy expression for σ(E) if the reaction is found, or
-            ``None`` if no entry exists (e.g. for non-photoionisation
-            reactions).
-
-        Notes
-        -----
-        The expression uses the symbol ``E`` (photon energy in erg) as the
-        independent variable and returns cross sections in cm².
-
-        References
-        ----------
-        Verner, D. A. et al. 1996, ApJ, 465, 487
-        """
-        with JaffDb() as jdb:
-            table = jdb.table("verner_cross_sections")
-            rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")
-
-        if not rows:
-            return None
-
-        # Convert the stored string representation back to a SymPy expression.
-        return sp.sympify(rows[0]["xsecs"])
-
-    def get_leiden_xsec(self, reaction: Reaction) -> sp.Basic | None:
-        with JaffDb() as jdb:
-            table = jdb.table("verner_cross_sections")
-            rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")
-
-        if not rows:
-            return None
-
-        # Convert the stored string representation back to a SymPy expression.
-        return sp.sympify(rows[0]["xsecs"])
 
     def ordered_index(self, idx: int, order: int) -> tuple[int, int]:
         """
