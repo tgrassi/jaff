@@ -225,6 +225,35 @@ def smart_integrate(
 def arr_integrate(
     y: np.ndarray, x: np.ndarray, bounds: tuple[float | int | Basic, float | int | Basic]
 ) -> float:
+    """
+    Trapezoidal integral of tabulated data ``y(x)`` over an interval.
+
+    Used for cross-section integrals where ``σ(E)`` is only known as sampled
+    ``(E, σ)`` arrays, so a closed form is unavailable.
+
+    Parameters
+    ----------
+    y : numpy.ndarray
+        Sampled integrand values, aligned with ``x``.
+    x : numpy.ndarray
+        Sample abscissae, assumed sorted ascending.
+    bounds : tuple
+        ``(lower, upper)`` integration limits.  A non-symbolic bound is used
+        as-is; a symbolic (:class:`sympy.Basic`) bound is treated as ``±inf``,
+        i.e. the open end of the tabulated range.  Both limits are clamped to
+        ``[x[0], x[-1]]``.
+
+    Returns
+    -------
+    float
+        The integral, or ``0.0`` if the clamped interval is empty.
+
+    Notes
+    -----
+    The endpoints are inserted into the sample grid via linear interpolation
+    so the integral covers exactly ``[lower, upper]`` rather than the nearest
+    sample points.
+    """
     # Assumes data is sorted (ascending in x).
     lower, upper = bounds
     t_low = float(lower) if not isinstance(lower, Basic) else -np.inf

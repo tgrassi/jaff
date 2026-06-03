@@ -1,3 +1,17 @@
+"""
+Look-ups for photochemical cross sections.
+
+Two backends are exposed:
+
+- :func:`get_verner_xsec` -- analytic Verner (1996) photoionisation fits
+  stored as SymPy strings in the ``verner_cross_sections`` SQLite table.
+- :func:`get_xsec` -- tabulated Leiden / NORAD cross sections, indexed by the
+  ``photo_reaction_cross_sections`` table and read from the corresponding
+  HDF5 group as numpy arrays.
+
+Both are keyed by ``reaction.serialized``.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -53,6 +67,27 @@ def get_verner_xsec(reaction: Reaction) -> Basic | None:
 
 
 def get_xsec(reaction: Reaction) -> XsecsProps | None:
+    """
+    Load the tabulated Leiden / NORAD cross sections for a reaction.
+
+    The ``photo_reaction_cross_sections`` table maps the reaction key to an
+    HDF5 group (Leiden preferred, NORAD as fallback) and records which
+    processes are present.  The group is read into numpy arrays.
+
+    Parameters
+    ----------
+    reaction : Reaction
+        Reaction whose serialised key is used as the database look-up.
+
+    Returns
+    -------
+    XsecsProps or None
+        Dict with ``units`` (photon energy in eV, cross section in cm²),
+        ``_equations`` flags (``pa``/``pi``/``pd`` for photo-absorption,
+        -ionization, -dissociation), the shared ``photon_energy`` grid, and a
+        cross-section array per process (``None`` when absent).  Returns
+        ``None`` if the reaction has no cross-section entry.
+    """
     with JaffDb() as jdb:
         table = jdb.table("photo_reaction_cross_sections")
         rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")

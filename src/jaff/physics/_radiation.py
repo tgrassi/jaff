@@ -7,7 +7,7 @@ This module defines two classes:
   ``[lower, upper]`` in erg) that holds per-reaction rate coefficients and
   cross-section data.
 - :class:`Radiation` -- the full collection of bands; responsible for
-  computing rate coefficients by integrating Verner photoionisation cross
+  computing rate coefficients by integrating tabulated photo cross
   sections (and user-supplied ``dRad`` functions) over each band using a
   power-law photon-number spectrum.
 
@@ -27,7 +27,7 @@ photon energies.
 
 Rate coefficient derivation
 ----------------------------
-For a reaction with Verner cross section σ(E) the *photon-flux-weighted*
+For a reaction with tabulated cross section σ(E) the *photon-flux-weighted*
 average cross section in band *i* is::
 
     <σ>_i = ∫_{E_lo}^{E_hi} σ(E) n(E) dE  /  ∫_{E_lo}^{E_hi} n(E) dE
@@ -239,8 +239,8 @@ class Radiation:
         """
         Compute and store symbolic band-averaged rate coefficients for a reaction.
 
-        Retrieves the Verner photoionisation cross section σ(E) from the
-        database, then for each frequency band:
+        Reads the tabulated photo cross section σ(E) from
+        ``reaction.xsecs_dict``, then for each frequency band:
 
         1. Computes the photon-number-weighted band-average cross section
            ``<σ>_i = ∫ σ n dE / ∫ n dE``.
@@ -257,8 +257,9 @@ class Radiation:
         (sum over bands, in units of s⁻¹ or cm³ s⁻¹ depending on reaction
         type) is written to ``reaction.rate``.
 
-        If the reaction has no Verner cross section entry the method returns
-        silently (no-op).
+        If the reaction has no tabulated cross section (no ``xsecs_dict``, or
+        neither a photoionisation nor photodissociation array) the method
+        returns silently (no-op).
 
         Parameters
         ----------
@@ -281,7 +282,10 @@ class Radiation:
         gives a flat energy spectrum; for ``powerlaw_idx = 0`` a flat photon
         spectrum.
 
-        All integrals are performed symbolically by
+        Cross-section integrals (``∫ σ n dE``) are evaluated numerically by
+        :func:`~jaff.common._integrators.arr_integrate` over the tabulated
+        ``(E, σ)`` arrays.  The remaining analytic integrals over ``n(E)``,
+        ``E n(E)`` and ``reaction.dRad`` use
         :func:`~jaff.common._integrators.smart_integrate`, which falls back
         to numerical quadrature when SymPy cannot find a closed form.
         """

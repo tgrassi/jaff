@@ -722,8 +722,16 @@ class Reaction:
         energy_unit : str, optional
             Horizontal-axis unit: ``"eV"`` (default), ``"erg"``, ``"nm"``,
             ``"um"``.
+        xsec_unit : str, optional
+            Cross-section unit for the vertical axis, by default ``"Mb"``
+            (megabarn); ``"cm^2"`` and ``"barn"`` are also accepted.
         energy_log, xsecs_log : bool, optional
             Log-scale the energy / cross-section axis (default ``True``).
+
+        Returns
+        -------
+        tuple[matplotlib.figure.Figure, matplotlib.axes.Axes] or None
+            The figure and axes, or ``None`` when there is nothing to draw.
 
         Notes
         -----
