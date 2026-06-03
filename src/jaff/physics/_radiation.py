@@ -4,7 +4,7 @@ Radiation band groups and frequency-integrated rate coefficients.
 This module defines two classes:
 
 - :class:`RadiationGroup` -- a single frequency band (energy interval
-  ``[lower, upper]`` in erg) that holds per-reaction rate coefficients and
+  ``[lower, upper]`` in eV) that holds per-reaction rate coefficients and
   cross-section data.
 - :class:`Radiation` -- the full collection of bands; responsible for
   computing rate coefficients by integrating tabulated photo cross
@@ -33,7 +33,7 @@ average cross section in band *i* is::
     <σ>_i = ∫_{E_lo}^{E_hi} σ(E) n(E) dE  /  ∫_{E_lo}^{E_hi} n(E) dE
 
 The symbolic rate coefficient stored in the radiation density variable
-``den[i]`` (either energy density *u_i* in erg/cm³ or photon density *n_i*
+``den[i]`` (either energy density *u_i* in eV/cm³ or photon density *n_i*
 in cm⁻³) is::
 
     k_i = c * den[i] * <σ>_i          (photon density mode)
@@ -42,7 +42,7 @@ in cm⁻³) is::
 where *c* is the speed of light and ``<E>_i`` is the band-average photon
 energy.
 
-All energies are in erg throughout this module.
+All energies are in eV throughout this module.
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ class RadiationGroup:
     """
     A single frequency band in the radiation field discretisation.
 
-    Each group spans the photon-energy interval ``[lower, upper]`` (in erg)
+    Each group spans the photon-energy interval ``[lower, upper]`` (in eV)
     and accumulates per-reaction rate-coefficient data populated by
     :meth:`Radiation.set_reaction_rate_coefficient` and
     :meth:`Radiation.set_custom_rate`.
@@ -73,9 +73,9 @@ class RadiationGroup:
     Parameters
     ----------
     lower : float or int
-        Lower bound of the energy band in erg.
+        Lower bound of the energy band in eV.
     upper : float, int, or sympy.Basic
-        Upper bound of the energy band in erg.  May be ``sympy.oo`` for the
+        Upper bound of the energy band in eV.  May be ``sympy.oo`` for the
         uppermost open band.
     index : int
         Zero-based position of this group in the parent :class:`Radiation`
@@ -86,28 +86,28 @@ class RadiationGroup:
     index : int
         Band index (same as the constructor argument).
     lower : float or int
-        Lower energy bound in erg.
+        Lower energy bound in eV.
     upper : float, int, or sympy.Basic
-        Upper energy bound in erg.
+        Upper energy bound in eV.
     band : tuple
         ``(lower, upper)`` convenience pair.
     dE : float or sympy.Basic
-        Band width ``upper - lower`` in erg.
+        Band width ``upper - lower`` in eV.
     props : dict
         Mapping from :class:`~jaff.core.reaction.Reaction` objects to a
         :class:`~jaff.physics._typing.RadiationGroupReactionProps` dict with
         keys:
 
         - ``"k"``         : symbolic rate coefficient for this band.
-        - ``"xsec"``      : integrated cross section over the band (cm²·erg),
-          or ``None`` for custom-rate reactions.
+        - ``"xsec"``      : photon-number-weighted band-average cross section
+          (cm²), or ``None`` for custom-rate reactions.
         - ``"xsec_frac"`` : fraction of the total cross section (or total
           ``dRad``) attributed to this band (dimensionless).
         - ``"delta_rad"`` : integrated ``dRad`` over the band
-          (erg/cm³/s or cm⁻³/s depending on the radiation mode).
+          (eV/cm³/s or cm⁻³/s depending on the radiation mode).
 
-    eavg : sympy.Basic or None
-        Photon-number-weighted average energy of this band in erg, computed
+    eavg : float or None
+        Photon-number-weighted average energy of this band in eV, computed
         lazily by :meth:`Radiation.set_reaction_rate_coefficient` and shared
         across all reactions in the band.
     """
@@ -118,9 +118,9 @@ class RadiationGroup:
         Parameters
         ----------
         lower : float or int
-            Lower energy bound of the band in erg.
+            Lower energy bound of the band in eV.
         upper : float, int, or sympy.Basic
-            Upper energy bound in erg.  May be ``sympy.oo`` for an open band.
+            Upper energy bound in eV.  May be ``sympy.oo`` for an open band.
         index : int
             Zero-based position of this group in the parent :class:`Radiation`
             group list.
@@ -167,7 +167,7 @@ class Radiation:
     Parameters
     ----------
     bands : list of (int, float, str, or sympy.Basic)
-        Ordered list of *N+1* band-edge photon energies in erg, defining *N*
+        Ordered list of *N+1* band-edge photon energies in eV, defining *N*
         frequency bands.  The string ``"inf"`` is accepted as the last entry
         to represent an open upper boundary.
     powerlaw_idx : int or float
@@ -176,7 +176,7 @@ class Radiation:
         0 (flat photon spectrum).
     energy_density : bool
         If ``True`` the radiation field is tracked as energy density
-        (erg cm⁻³); if ``False`` as photon number density (cm⁻³).  This
+        (eV cm⁻³); if ``False`` as photon number density (cm⁻³).  This
         controls the name of the symbolic density variable (``"radeden"`` vs.
         ``"photden"``) and the normalisation of rate coefficients.
     c : float
@@ -211,13 +211,13 @@ class Radiation:
         Parameters
         ----------
         bands : list of int, float, str, or sympy.Basic
-            Ordered list of *N+1* photon-energy band edges in erg.  The string
+            Ordered list of *N+1* photon-energy band edges in eV.  The string
             ``"inf"`` is accepted as the last entry to represent an open upper
             boundary (converted to ``sympy.oo``).
         powerlaw_idx : int or float
             Power-law spectral index *α* for ``n(E) ∝ E^(α-2)``.
         energy_density : bool
-            If ``True``, radiation is tracked as energy density (erg cm⁻³);
+            If ``True``, radiation is tracked as energy density (eV cm⁻³);
             if ``False``, as photon number density (cm⁻³).
         c : float
             Speed of light in cm/s (CGS).
@@ -265,9 +265,9 @@ class Radiation:
         ----------
         reaction : Reaction
             The photochemical reaction to process.  ``reaction.dRad`` must
-            be a SymPy expression in the symbol ``E`` (photon energy in erg)
+            be a SymPy expression in the symbol ``E`` (photon energy in eV)
             describing the radiation energy-density source/sink rate
-            (erg cm⁻³ s⁻¹ per unit energy).
+            (eV cm⁻³ s⁻¹ per unit energy).
 
         Returns
         -------
@@ -322,7 +322,7 @@ class Radiation:
         )
         reaction.rad_xsecs = xsec_tot
 
-        # Symbolic radiation density variable: energy density (erg/cm³) or
+        # Symbolic radiation density variable: energy density (eV/cm³) or
         # photon number density (cm⁻³), depending on the mode.
         den = sp.MatrixSymbol(
             "radeden" if self.energy_density else "photden", self.nbands, 1
@@ -347,7 +347,7 @@ class Radiation:
             )
 
             # Integral of the user-supplied radiation energy source per reaction
-            # per photon energy dRad over the band (erg per band).
+            # per photon energy dRad over the band (eV per band).
             delta_rad_band = smart_integrate(reaction.dRad, E_sym, (lower, upper))
 
             # Symbolic rate coefficient: k_i = c · den[i] · <σ>_i
@@ -368,7 +368,7 @@ class Radiation:
                     smart_integrate(E_sym * n_profile_sym, E_sym, (lower, upper)) / n_tot
                 )
 
-            # In energy-density mode, convert from "per erg" to "per photon"
+            # In energy-density mode, convert from "per eV" to "per photon"
             # by dividing by the band-average energy <E>_i.
             k_tot += (
                 k
@@ -394,7 +394,7 @@ class Radiation:
         reaction : Reaction
             Reaction with a pre-assigned ``reaction.rate`` (total rate
             coefficient) and ``reaction.dRad`` as a SymPy expression in
-            the symbol ``E`` (photon energy in erg).
+            the symbol ``E`` (photon energy in eV).
 
         Returns
         -------
