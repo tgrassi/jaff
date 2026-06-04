@@ -49,12 +49,15 @@ window.MathJax = {
 };
 
 document$.subscribe(() => {
-  if (!(window.MathJax && MathJax.startup && MathJax.startup.promise)) return;
-
-  MathJax.startup.promise = MathJax.startup.promise.then(() => {
-    MathJax.startup.output.clearCache();
-    MathJax.typesetClear();
-    MathJax.texReset();
-    return MathJax.typesetPromise();
-  });
+  if (typeof MathJax === "undefined" || !MathJax.startup || !MathJax.startup.promise) {
+    return; // MathJax not loaded yet; startup.ready typesets the initial page.
+  }
+  MathJax.startup.promise = MathJax.startup.promise
+    .then(() => {
+      MathJax.startup.output.clearCache();
+      MathJax.typesetClear();
+      MathJax.texReset();
+      return MathJax.typesetPromise();
+    })
+    .catch((err) => console.error("MathJax typeset failed:", err));
 });
