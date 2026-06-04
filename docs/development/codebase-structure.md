@@ -95,7 +95,7 @@ src/jaff/
     ├── download_nahar_xsecs.py         # Download NORAD/OP ground-state photoionisation .dat files
     ├── collapse_xsecs_hdf5.py          # Merge per-reaction files into leiden.hdf5 / norad.hdf5
     ├── generate_photo_xsecs_table.py   # Build photo_reaction_cross_sections table in jaff.db
-    └── generate_verner_xsecs_table.py  # Build verner_cross_sections table in jaff.db
+    └── generate_ion_xsecs_table.py     # Build verner_cross_sections table in jaff.db
 ```
 
 ## Architecture Diagram
@@ -187,7 +187,7 @@ SQLite lookup tables that JAFF queries at runtime.
 | `download_nahar_xsecs.py` | Download NORAD/OP (Nahar, OSU) ground-state photoionisation cross sections (Z = 1..26) into `data/xsecs/op/` using serialized reaction names. |
 | `collapse_xsecs_hdf5.py` | Merge the per-reaction Leiden and NORAD files into combined `leiden.hdf5` / `norad.hdf5` (one group per reaction, photon energy in eV, σ in cm²). |
 | `generate_photo_xsecs_table.py` | Build the `photo_reaction_cross_sections` table in `db/jaff.db` from the collapsed HDF5 files (process flags + `file.hdf5::<group>` pointers). |
-| `generate_verner_xsecs_table.py` | Build the `verner_cross_sections` table in `db/jaff.db` from the Verner (1996) analytic-fit parameters in `data/xsecs/verner/`. |
+| `generate_ion_xsecs_table.py` | Build the `verner_cross_sections` table in `db/jaff.db` from the Verner (1996) analytic-fit parameters in `data/xsecs/verner/`. |
 
 Run a script as a module from the project root, e.g.:
 
