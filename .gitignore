@@ -86,3 +86,7 @@ dmypy.json
 
 # uv
 uv.lock
+
+# pooch-downloaded cross-section data (fetched at runtime, not committed)
+src/jaff/data/xsecs/*.hdf5
+src/jaff/data/xsecs/*.csv

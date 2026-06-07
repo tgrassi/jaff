@@ -39,17 +39,17 @@ from sympy import (
 from sympy.core.function import AppliedUndef, UndefinedFunction
 
 from ..common import is_jaff_file, load_mass_dict, motd, resolve_dependencies
-from ..common._helper import ElementProps
+from ._typing import ElementProps
 from ..errors import ParserError
 from ..io import JaffLogger, jaff_progress
 from ..io._io import JaffProps, from_jaff_file, to_jaff_file, write_data_table
 from ..physics import (
+    Photochemistry,
     Radiation,
     constants,
     get_sfluxes,
     get_sodes,
     get_sradodes,
-    photochemistry,
 )
 from ._auxiliary_engine import AuxiliaryFunctionParser, FunctionsDict
 from ._network_engine import NetworkParser
@@ -181,6 +181,7 @@ class Network:
             if len(rad_bands) > 0
             else None
         )
+        self.__photochemistry: None | Photochemistry = None
 
         self.logger.info(f"Loading network from {fname}")
         self.logger.info(f"Network label: [yellow]{self.label}[/]")
@@ -307,7 +308,10 @@ class Network:
             self.reactions.add(rea)
 
             if is_photoreaction:
-                rea.xsecs_dict = photochemistry.get_xsec(rea)
+                if self.__photochemistry is None:
+                    self.__photochemistry = Photochemistry()
+
+                rea.xsecs_dict = self.__photochemistry.get_xsec(rea)
 
             if is_photoreaction and self.radiation is not None:
                 if aux_chem_rate not in aux_funcs:

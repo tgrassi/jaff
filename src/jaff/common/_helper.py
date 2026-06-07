@@ -22,11 +22,11 @@ from typing import TYPE_CHECKING
 from sympy import Basic, Piecewise
 from sympy.core.function import AppliedUndef
 
-from ..core._typing import ElementProps
 from ..errors import ParserError
 
 if TYPE_CHECKING:
     from ..core._auxiliary_engine import FunctionsDict
+    from ..core._typing import ElementProps
 
 # ---------------------------------------------------------------------------
 # File-extension groups used by parsers and code generators

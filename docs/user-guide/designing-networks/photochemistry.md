@@ -128,13 +128,16 @@ up in `jaff.db`, and the cross-section arrays are attached to the reaction's
 
 ### Storage layout
 
-Tabulated cross sections ship as two collapsed HDF5 files, one group per
-serialized reaction, all datasets co-sorted by ascending photon energy:
+Tabulated cross sections are stored as two collapsed HDF5 files, one group per
+serialized reaction, all datasets co-sorted by ascending photon energy. These
+files are not bundled in the package: on first network load JAFF downloads them
+(via `pooch`) from a remote mirror into the local `data/xsecs` directory, then
+reuses the cached copies on subsequent runs:
 
 ```text
-src/jaff/data/xsecs/leiden/leiden.hdf5   # one group per reaction (abs/diss/ion)
-src/jaff/data/xsecs/norad/norad.hdf5     # one group per reaction (ionization)
-src/jaff/data/xsecs/verner/verner_1996.csv   # analytic-fit parameters
+src/jaff/data/xsecs/leiden.hdf5      # one group per reaction (abs/diss/ion)
+src/jaff/data/xsecs/norad.hdf5       # one group per reaction (ionization)
+src/jaff/data/xsecs/verner_1996.csv  # analytic-fit parameters
 ```
 
 `photon_energy` is stored in **eV** and every cross-section dataset
@@ -194,11 +197,14 @@ rxn.plot_xsecs()                    # visualise σ(E)
 print(net.sradodes())
 ```
 
-Cross-section lookup is also exposed directly via `jaff.physics.photochemistry`:
+Cross-section lookup is also exposed directly via the
+`jaff.physics.Photochemistry` class. Constructing it downloads the cross-section
+data files on first use (cached thereafter), so instantiate once and reuse:
 
 ```python
-from jaff.physics import photochemistry
+from jaff.physics import Photochemistry
 
-photochemistry.get_xsec(rxn)         # XsecsProps from the tabulated databases
-photochemistry.get_verner_xsec(rxn)  # analytic Verner σ(E) (sympy) or None
+photo = Photochemistry()
+photo.get_xsec(rxn)         # XsecsProps from the tabulated databases
+photo.get_verner_xsec(rxn)  # analytic Verner σ(E) (sympy) or None
 ```

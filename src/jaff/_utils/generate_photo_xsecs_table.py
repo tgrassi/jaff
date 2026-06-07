@@ -1,7 +1,7 @@
 """Build the ``photo_reaction_cross_sections`` table in ``jaff.db``.
 
 One row per serialized reaction found in the collapsed cross-section HDF5
-files (``data/xsecs/leiden/leiden.hdf5`` and ``data/xsecs/norad/norad.hdf5``),
+files (``data/xsecs/leiden.hdf5`` and ``data/xsecs/norad.hdf5``),
 keyed by the HDF5 group name (the serialized reaction stem, e.g. ``"CH__C_H"``).
 
 Columns
@@ -11,9 +11,9 @@ Columns
 - ``photo_dissociation``-- 1 if a ``photodissociation`` dataset exists.
 - ``photo_ionization``  -- 1 if the reaction has an ``e-`` product *and* a
   ``photoionization`` dataset exists.
-- ``leiden``            -- ``data/xsecs/leiden/leiden.hdf5::<group>`` if the
+- ``leiden``            -- ``data/xsecs/leiden.hdf5::<group>`` if the
   reaction is in the Leiden file, else NULL.
-- ``norad``             -- ``data/xsecs/norad/norad.hdf5::<group>`` if the
+- ``norad``             -- ``data/xsecs/norad.hdf5::<group>`` if the
   reaction is in the NORAD file, else NULL.
 """
 
@@ -33,8 +33,8 @@ PKG_ROOT: Path = Path(__file__).parent.parent
 
 #: source name -> collapsed HDF5 file (relative to ``PKG_ROOT``).
 XSEC_FILES: dict[str, Path] = {
-    "leiden": Path("data") / "xsecs" / "leiden" / "leiden.hdf5",
-    "norad": Path("data") / "xsecs" / "norad" / "norad.hdf5",
+    "leiden": Path("data") / "xsecs" / "leiden.hdf5",
+    "norad": Path("data") / "xsecs" / "norad.hdf5",
 }
 
 
