@@ -867,40 +867,28 @@ class NetworkParser:
         t_min = tmin if tmin > 0 else None
         t_max = tmax if tmax < 9999.0 else None
 
+        rr = [r.strip() for r in reactants.split() if r != "+"]
+        pp = [p.strip() for p in products.split() if p != "+"]
+        ignore_species = {"cr", "crp", "photon"}
         rates_dict = {
-            1: f"{ka:.2e} * crate",
+            1: (
+                f"{ka:.2e} * crate"
+                if "CRP" not in rr
+                else f"{ka:.2e} * crate * 2.0 * nH2 / nH"
+            ),
             2: f"{ka:.2e} * chi * exp(-{kc:.2e} * av)",
             3: f"{ka:.2e}"
             + (f" * (tgas / 300) ** ({kb:.2e})" if kb != 0.0 else "")
             + (f" * exp(-{kc:.2f} / tgas)" if kc != 0.0 else ""),
-            4: f"{ka * kb:.2e}"
-            + (f" * (0.62 + 0.4767 * {kc:2e} * sqrt(300 / tgas))" if kc != 0.0 else ""),
-            5: f"{ka * kb:.2e}"
-            + (
-                f" * (1 + 0.0967 * {kc:.2e} * sqrt(300 / tgas + {kc**2:.2e} * 3e2 / 10.526 / tgas))"
-                if kc != 0.0
-                else ""
-            ),
+            4: f"{ka * kb:.2e} * (0.62 + 0.4767 * {kc:2e} * sqrt(300 / tgas))",
+            5: f"{ka * kb:.2e} * (1 + 0.0967 * {kc:.2e} * sqrt(300 / tgas) + {kc**2:.2e} * 3e2 / 10.526 / tgas)",
         }
-
         rate = rates_dict.get(formula, "0.0")
-
-        ignore_species = {"cr", "crp", "photon"}
-        rr = [
-            r.strip()
-            for r in reactants.split()
-            if r != "+" and r.strip().lower() not in ignore_species
-        ]
-        pp = [
-            p.strip()
-            for p in products.split()
-            if p != "+" and p.strip().lower() not in ignore_species
-        ]
 
         self.__parsed_list.append(
             {
-                "r": rr,
-                "p": pp,
+                "r": [r for r in rr if r.lower() not in ignore_species],
+                "p": [p for p in pp if p.lower() not in ignore_species],
                 "tmin": t_min,
                 "tmax": t_max,
                 "rate": rate,
