@@ -12,6 +12,69 @@ if TYPE_CHECKING:
     from ..physics._typing import XsecsProps
 
 
+# CGS constants for unit conversions
+_H = 6.62607015e-27  # erg·s
+_C = 2.99792458e10  # cm/s
+_HC = _H * _C  # erg·cm
+_EV_TO_ERG = 1.602176634e-12  # erg/eV
+_BARN = 1.0e-24  # cm²
+_MBARN = 1.0e-18  # cm²
+
+
+def _convert_energy(value: float | np.ndarray, from_unit: str, to_unit: str) -> float | np.ndarray:
+    """Convert energy between units using CGS base (erg)."""
+    value = np.asarray(value)
+
+    # Convert to erg
+    if from_unit == "eV":
+        erg = value * _EV_TO_ERG
+    elif from_unit == "erg":
+        erg = value
+    elif from_unit == "nm":
+        erg = _HC / (value * 1e-7)
+    elif from_unit == "um":
+        erg = _HC / (value * 1e-4)
+    else:
+        raise ValueError(f"Unknown energy unit: {from_unit}")
+
+    # Convert from erg to target unit
+    if to_unit == "eV":
+        return erg / _EV_TO_ERG
+    elif to_unit == "erg":
+        return erg
+    elif to_unit == "nm":
+        return _HC / erg / 1e-7
+    elif to_unit == "um":
+        return _HC / erg / 1e-4
+    else:
+        raise ValueError(f"Unknown energy unit: {to_unit}")
+
+
+def _convert_xsec(value: float | np.ndarray, from_unit: str, to_unit: str) -> float | np.ndarray:
+    """Convert cross section between units using CGS base (cm²)."""
+    value = np.asarray(value)
+
+    # Convert to cm²
+    if from_unit == "cm2" or from_unit == "cm^2":
+        cm2 = value
+    elif from_unit == "Mb":
+        cm2 = value * _MBARN
+    elif from_unit == "barn":
+        cm2 = value * _BARN
+    else:
+        raise ValueError(f"Unknown cross-section unit: {from_unit}")
+
+    # Convert from cm² to target unit
+    if to_unit == "cm2" or to_unit == "cm^2":
+        return cm2
+    elif to_unit == "Mb":
+        return cm2 / _MBARN
+    elif to_unit == "barn":
+        return cm2 / _BARN
+    else:
+        raise ValueError(f"Unknown cross-section unit: {to_unit}")
+
+
 class Plotter:
     """Publication-quality matplotlib wrapper with a clean, seaborn-like style.
 
@@ -332,8 +395,6 @@ class Plotter:
             For ``layout="overlay"`` the second item is the single axes; for
             ``layout="subplots"`` it is the array of per-process axes.
         """
-        from ..physics import units
-
         if layout not in ("overlay", "subplots"):
             raise ValueError(f"layout must be 'overlay' or 'subplots', got {layout!r}")
 
@@ -349,11 +410,11 @@ class Plotter:
             raise ValueError("xsecs has no cross-section data to plot.")
 
         # Data are stored as eV + cm^2; convert to the requested units.
-        x = np.asarray(units.convert(energy, "eV", energy_unit))
+        x = np.asarray(_convert_energy(energy, "eV", energy_unit))
         series = [
             (
                 self._PROC_LABELS.get(k, k),
-                np.asarray(units.convert(xsecs[k], "cm2", xsec_unit)),  # type: ignore
+                np.asarray(_convert_xsec(xsecs[k], "cm2", xsec_unit)),  # type: ignore
             )
             for k in processes
         ]
