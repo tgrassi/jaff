@@ -6,15 +6,13 @@ icon: phosphor/atom
 
 # jaff.physics
 
-Physical constants, unit conversion, and photochemical cross-section lookup for
-astrochemical calculations.
+Physical constants and photochemical cross-section lookup for astrochemical calculations.
 
 ## Classes
 
 | Class                             | Description                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------------ |
 | [`Constants`](constants/index.md) | Frozen dataclass of physical and astronomical constants in a given unit system |
-| [`Quantity`](units/index.md)      | A `(value, unit)` value object with conversion, attribute access, and arithmetic |
 | `Photochemistry`                  | Photo cross-section lookup from the bundled databases (see below)               |
 
 ## Submodules
@@ -22,7 +20,6 @@ astrochemical calculations.
 | Submodule                            | Description                                                                  |
 | ------------------------------------ | ---------------------------------------------------------------------------- |
 | `constants`                          | Pre-built physical-constant instances (see below)                            |
-| [`units`](units/index.md)            | Unit registry, the `convert()` function, and the `Quantity` value object     |
 
 ## Photochemistry methods
 

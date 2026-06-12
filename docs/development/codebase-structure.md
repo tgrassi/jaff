@@ -25,7 +25,6 @@ src/jaff/
 │   ├── _equations.py           # get_sfluxes, get_sodes, get_sradodes
 │   ├── _photochemistry.py      # get_xsec / get_verner_xsec — cross-section lookup
 │   ├── _radiation.py           # Radiation moment equations
-│   ├── _units.py               # Unit registry, convert(), Quantity
 │   ├── _typing/                # TypedDicts (XsecsProps, Numeric, ...)
 │   └── constants.py            # Physical constants (CGS)
 │
@@ -78,8 +77,7 @@ src/jaff/
 │   └── _welcome.py             # MOTD / version banner
 │
 ├── errors/
-│   ├── _parser.py              # ParserError hierarchy
-│   └── _units.py               # UnitsError / UnknownUnitError / IncompatibleUnitsError
+│   └── _parser.py              # ParserError hierarchy
 │
 ├── data/                       # Raw data assets
 │   ├── atom_mass.csv           # Element mass table (bundled)
