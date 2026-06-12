@@ -115,7 +115,6 @@ net = Network(
 | `dEdt_other`      | `sympy.Basic`     | Extra heating/cooling from a `heatingcoolingrate` aux function (else `0`)       |
 | `dRad_dt_extra`   | `sympy.Basic`     | Extra radiation-moment source terms from `@function` aux definitions (else `0`) |
 | `radiation`       | `Radiation\|None` | Radiation field object; `None` when no `rad_bands` are configured               |
-| `photochemistry`  | `Photochemistry`  | Cross-section database used to populate photo-reaction `xsecs_dict`             |
 | `mass_dict`       | `dict`            | Element mass dictionary used to build the species                               |
 
 ```python

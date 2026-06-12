@@ -65,11 +65,14 @@ class HDF5Dict(dict):
 
     Parameters
     ----------
-    h5obj : h5py.File, Path, str, or dict
+    h5obj : h5py.File, h5py.Group, Path, str, or dict
         Source to build from:
 
         * ``h5py.File`` — read from an already-open file handle.
+        * ``h5py.Group`` — parse the hierarchy from that group onward.
         * ``Path`` or ``str`` — open and parse the file at the given path.
+          A ``"file.h5::/internal/group"`` string (``::`` delimiter) parses
+          from the named internal group onward.
         * ``dict`` — use directly without any HDF5 parsing.
 
     Raises
@@ -85,14 +88,16 @@ class HDF5Dict(dict):
     >>> hd2 = HDF5Dict(Path("output.hdf5"))
     """
 
-    def __init__(self, h5obj: "h5py.File | Path | str | dict"):
-        """Build the HDF5Dict from an HDF5 file path, open file handle, or plain dict.
+    def __init__(self, h5obj: "h5py.File | h5py.Group | Path | str | dict"):
+        """Build the HDF5Dict from an HDF5 file path, open file/group handle, or plain dict.
 
         Parameters
         ----------
-        h5obj : h5py.File, Path, str, or dict
-            Source to build from.  Plain dicts are stored directly without
-            any HDF5 parsing.
+        h5obj : h5py.File, h5py.Group, Path, str, or dict
+            Source to build from.  An ``h5py.Group`` parses the hierarchy from
+            that group onward.  A ``"file.h5::/internal/group"`` string does
+            the same via the ``::`` delimiter.  Plain dicts are stored directly
+            without any HDF5 parsing.
 
         Raises
         ------
@@ -104,22 +109,33 @@ class HDF5Dict(dict):
             super().__init__(h5obj)
             return
 
+        # A "file::/internal/group" string selects a sub-group: parse the
+        # hierarchy from that group onward. The "::" delimiter avoids the
+        # ambiguity between a filesystem path and an internal HDF5 path.
+        group_path = None
+        if isinstance(h5obj, str) and "::" in h5obj:
+            h5obj, group_path = h5obj.split("::", 1)
+
         if isinstance(h5obj, (str, Path)):
             h5path = Path(h5obj)
             if not h5path.exists():
                 raise FileNotFoundError(h5path)
 
-        # Use a no-op context manager if the caller already holds an open
-        # h5py.File; otherwise open the file ourselves.
-        cm = nullcontext(h5obj) if isinstance(h5obj, h5py.File) else h5py.File(h5obj, "r")
+        cm = (
+            nullcontext(h5obj) if isinstance(h5obj, h5py.Group) else h5py.File(h5obj, "r")
+        )
         result = {}
 
         with cm as f:
-            # Store file-level attributes (if any) at the top level.
-            if f.attrs:
-                result["_attrs"] = dict(f.attrs)
+            # Descend to the requested sub-group, if one was given.
+            target = f[group_path] if group_path is not None else f
+            # Store the target's attributes (if any) at the top level.
+            if target.attrs:
+                result["_attrs"] = dict(target.attrs)
             # Walk every group and dataset, building the nested dict.
-            f.visititems(lambda name, obj: self.__build_nested_dict(result, name, obj))
+            target.visititems(
+                lambda name, obj: self.__build_nested_dict(result, name, obj)
+            )
 
         super().__init__(result)
 

@@ -9,7 +9,6 @@ __all__ = [
     get_sfluxes,
     get_sodes,
     get_sradodes,
-    Photochemistry,
     Radiation,
     RadiationGroup,
     RadiationGroupReactionProps,

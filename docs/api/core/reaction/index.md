@@ -63,4 +63,4 @@ The `Reaction` class represents a single chemical reaction, holding its reactant
 | `index`               | `int`           | Zero-based position in the parent `Reactions` catalogue                                                                                          |
 | `metadata`            | `dict`          | Arbitrary key/value store. `metadata["type"]` is populated by `rtype()`                                                                          |
 | `custom_rad_rate`     | `bool`          | `True` when the radiation rate was supplied via a `.jfunc` aux function rather than computed from cross-sections                                 |
-| `xsecs_dict`          | `dict or None`  | Photo-ionisation cross-section data: `{"energy": [...], "xsecs": [...]}`, energies in erg, cross-sections in cm². `None` for non-photo reactions |
+| `xsecs_dict`          | `XsecsProps or None` | Photo cross-section data keyed by process. Holds `units`, `_equations` (`pa`/`pi`/`pd` flags), `photon_energy` (eV), and `photo_absorption` / `photo_ionization` / `photo_dissociation` (cm² arrays, or `None` where absent). `None` for non-photo reactions |

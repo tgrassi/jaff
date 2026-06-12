@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import sys
 from functools import cached_property
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sympy import (
@@ -49,10 +50,13 @@ from sympy import (
 )
 
 from ..io import JaffLogger
-from ..physics import constants
+from ..physics._typing import XsecsProps
 from ..types import Catalogue, Vector
 from .elements import Elements
 from .species import Specie, Species
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 class Reaction:
@@ -154,8 +158,7 @@ class Reaction:
         self.dRad: Basic = dRad
         self.custom_rad_rate: bool = False
         self.rad_xsecs: float | None = None
-        # cross-section data: {"energy": [...], "xsecs": [...]}, energy in erg, xsecs in cm^2
-        self.xsecs_dict: dict | None = None
+        self.xsecs_dict: XsecsProps | None = None
         self.original_string = original_string
         # verbatim is kept for backward compatibility alongside original_string
         self.verbatim: str = self.get_verbatim()
@@ -396,10 +399,13 @@ class Reaction:
         -------
         bool
         """
-        return abs(
-            np.sum([r.mass for r in self.reactants])
-            - np.sum([p.mass for p in self.products])
-        ) < 9.1093837e-28
+        return (
+            abs(
+                np.sum([r.mass for r in self.reactants])
+                - np.sum([p.mass for p in self.products])
+            )
+            < 9.1093837e-28
+        )
 
     def check_charge(self) -> bool:
         """Return ``True`` if the net charge is conserved.
@@ -617,14 +623,39 @@ class Reaction:
         """
         return sympify(self.rate)
 
-    def plot(self, ax=None) -> None:
+    def plot_rate_coefficient(
+        self,
+        fig: plt.Figure | None = None,
+        ax: plt.Axes | None = None,
+        title: str | None = None,
+        grid: bool = True,
+        show: bool = True,
+        save: bool = False,
+        filename: str = "",
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Plot the rate coefficient as a function of gas temperature.
+
+        The styled :class:`jaff.plotting.Plotter` is used so the figure
+        matches the publication house style.
 
         Parameters
         ----------
-        ax : matplotlib.axes.Axes or None, optional
-            Axes to draw on.  If ``None``, a new figure is created and
-            displayed immediately.
+        fig, ax : matplotlib objects or None, optional
+            Existing figure/axes to draw on.  Created if ``None``.
+        title : str or None, optional
+            Plot title.  Defaults to the LaTeX reaction equation.
+        grid : bool, optional
+            Draw a grid, by default ``True``.
+        show : bool, optional
+            Display the figure, by default ``True``.
+        save : bool, optional
+            Save to *filename* (format inferred from extension).
+        filename : str, optional
+            Output path.  Defaults to ``"<reaction>_rate.png"``.
+
+        Returns
+        -------
+        tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]
 
         Notes
         -----
@@ -632,7 +663,7 @@ class Reaction:
         When ``tmin`` or ``tmax`` is ``None``, defaults of 2.73 K and 1e6 K
         are used respectively.
         """
-        import matplotlib.pyplot as plt
+        from ..plotting import Plotter
 
         tmin = 2.73 if self.tmin is None else self.tmin
         tmax = 1e6 if self.tmax is None else self.tmax
@@ -641,86 +672,126 @@ class Reaction:
         r = lambdify("tgas", self.rate, "numpy")
         y = np.array([r(t) for t in tgas])
 
-        if ax is None:
-            _, ax = plt.subplots()
-
-        ax.plot(tgas, y)
-        ax.set_xlabel("Temperature (K)")
-        ax.set_ylabel("Rate")
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        ax.set_title(self.get_latex())
-        ax.grid()
-
-        if ax is None:
-            plt.show()
+        return Plotter().plot(
+            x=tgas,
+            y=y,
+            fig=fig,
+            ax=ax,
+            xlabel="Temperature (K)",
+            ylabel=r"Rate coefficient $k$",
+            xscale="log",
+            yscale="log",
+            title=title or self.get_latex(),
+            grid=grid,
+            show=show,
+            save=save,
+            filename=filename or f"{self}_rate.png",
+        )
 
     def plot_xsecs(
-        self, ax=None, energy_unit="eV", energy_log=True, xsecs_log=True
-    ) -> None:
-        """Plot photo-ionisation cross sections against photon energy or wavelength.
+        self,
+        processes: str | list[str] | None = "all",
+        layout: str = "overlay",
+        fig: plt.Figure | None = None,
+        ax: plt.Axes | None = None,
+        energy_unit: str = "eV",
+        xsec_unit: str = "Mb",
+        energy_log: bool = True,
+        xsecs_log: bool = True,
+        title: str | None = None,
+        grid: bool = True,
+        show: bool = True,
+        save: bool = False,
+        filename: str = "",
+    ) -> tuple[plt.Figure, Any] | None:
+        """Plot photo cross sections against photon energy or wavelength.
 
         Parameters
         ----------
+        processes : str | list[str] | None, optional
+            Which cross-section processes to draw.  ``"all"`` (default) or
+            ``None`` plots every process with data; a single key (e.g.
+            ``"photo_ionization"``) or a list of keys selects a subset.
+            Valid keys: ``"photo_absorption"``, ``"photo_dissociation"``,
+            ``"photo_ionization"``.
+        layout : str, optional
+            ``"overlay"`` (default) draws all processes on one axes;
+            ``"subplots"`` gives each process its own stacked panel.
         ax : matplotlib.axes.Axes or None, optional
-            Axes to draw on.  If ``None``, a new figure is created.
+            Axes to draw on (overlay only).  If ``None``, a figure is created.
         energy_unit : str, optional
-            Unit for the horizontal axis.  Supported values: ``"eV"``,
-            ``"erg"``, ``"nm"``, ``"um"`` / ``"micron"``.  Default ``"eV"``.
-        energy_log : bool, optional
-            If ``True`` (default), use a logarithmic horizontal axis.
-        xsecs_log : bool, optional
-            If ``True`` (default), use a logarithmic vertical axis.
+            Horizontal-axis unit: ``"eV"`` (default), ``"erg"``, ``"nm"``,
+            ``"um"``.
+        xsec_unit : str, optional
+            Cross-section unit for the vertical axis, by default ``"Mb"``
+            (megabarn); ``"cm^2"`` and ``"barn"`` are also accepted.
+        energy_log, xsecs_log : bool, optional
+            Log-scale the energy / cross-section axis (default ``True``).
+
+        Returns
+        -------
+        tuple[matplotlib.figure.Figure, matplotlib.axes.Axes] or None
+            The figure and axes, or ``None`` when there is nothing to draw.
 
         Notes
         -----
-        Does nothing (logs a message) if ``self.xsecs_dict`` is ``None``.
-        Cross-section data are stored in CGS units: energies in erg, cross
-        sections in cm².  Wavelength conversions use ``c`` and ``h`` from
-        ``jaff.physics.constants.cgs``.
+        Does nothing (logs a message) if ``self.xsecs_dict`` is ``None`` or no
+        requested process has data.  Drawing, unit conversion and labelling are
+        delegated to :meth:`jaff.plotting.Plotter.plot_xsec`.
         """
-        import matplotlib.pyplot as plt
+        from ..plotting import Plotter
 
         if self.xsecs_dict is None:
             self.logger.info(f"No cross sections available for: {self}")
+            return None
+
+        _XSEC_PROCESSES = (
+            "photo_absorption",
+            "photo_dissociation",
+            "photo_ionization",
+        )
+
+        # Normalise the process selection to a list of valid keys.
+        if processes is None or processes == "all":
+            procs = list(_XSEC_PROCESSES)
+        elif isinstance(processes, str):
+            procs = [processes]
+        else:
+            procs = list(processes)
+
+        invalid = [p for p in procs if p not in _XSEC_PROCESSES]
+        if invalid:
+            raise KeyError(
+                f"Invalid cross-section(s) {invalid}. Supported: "
+                f"{', '.join(_XSEC_PROCESSES)}"
+            )
+
+        # Keep only processes that actually carry data for this reaction.
+        available = [p for p in procs if self.xsecs_dict.get(p) is not None]
+        if not available:
+            self.logger.info(f"No data for requested cross-section(s) {procs} in: {self}")
             return
 
-        if ax is None:
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
+        if not filename:
+            stem = available[0] if len(available) == 1 else "cross_sections"
+            filename = f"{self}_{stem}.png"
 
-        clight = constants.cgs.c  # cm/s
-        hplanck = constants.cgs.h  # erg s
-
-        if energy_unit == "eV":
-            energies = np.array(self.xsecs_dict["energy"]) / 1.60218e-12
-            xlabel = "Energy (eV)"
-        elif energy_unit == "erg":
-            energies = np.array(self.xsecs_dict["energy"])
-            xlabel = "Energy (erg)"
-        elif energy_unit == "nm":
-            energies = clight * hplanck * 1e7 / np.array(self.xsecs_dict["energy"])
-            xlabel = "Wavelength (nm)"
-        elif energy_unit in ["um", "micron"]:
-            energies = clight * hplanck * 1e4 / np.array(self.xsecs_dict["energy"])
-            xlabel = "Wavelength (µm)"
-        else:
-            self.logger.error(f"Unknown energy unit: {energy_unit}")
-            sys.exit(1)
-
-        xsecs = np.array(self.xsecs_dict["xsecs"])
-
-        ax.plot(energies, xsecs)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel("Cross section (cm^2)")
-        if energy_log:
-            ax.set_xscale("log")
-        if xsecs_log:
-            ax.set_yscale("log")
-        ax.set_title(self.get_latex())
-        ax.grid()
-
-        plt.show()
+        return Plotter().plot_xsec(
+            self.xsecs_dict,
+            processes=available,
+            layout=layout,
+            fig=fig,
+            ax=ax,
+            energy_unit=energy_unit,
+            xsec_unit=xsec_unit,
+            energy_log=energy_log,
+            xsec_log=xsecs_log,
+            title=title or self.get_latex(),
+            grid=grid,
+            show=show,
+            save=save,
+            filename=filename,
+        )
 
 
 class Reactions(Catalogue[Reaction]):

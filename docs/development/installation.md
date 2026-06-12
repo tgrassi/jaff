@@ -122,18 +122,19 @@ After installation, verify everything is working:
 
 These are automatically installed with JAFF:
 
-| Package      | Minimum Version | Purpose                       |
-| ------------ | --------------- | ----------------------------- |
-| `numpy`      | ≥2.0.0          | Numerical computations        |
-| `scipy`      | ≥1.13.0         | Scientific computing          |
-| `sympy`      | ≥1.14.0         | Symbolic mathematics          |
-| `pandas`     | ≥2.3.3          | Tabular data handling         |
-| `matplotlib` | ≥3.9.4          | Plotting                      |
-| `h5py`       | ≥3.9.0          | HDF5 file support             |
-| `rich`       | ≥15.0.0         | Rich terminal output          |
-| `pygments`   | ≥2.19.2         | Syntax highlighting           |
-| `ipykernel`  | ≥7.2.0          | Jupyter kernel support        |
-| `marimo`     | ≥0.23.8         | Interactive notebooks         |
+| Package      | Minimum Version | Purpose                |
+| ------------ | --------------- | ---------------------- |
+| `numpy`      | ≥2.0.0          | Numerical computations |
+| `scipy`      | ≥1.13.0         | Scientific computing   |
+| `sympy`      | ≥1.14.0         | Symbolic mathematics   |
+| `pandas`     | ≥2.3.3          | Tabular data handling  |
+| `matplotlib` | ≥3.9.4          | Plotting               |
+| `h5py`       | ≥3.9.0          | HDF5 file support      |
+| `rich`       | ≥15.0.0         | Rich terminal output   |
+| `pooch`      | ≥1.9.0          | Downloading data files |
+| `pygments`   | ≥2.19.2         | Syntax highlighting    |
+| `ipykernel`  | ≥7.2.0          | Jupyter kernel support |
+| `marimo`     | ≥0.23.8         | Interactive notebooks  |
 
 ### Development Dependencies
 
@@ -150,12 +151,12 @@ When installing with `[dev]`, the following additional packages are installed:
 
 #### Documentation Tools
 
-| Package                | Minimum Version | Purpose                           |
-| ---------------------- | --------------- | --------------------------------- |
+| Package                | Minimum Version | Purpose                             |
+| ---------------------- | --------------- | ----------------------------------- |
 | `zensical`             | —               | Documentation static-site generator |
-| `mkdocstrings[python]` | ≥0.24.0         | API documentation from docstrings |
-| `pymdown-extensions`   | ≥10.5           | Advanced Markdown extensions      |
-| `pygments`             | ≥2.19.2         | Syntax highlighting               |
+| `mkdocstrings[python]` | ≥0.24.0         | API documentation from docstrings   |
+| `pymdown-extensions`   | ≥10.5           | Advanced Markdown extensions        |
+| `pygments`             | ≥2.19.2         | Syntax highlighting                 |
 
 ## Updating Dependencies
 

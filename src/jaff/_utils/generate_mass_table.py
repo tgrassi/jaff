@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..drivers.sqlite import JaffDb
-from ..io import JaffLogger
+from jaff.drivers.sqlite import JaffDb
+from jaff.io import JaffLogger
 
 
 def main():

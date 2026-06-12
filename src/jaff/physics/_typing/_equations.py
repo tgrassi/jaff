@@ -6,8 +6,8 @@ RadiationGroupReactionProps = TypedDict(
     "RadiationGroupReactionProps",
     {
         "k": Basic,
-        "xsec": Basic | None,
-        "xsec_frac": Basic,
-        "delta_rad": Basic,
+        "xsec": float | None,
+        "xsec_frac": float,
+        "delta_rad": float,
     },
 )

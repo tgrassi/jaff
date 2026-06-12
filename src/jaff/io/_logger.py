@@ -424,3 +424,43 @@ class JaffLogger:
             The configured logger.
         """
         return self.logger
+
+
+def _route_warnings_through_logger() -> None:
+    """Redirect :mod:`warnings` output through the JAFF logging stack.
+
+    By default the :mod:`warnings` module writes straight to ``sys.stderr``,
+    which tears the Rich live progress display (e.g. SciPy's
+    ``IntegrationWarning`` emitted during rate-table integration).  Calling
+    :func:`logging.captureWarnings` reroutes every warning to the
+    ``py.warnings`` logger; binding that logger to a handler on
+    :data:`jaff_console` lets Rich render warnings cleanly above the progress
+    bar instead of corrupting it.  Warnings are still shown -- only the output
+    sink changes.
+
+    Idempotent: a second call is a no-op once the handler is attached.
+    """
+    logging.captureWarnings(True)
+    warn_logger = logging.getLogger("py.warnings")
+    if warn_logger.handlers:
+        return
+
+    if _IN_JUPYTER_ENV or IN_MARIMO:
+        handler: logging.Handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(_StripMarkupFormatter("%(levelname)-8s %(message)s"))
+    else:
+        # markup=False: warning text may contain "[...]" that is not Rich markup.
+        handler = RichHandler(
+            console=jaff_console,
+            markup=False,
+            show_time=False,
+            rich_tracebacks=False,
+        )
+        handler.setFormatter(logging.Formatter("%(message)s"))
+
+    warn_logger.addHandler(handler)
+    warn_logger.setLevel(logging.WARNING)
+    warn_logger.propagate = False
+
+
+_route_warnings_through_logger()

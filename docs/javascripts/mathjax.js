@@ -49,7 +49,7 @@ window.MathJax = {
 };
 
 document$.subscribe(() => {
-  if (typeof MathJax === "undefined" || !MathJax.startup) {
+  if (typeof MathJax === "undefined" || !MathJax.startup || !MathJax.startup.promise) {
     return; // MathJax not loaded yet; startup.ready typesets the initial page.
   }
   MathJax.startup.promise = MathJax.startup.promise

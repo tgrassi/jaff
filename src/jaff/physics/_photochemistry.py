@@ -1,215 +1,138 @@
 """
-Loader for the Leiden photodissociation / photoionisation cross section database.
+Look-ups for photochemical cross sections.
 
-This module provides the :class:`Photochemistry` class, which reads ``.dat``
-files from the Leiden Observatory photodissociation-region (PDR) database and
-exposes per-reaction cross sections as (energy, cross-section) arrays.
+Two backends are exposed:
 
-File-naming convention (Leiden format)
----------------------------------------
-Each ``.dat`` file in the ``data/xsecs/`` folder is named::
+- :func:`get_verner_xsec` -- analytic Verner (1996) photoionisation fits
+  stored as SymPy strings in the ``verner_cross_sections`` SQLite table.
+- :func:`get_xsec` -- tabulated Leiden / NORAD cross sections, indexed by the
+  ``photo_reaction_cross_sections`` table and read from the corresponding
+  HDF5 group as numpy arrays.
 
-    R1_R2__P1_P2.dat
-
-where ``R1``, ``R2`` are reactant species names (separated by ``_``) and
-``P1``, ``P2`` are product species names.  The double underscore ``__``
-separates reactants from products.
-
-The last ``#``-prefixed comment line in each file is treated as the column
-header.  Two column names are required:
-
-- A column whose name contains ``"wave"`` -- wavelength in nanometres (nm).
-- A column whose name contains ``"ion"`` (photoionisation) or ``"dis"``
-  (photodissociation), selected based on the charge balance of the reaction.
-
-Energy conversion
------------------
-Wavelength values (nm) from the data files are converted to photon energies
-in erg using::
-
-    E = h * c / λ    (with λ in cm, h in erg·s, c in cm/s)
-
-i.e. ``E [erg] = h * c / (λ_nm * 1e-7)`` (1 nm = 1e-7 cm).
-
-References
-----------
-van Dishoeck, E. F. et al., Leiden Observatory PDR database.
+Both are keyed by ``reaction.serialized``.
 """
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import numpy as np
+from sympy import Basic, sympify
 
-from ..io import JaffLogger
-from . import constants
+from ..drivers import HDF5, JaffDb
+from ..drivers.pooch import download_xsecs
+from ._typing import XsecsProps
 
 if TYPE_CHECKING:
-    import logging
-
     from ..core import Reaction
 
 
 class Photochemistry:
-    """
-    Load and cache photoionisation/photodissociation cross sections from the Leiden database.
+    """Cross-section provider for photo-reactions.
 
-    On construction the class scans the ``data/xsecs/`` directory (relative to
-    the JAFF package root) for all ``.dat`` files whose stem contains ``"__"``,
-    loads each file, determines the reaction mode (ionisation vs.
-    dissociation), converts wavelengths to photon energies in erg, and stores
-    the result in :attr:`xsecs`.
-
-    Attributes
-    ----------
-    logger : logging.Logger
-        Logger instance for warning/error messages.
-    xsecs : dict
-        Mapping from *serialised reaction key* (``"R1_R2__P1_P2"`` with sorted
-        species names) to a dict with keys:
-
-        - ``"energy"`` : numpy.ndarray -- photon energies in erg, sorted in
-          ascending wavelength order (i.e. *descending* energy order as stored
-          in the file).
-        - ``"xsecs"`` : numpy.ndarray -- cross sections in cm².
-
-    xsecs_folder : pathlib.Path
-        Absolute path to the directory containing the ``.dat`` files.
+    Resolves per-reaction photoionisation / photodissociation / photoabsorption
+    cross sections from the JAFF database and the tabulated Leiden, NORAD, and
+    Verner data files.
     """
 
     def __init__(self):
-        """Scan and load all Leiden cross-section ``.dat`` files on construction.
+        """Ensure the cross-section data files are available locally.
 
-        Cross sections are stored in :attr:`xsecs` keyed by the serialised
-        reaction string.  The ``xsecs_folder`` is resolved relative to the
-        JAFF package directory.
+        Constructing a :class:`Photochemistry` triggers
+        :func:`~jaff.drivers.pooch.download_xsecs`, which downloads the Leiden /
+        NORAD / Verner files on first use (a network fetch unless already
+        cached). Instantiate once and reuse rather than per reaction.
         """
-        self.logger: logging.Logger = JaffLogger().get_logger()
-        self.xsecs: dict = {}
-        # Resolve the cross-section data directory relative to this source file.
-        self.xsecs_folder: Path = Path(__file__).parent.parent / "data" / "xsecs"
+        download_xsecs()
 
-        self.load_xsecs_leiden()
-
-    def load_xsecs_leiden(self) -> None:
+    def get_verner_xsec(self, reaction: Reaction) -> Basic | None:
         """
-        Scan ``xsecs_folder`` and load all Leiden-format cross section files.
+        Query the JAFF database for the Verner photoionisation cross section.
 
-        For each valid ``.dat`` file the method:
-
-        1. Reads the last ``#``-prefixed header line to locate the wavelength
-           and cross-section columns.
-        2. Determines the reaction mode (``"ion"`` or ``"dis"``) from the
-           charge balance of reactants vs. products.
-        3. Loads the numeric data, converts wavelengths from nm to photon
-           energies in erg, and stores the result in :attr:`xsecs`.
-
-        Returns
-        -------
-        None
-            Results are stored in ``self.xsecs`` in-place.
-
-        Notes
-        -----
-        Files without a ``__`` separator in their stem (i.e. not following the
-        Leiden naming convention) are silently skipped.
-
-        If the header line cannot be parsed (missing ``"wave"`` or cross-section
-        column), the method logs an error and exits with a non-zero status code.
-        """
-        for file in self.xsecs_folder.iterdir():
-            # Skip non-.dat files and files not following the R__P naming scheme.
-            if not file.suffix.lower() == ".dat" or "__" not in file.stem:
-                continue
-
-            # The last comment line is used as the column-header row.
-            with open(file) as f:
-                header = (
-                    [x for x in f.readlines() if x.startswith("#")][-1]
-                    .lower()
-                    .replace("#", "")
-                    .strip()
-                    .split()
-                )
-            header = [x for x in header if x != ""]
-
-            # Parse reactant and product species names from the file stem.
-            # File stem format: "R1_R2__P1_P2"  (double underscore as delimiter)
-            rrs = file.stem.split("__")[0].split("_")
-            pps = file.stem.split("__")[1].split("_")
-
-            # Build a canonical reaction key with species sorted alphabetically
-            # within each side so that look-ups are order-independent.
-            rea_serialized = f"{'_'.join(sorted(rrs))}__{'_'.join(sorted(pps))}"
-
-            # Determine reaction mode from charge balance:
-            # count "+" in species names as a proxy for ionic charge.
-            rcharge = np.sum([x.count("+") for x in rrs])
-            pcharge = np.sum([x.count("+") for x in pps])
-            # If the product side carries more charge, a free electron was
-            # released → photoionisation; otherwise → photodissociation.
-            mode = "ion" if pcharge > rcharge else "dis"
-
-            # Locate the wavelength column and the relevant cross-section column.
-            iread = iwave = None
-            for i, h in enumerate(header):
-                if mode in h:
-                    iread = i
-                if "wave" in h:
-                    iwave = i
-
-            if iread is None or iwave is None:
-                self.logger.error(f"Could not find read or wave in header of {file}")
-                sys.exit(1)
-
-            data = np.loadtxt(file, comments="#").T
-
-            # CGS constants for energy conversion.
-            clight = constants.cgs.c  # cm/s
-            hplanck = constants.cgs.h  # erg·s
-
-            # Convert wavelength from nm to photon energy in erg:
-            #   E = h·c / λ  with λ in cm (1 nm = 1e-7 cm)
-            energy = clight * hplanck / (data[iwave].astype(float) * 1e-7)  # erg
-            xs = data[iread].astype(float)  # cm²
-
-            self.xsecs[rea_serialized] = {"energy": energy, "xsecs": xs}
-
-    def get_xsec(self, reaction: Reaction) -> dict:
-        """
-        Return the cross section data for a single reaction.
+        Verner cross sections are analytic fits to photoionisation cross
+        sections from Verner et al. (1996) stored as SymPy-parseable strings
+        in the ``verner_cross_sections`` SQLite table.
 
         Parameters
         ----------
         reaction : Reaction
-            The photochemical reaction whose cross section is requested.
-            ``reaction.serialized`` must match a key in :attr:`xsecs`.
+            Reaction whose serialised key is used as the database look-up.
 
         Returns
         -------
-        dict
-            Dictionary with keys:
+        sympy.Basic or None
+            The SymPy expression for σ(E) if the reaction is found, or
+            ``None`` if no entry exists (e.g. for non-photoionisation
+            reactions).
 
-            - ``"energy"`` : numpy.ndarray -- photon energies in erg.
-            - ``"xsecs"`` : numpy.ndarray -- cross sections in cm².
+        Notes
+        -----
+        The expression uses the symbol ``E`` (photon energy in erg) as the
+        independent variable and returns cross sections in cm².
 
-        Raises
-        ------
-        SystemExit
-            If the reaction's serialised key is not found in :attr:`xsecs`.
-            A descriptive error message (including the expected file path) is
-            logged before exiting.
+        References
+        ----------
+        Verner, D. A. et al. 1996, ApJ, 465, 487
         """
-        if reaction.serialized not in self.xsecs:
-            self.logger.error(
-                f"Reaction {reaction.serialized} not found in photochemistry data"
-            )
-            self.logger.error(
-                f"Add the file to {self.xsecs_folder} as {reaction.serialized}"
-            )
-            sys.exit(1)
+        with JaffDb() as jdb:
+            table = jdb.table("verner_cross_sections")
+            rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")
 
-        return self.xsecs[reaction.serialized]
+        if not rows:
+            return None
+
+        # Convert the stored string representation back to a SymPy expression.
+        return sympify(rows[0]["xsecs"])
+
+    def get_xsec(self, reaction: Reaction) -> XsecsProps | None:
+        """
+        Load the tabulated Leiden / NORAD cross sections for a reaction.
+
+        The ``photo_reaction_cross_sections`` table maps the reaction key to an
+        HDF5 group (Leiden preferred, NORAD as fallback) and records which
+        processes are present.  The group is read into numpy arrays.
+
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction whose serialised key is used as the database look-up.
+
+        Returns
+        -------
+        XsecsProps or None
+            Dict with ``units`` (photon energy in eV, cross section in cm²),
+            ``_equations`` flags (``pa``/``pi``/``pd`` for photo-absorption,
+            -ionization, -dissociation), the shared ``photon_energy`` grid, and a
+            cross-section array per process (``None`` when absent).  Returns
+            ``None`` if the reaction has no cross-section entry.
+        """
+        with JaffDb() as jdb:
+            table = jdb.table("photo_reaction_cross_sections")
+            rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")
+
+        if not rows:
+            return None
+
+        row = rows[0]
+        loc: str = row["leiden"] if row["leiden"] else row["norad"]
+        jaff_dir = Path(__file__).parent.parent.resolve()
+        h5group = str(jaff_dir / loc)
+        pr_xsec = HDF5().to_dict(h5group)
+
+        xsecs: XsecsProps = {
+            "units": {
+                "photon_energy": "eV",
+                "cross_section": "cm^2",
+            },
+            "_equations": {
+                "pa": bool(row["photo_absorption"]),
+                "pi": bool(row["photo_ionization"]),
+                "pd": bool(row["photo_dissociation"]),
+            },
+            "photon_energy": pr_xsec.get("photon_energy", {}).get("_data", None),
+            "photo_absorption": pr_xsec.get("photoabsorption", {}).get("_data", None),
+            "photo_ionization": pr_xsec.get("photoionization", {}).get("_data", None),
+            "photo_dissociation": pr_xsec.get("photodissociation", {}).get("_data", None),
+        }
+
+        return xsecs

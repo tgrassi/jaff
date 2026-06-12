@@ -136,7 +136,7 @@ def get_bounds(expr: Basic, sym: Basic):
 
 def smart_integrate(
     expr: Basic, sym: Basic, bounds: tuple[float | int | Basic, float | int | Basic]
-):
+) -> float:
     """
     Adaptively integrate a (piecewise) SymPy expression over a possibly symbolic interval.
 
@@ -220,6 +220,60 @@ def smart_integrate(
     val, _ = quad(f_num, a, b, points=sub_points, limit=200)
 
     return val
+
+
+def arr_integrate(
+    y: np.ndarray, x: np.ndarray, bounds: tuple[float | int | Basic, float | int | Basic]
+) -> float:
+    """
+    Trapezoidal integral of tabulated data ``y(x)`` over an interval.
+
+    Used for cross-section integrals where ``σ(E)`` is only known as sampled
+    ``(E, σ)`` arrays, so a closed form is unavailable.
+
+    Parameters
+    ----------
+    y : numpy.ndarray
+        Sampled integrand values, aligned with ``x``.
+    x : numpy.ndarray
+        Sample abscissae, assumed sorted ascending.
+    bounds : tuple
+        ``(lower, upper)`` integration limits.  A non-symbolic bound is used
+        as-is; a symbolic (:class:`sympy.Basic`) bound is treated as ``±inf``,
+        i.e. the open end of the tabulated range.  Both limits are clamped to
+        ``[x[0], x[-1]]``.
+
+    Returns
+    -------
+    float
+        The integral, or ``0.0`` if the clamped interval is empty.
+
+    Notes
+    -----
+    The endpoints are inserted into the sample grid via linear interpolation
+    so the integral covers exactly ``[lower, upper]`` rather than the nearest
+    sample points.
+    """
+    # Assumes data is sorted (ascending in x).
+    lower, upper = bounds
+    t_low = float(lower) if not isinstance(lower, Basic) else -np.inf
+    t_high = float(upper) if not isinstance(upper, Basic) else np.inf
+
+    t_low = max(t_low, x[0])
+    t_high = min(t_high, x[-1])
+    if t_high <= t_low:
+        return 0.0
+
+    i_low = np.searchsorted(x, t_low)
+    i_high = np.searchsorted(x, t_high)
+
+    x_seg = x[i_low:i_high]
+    y_seg = y[i_low:i_high]
+
+    x_seg = np.r_[t_low, x_seg, t_high]
+    y_seg = np.r_[np.interp(t_low, x, y), y_seg, np.interp(t_high, x, y)]
+
+    return np.trapezoid(y_seg, x_seg)
 
 
 def safe_integrate():
