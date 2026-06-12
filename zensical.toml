@@ -242,7 +242,6 @@ nav = [
     { "Physics" = [
       "api/physics/index.md",
       { "physics.Constants" = ["api/physics/constants/index.md"] },
-      { "physics.units" = ["api/physics/units/index.md"] }
     ] }
   ] },
   { "Development" = [
