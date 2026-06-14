@@ -63,7 +63,7 @@ classDiagram
         Toml
     }
     class physics {
-        Constants
+        constants
         Photochemistry
     }
     jaff --> core

@@ -62,17 +62,17 @@ Network(
 )
 ```
 
-| Parameter            | Type                  | Default | Description                                                                            |
-| -------------------- | --------------------- | ------- | -------------------------------------------------------------------------------------- |
-| `fname`              | `str or Path`         | —       | Path to the network file (required); `.jaff` files are loaded as binary                |
-| `errors`             | `bool`                | `False` | Treat conservation violations / duplicates as fatal (exit) instead of warning          |
-| `label`              | `str or None`         | `None`  | Human-readable network name (defaults to the file stem)                                |
-| `funcfile`           | `str or Path or None` | `None`  | Path to a `.jfunc` auxiliary file; auto-detected when `None`; pass `"none"` to skip    |
-| `replace_nH`         | `bool`                | `True`  | Expand `nh` / `nhe` shorthand into sums of `nden[i]` over H/He-bearing species         |
-| `rad_bands`          | `list`                | `[]`    | Radiation band boundaries; an empty list disables radiation transport                  |
-| `rad_powerlaw_index` | `int or float`        | `0`     | Power-law spectral index for the radiation field                                       |
-| `rad_energy_density` | `bool`                | `False` | Radiation moments are energy densities (`True`) or photon densities (`False`)          |
-| `c`                  | `float`               | `c_cgs` | Speed of light in CGS (cm s⁻¹); override when using rsla in radiation codegen manually |
+| Parameter            | Type                  | Default                 | Description                                                                            |
+| -------------------- | --------------------- | ----------------------- | -------------------------------------------------------------------------------------- |
+| `fname`              | `str or Path`         | —                       | Path to the network file (required); `.jaff` files are loaded as binary                |
+| `errors`             | `bool`                | `False`                 | Treat conservation violations / duplicates as fatal (exit) instead of warning          |
+| `label`              | `str or None`         | `None`                  | Human-readable network name (defaults to the file stem)                                |
+| `funcfile`           | `str or Path or None` | `None`                  | Path to a `.jfunc` auxiliary file; auto-detected when `None`; pass `"none"` to skip    |
+| `replace_nH`         | `bool`                | `True`                  | Expand `nh` / `nhe` shorthand into sums of `nden[i]` over H/He-bearing species         |
+| `rad_bands`          | `list`                | `[]`                    | Radiation band boundaries; an empty list disables radiation transport                  |
+| `rad_powerlaw_index` | `int or float`        | `0`                     | Power-law spectral index for the radiation field                                       |
+| `rad_energy_density` | `bool`                | `False`                 | Radiation moments are energy densities (`False`) or photon densities (`False`)         |
+| `c`                  | `float`               | `constants.c.cgs.value` | Speed of light in CGS (cm s⁻¹); override when using rsla in radiation codegen manually |
 
 ### Examples
 

@@ -10,16 +10,15 @@ Physical constants and photochemical cross-section lookup for astrochemical calc
 
 ## Classes
 
-| Class                             | Description                                                                    |
-| --------------------------------- | ------------------------------------------------------------------------------ |
-| [`Constants`](constants/index.md) | Frozen dataclass of physical and astronomical constants in a given unit system |
-| `Photochemistry`                  | Photo cross-section lookup from the bundled databases (see below)               |
+| Class            | Description                                                       |
+| ---------------- | ----------------------------------------------------------------- |
+| `Photochemistry` | Photo cross-section lookup from the bundled databases (see below) |
 
 ## Submodules
 
-| Submodule                            | Description                                                                  |
-| ------------------------------------ | ---------------------------------------------------------------------------- |
-| `constants`                          | Pre-built physical-constant instances (see below)                            |
+| Submodule                         | Description                                                           |
+| --------------------------------- | --------------------------------------------------------------------- |
+| [`constants`](constants/index.md) | Physical & astronomical constants as `astropy` Quantities (see below) |
 
 ## Photochemistry methods
 
@@ -35,37 +34,34 @@ photo.get_xsec(rxn)         # XsecsProps from the tabulated databases
 photo.get_verner_xsec(rxn)  # analytic Verner σ(E) (sympy) or None
 ```
 
-| Method                         | Returns                  | Description                                                       |
-| ------------------------------ | ------------------------ | ----------------------------------------------------------------- |
-| `get_xsec(reaction)`           | `XsecsProps or None`     | Tabulated cross sections (Leiden / NORAD): `photon_energy` (eV) plus `photo_absorption`/`photo_ionization`/`photo_dissociation` (cm²) |
-| `get_verner_xsec(reaction)`    | `sympy.Basic or None`    | Analytic Verner (1996) σ(E) expression (symbol `E` in erg, σ in cm²) |
+| Method                      | Returns               | Description                                                                                                                           |
+| --------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_xsec(reaction)`        | `XsecsProps or None`  | Tabulated cross sections (Leiden / NORAD): `photon_energy` (eV) plus `photo_absorption`/`photo_ionization`/`photo_dissociation` (cm²) |
+| `get_verner_xsec(reaction)` | `sympy.Basic or None` | Analytic Verner (1996) σ(E) expression (symbol `E` in erg, σ in cm²)                                                                  |
 
-## Available Instances
+## Unit systems
 
-`jaff.physics.constants` exposes pre-built instances:
-
-| Instance             | Unit System                              |
-| -------------------- | ---------------------------------------- |
-| `constants.cgs`      | CGS-ESU (cm, g, s, erg, esu)             |
-| `constants.si`       | SI (m, kg, s, J, C)                      |
-| `constants.gaussian` | Gaussian CGS (cm, g, s, erg, esu, Gauss) |
-| `constants.natural`  | Natural units (ℏ = c = 1, energy in MeV) |
+`jaff.physics.constants` exposes physical constants as module-level
+[`astropy.units.Quantity`](https://docs.astropy.org/en/stable/units/quantity.html)
+objects. There are no separate `cgs`/`si`/`gaussian`/`natural` tables — select
+the unit system **per quantity** at the call site with `.cgs`, `.si`, or
+`.to(...)`. See [`constants`](constants/index.md) for the full list.
 
 ## Example
 
 ```python
-from jaff.physics import constants
+from jaff.physics import constants as c
 
-# CGS-ESU
-c   = constants.cgs.c      # speed of light [cm/s]
-k_b = constants.cgs.k_b    # Boltzmann constant [erg/K]
+# Per-quantity unit selection
+c.c.cgs              # speed of light [cm/s]
+c.k_B.cgs            # Boltzmann constant [erg/K]
+c.c.si               # speed of light [m/s]
+c.k_B.to("eV / K")   # Boltzmann constant [eV/K]
 
-# SI
-c_si = constants.si.c      # speed of light [m/s]
+# Elementary charge keeps astropy's EM-unit views
+c.e.esu              # Gaussian / CGS-ESU [Fr]
+c.e.si               # SI [C]
 
-# Gaussian CGS
-gyro = constants.gaussian.gyro_coeff  # [Hz/Gauss]
-
-# Natural units (ℏ = c = 1, energies in MeV)
-m_e = constants.natural.m_e  # electron mass [MeV]
+# Bare float (in the chosen unit) when a number is required
+float(c.m_e.cgs.value)   # electron mass [g]
 ```
