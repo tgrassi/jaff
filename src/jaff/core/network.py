@@ -105,7 +105,7 @@ class Network:
         rad_bands: list[str | int | float | Basic] = [],
         rad_powerlaw_index: int | float = 0,
         rad_energy_density: bool = False,
-        c: float = constants.cgs.c,  # Speed of light in cgs unit
+        c: float = constants.c.cgs.value,  # Speed of light in cgs unit
         _from_cli: bool = False,
     ):
         """Load a reaction network from *fname*.
@@ -140,7 +140,7 @@ class Network:
             number densities, default ``False``.
         c : float, optional
             Speed of light in CGS units (cm s⁻¹).  Defaults to
-            ``constants.cgs.c``.
+            ``constants.c.cgs.value``.
         _from_cli : bool, optional
             Internal flag: suppresses the MOTD banner when ``True``.
 

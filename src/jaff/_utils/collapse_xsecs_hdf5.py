@@ -72,7 +72,7 @@ def split_reaction(stem: str) -> tuple[list[str], list[str]]:
 def wavelength_nm_to_eV(wavelength_nm: np.ndarray) -> np.ndarray:
     """Convert wavelength (nm) to photon energy (eV) via ``E = h c / lambda``."""
     lam_cm = wavelength_nm * CM_PER_NM
-    energy_erg = constants.cgs.h * constants.cgs.c / lam_cm
+    energy_erg = constants.h.cgs.value * constants.c.cgs.value / lam_cm
     return energy_erg * EV_PER_ERG
 
 
