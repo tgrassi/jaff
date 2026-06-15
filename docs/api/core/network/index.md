@@ -12,7 +12,7 @@ The `Network` class is the most important class in JAFF. It reads a reaction net
 
 ## Constructor
 
-`#!python Network(fname, errors=False, label=None, funcfile=None, replace_nH=True, rad_bands=[], rad_powerlaw_index=0, rad_energy_density=False, c=constants.cgs.c)`
+`#!python Network(fname, errors=False, label=None, funcfile=None, replace_nH=True, rad_bands=[], rad_powerlaw_index=0, rad_energy_density=False, c=constants.c.cgs.value)`
 
 **Parameters**
 
@@ -41,7 +41,7 @@ The `Network` class is the most important class in JAFF. It reads a reaction net
 : Interpret radiation as energy density. Default `False`.
 
 **c** : _float, optional_
-: Speed of light in CGS. Default `constants.cgs.c`.
+: Speed of light in CGS. Default `constants.c.cgs.value`.
 
 **Raises**
 

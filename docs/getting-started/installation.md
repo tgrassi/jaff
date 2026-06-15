@@ -123,11 +123,12 @@ Make sure you've activated your virtual environment and that the installation co
 
 ### NumPy/SciPy Installation Issues
 
-On some systems, if you are using pip, you may need to install `NumPy` and `SciPy` separately:
+On some systems, if you are using pip, you may need to install `NumPy`, `SciPy`,
+and `Astropy` separately:
 
 ```bash
 # Install scientific stack first
-pip install numpy scipy
+pip install numpy scipy astropy
 ```
 
 ## Updating JAFF

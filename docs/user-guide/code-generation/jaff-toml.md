@@ -103,12 +103,12 @@ energy_density  = false            # true = energy density; false = photon densi
 rsl             = 2.99792458e10    # speed of light (cm/s). Used to configure reduced speed of light for solvers
 ```
 
-| Key               | Type           | Default | Description                                                           |
-| ----------------- | -------------- | ------- | --------------------------------------------------------------------- |
-| `bands`           | `list`         | `[]`    | Band boundaries in eV; omit to disable photochemistry                 |
-| `power_law_index` | `int or float` | `0`     | Spectral index for band integration                                   |
-| `energy_density`  | `bool`         | `false` | Radiation density variable type. `radeden` when `true` else `photden` |
-| `rsl`             | `float`        | `c_cgs` | Speed of light override (maps to the `c` constructor arg)             |
+| Key               | Type           | Default                 | Description                                                           |
+| ----------------- | -------------- | ----------------------- | --------------------------------------------------------------------- |
+| `bands`           | `list`         | `[]`                    | Band boundaries in eV; omit to disable photochemistry                 |
+| `power_law_index` | `int or float` | `0`                     | Spectral index for band integration                                   |
+| `energy_density`  | `bool`         | `false`                 | Radiation density variable type. `radeden` when `true` else `photden` |
+| `rsl`             | `float`        | `constants.c.cgs.value` | Speed of light override (maps to the `c` constructor arg)             |
 
 `power_law_index` is used to configure the weight factor of the photo-reaction cross-sections (Refer to the [Photochemistry](../designing-networks/photochemistry.md) section for more information).
 

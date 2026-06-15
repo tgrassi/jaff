@@ -26,7 +26,7 @@ src/jaff/
 │   ├── _photochemistry.py      # get_xsec / get_verner_xsec — cross-section lookup
 │   ├── _radiation.py           # Radiation moment equations
 │   ├── _typing/                # TypedDicts (XsecsProps, Numeric, ...)
-│   └── constants.py            # Physical constants (CGS)
+│   └── constants.py            # Physical constants (astropy Quantities)
 │
 ├── plotting/                   # Publication-style matplotlib wrapper
 │   └── plotter.py              # Plotter — plot / plot_xsec (house rcParams)

@@ -19,6 +19,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Chemistry",
 ]
 dependencies = [
+  "astropy",
   "h5py>=3.9.0",
   "ipykernel>=7.2.0",
   "marimo>=0.23.8",
@@ -107,6 +108,15 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 docstring-code-format = true
 docstring-code-line-length = "dynamic"
+
+# astropy.constants injects its members dynamically at import, so static
+# checkers cannot resolve attributes like `astropy.constants.c`. Suppress the
+# false positive for the constants module only (runtime is fine).
+[[tool.ty.overrides]]
+include = ["src/jaff/physics/constants.py"]
+
+[tool.ty.overrides.rules]
+unresolved-attribute = "ignore"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

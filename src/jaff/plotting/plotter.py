@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import astropy.units as u
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,67 +13,45 @@ if TYPE_CHECKING:
     from ..physics._typing import XsecsProps
 
 
-# CGS constants for unit conversions
-_H = 6.62607015e-27  # erg·s
-_C = 2.99792458e10  # cm/s
-_HC = _H * _C  # erg·cm
-_EV_TO_ERG = 1.602176634e-12  # erg/eV
-_BARN = 1.0e-24  # cm²
-_MBARN = 1.0e-18  # cm²
+# Mapping from JAFF unit strings to astropy units.
+_ENERGY_UNITS: dict[str, u.UnitBase] = {
+    "eV": u.eV,
+    "erg": u.erg,
+    "nm": u.nm,
+    "um": u.um,
+}
+_XSEC_UNITS: dict[str, u.UnitBase] = {
+    "cm2": u.cm**2,
+    "cm^2": u.cm**2,
+    "Mb": u.Mbarn,
+    "barn": u.barn,
+}
 
 
 def _convert_energy(value: float | np.ndarray, from_unit: str, to_unit: str) -> float | np.ndarray:
-    """Convert energy between units using CGS base (erg)."""
-    value = np.asarray(value)
+    """Convert between photon energies and wavelengths via astropy.
 
-    # Convert to erg
-    if from_unit == "eV":
-        erg = value * _EV_TO_ERG
-    elif from_unit == "erg":
-        erg = value
-    elif from_unit == "nm":
-        erg = _HC / (value * 1e-7)
-    elif from_unit == "um":
-        erg = _HC / (value * 1e-4)
-    else:
+    Energy <-> wavelength conversions use the :func:`astropy.units.spectral`
+    equivalency.
+    """
+    if from_unit not in _ENERGY_UNITS:
         raise ValueError(f"Unknown energy unit: {from_unit}")
-
-    # Convert from erg to target unit
-    if to_unit == "eV":
-        return erg / _EV_TO_ERG
-    elif to_unit == "erg":
-        return erg
-    elif to_unit == "nm":
-        return _HC / erg / 1e-7
-    elif to_unit == "um":
-        return _HC / erg / 1e-4
-    else:
+    if to_unit not in _ENERGY_UNITS:
         raise ValueError(f"Unknown energy unit: {to_unit}")
+
+    q = np.asarray(value) * _ENERGY_UNITS[from_unit]
+    return q.to(_ENERGY_UNITS[to_unit], equivalencies=u.spectral()).value
 
 
 def _convert_xsec(value: float | np.ndarray, from_unit: str, to_unit: str) -> float | np.ndarray:
-    """Convert cross section between units using CGS base (cm²)."""
-    value = np.asarray(value)
-
-    # Convert to cm²
-    if from_unit == "cm2" or from_unit == "cm^2":
-        cm2 = value
-    elif from_unit == "Mb":
-        cm2 = value * _MBARN
-    elif from_unit == "barn":
-        cm2 = value * _BARN
-    else:
+    """Convert a cross section between area units via astropy."""
+    if from_unit not in _XSEC_UNITS:
         raise ValueError(f"Unknown cross-section unit: {from_unit}")
-
-    # Convert from cm² to target unit
-    if to_unit == "cm2" or to_unit == "cm^2":
-        return cm2
-    elif to_unit == "Mb":
-        return cm2 / _MBARN
-    elif to_unit == "barn":
-        return cm2 / _BARN
-    else:
+    if to_unit not in _XSEC_UNITS:
         raise ValueError(f"Unknown cross-section unit: {to_unit}")
+
+    q = np.asarray(value) * _XSEC_UNITS[from_unit]
+    return q.to(_XSEC_UNITS[to_unit]).value
 
 
 class Plotter:
