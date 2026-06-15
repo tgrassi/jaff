@@ -88,12 +88,12 @@ inline DArray1D &stage_vector(rosenbrock_t<int_neqs> &rstate, const int i) {
 
 template <typename RosenbrockT>
 inline double rtol_for(const RosenbrockT &rstate, const int n) {
-  return n == params::IE ? rstate.rtol_enuc : rstate.rtol_spec;
+  return n == params::IE ? rstate.rtol_echem : rstate.rtol_spec;
 }
 
 template <typename RosenbrockT>
 inline double atol_for(const RosenbrockT &rstate, const int n) {
-  return n == params::IE ? rstate.atol_enuc : rstate.atol_spec;
+  return n == params::IE ? rstate.atol_echem : rstate.atol_spec;
 }
 
 template <int int_neqs>

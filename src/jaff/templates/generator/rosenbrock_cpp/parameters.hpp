@@ -34,13 +34,13 @@ constexpr int jacobian = 1;
 constexpr double rtol_spec = 1.e-6;
 
 // relative tolerance for energy
-constexpr double rtol_enuc = 1.e-6;
+constexpr double rtol_echem= 1.e-6;
 
 // absolute tolerance for species
 constexpr double atol_spec = 1.e-20;
 
 // absolute tolerance for energy
-constexpr double atol_enuc = 1.e-20;
+constexpr double atol_echem= 1.e-20;
 
 // The absolute cutoff for species -- note that this might be larger
 // than ``small_x``, but the issue is that we need to prevent underflow

@@ -21,8 +21,8 @@ template <int int_neqs> struct rosenbrock_t {
   double atol_spec;
   double rtol_spec;
 
-  double atol_enuc;
-  double rtol_enuc;
+  double atol_echem;
+  double rtol_echem;
 
   DArray1D y = DArray1D(int_neqs);
   DArray1D ynew = DArray1D(int_neqs);
