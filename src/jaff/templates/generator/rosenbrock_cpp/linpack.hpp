@@ -1,3 +1,8 @@
+// This file has been Adapted from AMReX Microphysics / AMReX-Astrophysics:
+//   https://github.com/AMReX-Astro/Microphysics
+// Original LINPACK routines dgefa and dgesl have
+// been modified for standard C++
+
 #ifndef LINPACK_H
 #define LINPACK_H
 
