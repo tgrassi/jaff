@@ -429,9 +429,7 @@ class Table:
         database.
     """
 
-    def __init__(
-        self, name: str, conn: sqlite3.Connection, cur: sqlite3.Cursor
-    ):
+    def __init__(self, name: str, conn: sqlite3.Connection, cur: sqlite3.Cursor):
         """Validate the connection and cursor, then bind to *name* in the database.
 
         Parameters
@@ -603,6 +601,57 @@ class Table:
         self.cur.execute(comm)
         self.conn.commit()
 
+    def get_cell(
+        self,
+        index_col: str,
+        index_value: str | float | int,
+        col_name: str,
+    ) -> Any:
+        """
+        Fetch the value of a single cell, located by row and column.
+
+        The target row is identified by the value of its index column
+        (typically the primary key), and the target column by name.
+
+        Parameters
+        ----------
+        index_col : str
+            Name of the index/primary-key column used to locate the row.
+        index_value : str, float, or int
+            Value of *index_col* identifying the target row.
+        col_name : str
+            Name of the column whose cell is fetched.
+
+        Returns
+        -------
+        Any
+            The cell value if exactly one row matches; ``None`` if no row
+            matches; a list of values if multiple rows match *index_value*.
+
+        Raises
+        ------
+        ValueError
+            If *col_name* does not exist in the table.
+        """
+        # Validate the target column exists (consistent ValueError on typo).
+        self.cur.execute(
+            f"SELECT type FROM pragma_table_info('{self.name}') WHERE name = ?",
+            [col_name],
+        )
+        if self.cur.fetchone() is None:
+            raise ValueError(f"Invalid column name: {col_name}")
+
+        comm = f"SELECT {col_name} FROM {self.name} WHERE {index_col} = ?"
+        self.cur.execute(comm, [index_value])
+        rows = self.cur.fetchall()
+
+        if not rows:
+            return None
+        if len(rows) == 1:
+            return rows[0][col_name]
+
+        return [row[col_name] for row in rows]
+
     def set_cell(
         self,
         index_col: str,
@@ -650,14 +699,14 @@ class Table:
         }
 
         # Look up the declared type of the target column.
-        self.cur.execute(f"PRAGMA table_info({self.name})")
-        col_type = None
-        for col in self.cur.fetchall():
-            if col["name"] == col_name:
-                col_type = col["type"].upper()
-                break
-        if col_type is None:
+        self.cur.execute(
+            f"SELECT type FROM pragma_table_info('{self.name}') WHERE name = ?",
+            [col_name],
+        )
+        col = self.cur.fetchone()
+        if col is None:
             raise ValueError(f"Invalid column name: {col_name}")
+        col_type = col["type"].upper()
 
         # Validate the value's Python type against the column affinity.
         # bool is a subclass of int but is rejected for INTEGER/REAL columns.
