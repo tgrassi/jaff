@@ -567,6 +567,42 @@ class Table:
         for row in rows:
             self.insert_row(row)
 
+    def add_column(
+        self,
+        col_name: str,
+        col_type: str = "TEXT",
+        default: str | float | int | None = None,
+    ) -> None:
+        """
+        Add a new column to the table.
+
+        Issues an ``ALTER TABLE ... ADD COLUMN`` statement.  Existing rows
+        receive *default* (or ``NULL`` if *default* is not given) for the new
+        column.
+
+        Parameters
+        ----------
+        col_name : str
+            Name of the column to add.
+        col_type : str, optional
+            SQLite column type/affinity (e.g. ``"TEXT"``, ``"INTEGER"``,
+            ``"REAL"``).  Defaults to ``"TEXT"``.
+        default : str, float, int, or None, optional
+            Default value applied to existing rows and used when no value is
+            supplied on insert.  If ``None`` (the default), no ``DEFAULT``
+            clause is emitted and existing rows receive ``NULL``.
+
+        Returns
+        -------
+        None
+        """
+        comm = f"ALTER TABLE {self.name} ADD COLUMN {col_name} {col_type}"
+        if default is not None:
+            literal = f"'{default}'" if isinstance(default, str) else default
+            comm += f" DEFAULT {literal}"
+        self.cur.execute(comm)
+        self.conn.commit()
+
     def delete(self) -> None:
         """
         Drop this table from the database.
