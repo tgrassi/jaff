@@ -603,6 +603,77 @@ class Table:
         self.cur.execute(comm)
         self.conn.commit()
 
+    def set_cell(
+        self,
+        index_col: str,
+        index_value: str | float | int,
+        col_name: str,
+        value: str | float | int | bytes,
+    ) -> None:
+        """
+        Set the value of a single cell, located by row and column.
+
+        The target row is identified by the value of its index column
+        (typically the primary key), and the target column by name.  Before
+        writing, the Python type of *value* is checked against the declared
+        SQLite type of *col_name*.
+
+        Parameters
+        ----------
+        index_col : str
+            Name of the index/primary-key column used to locate the row.
+        index_value : str, float, or int
+            Value of *index_col* identifying the target row.
+        col_name : str
+            Name of the column whose cell is being set.
+        value : str, float, int, or bytes
+            New value for the cell.  Its type must match the declared type of
+            *col_name* (TEXT->str, INTEGER->int, REAL->int/float, BLOB->bytes).
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If *col_name* does not exist in the table.
+        TypeError
+            If the type of *value* does not match the column's declared type.
+        """
+        # Map declared SQLite type -> acceptable Python type(s).
+        type_map: dict[str, tuple[type, ...]] = {
+            "TEXT": (str,),
+            "INTEGER": (int,),
+            "REAL": (int, float),
+            "BLOB": (bytes,),
+        }
+
+        # Look up the declared type of the target column.
+        self.cur.execute(f"PRAGMA table_info({self.name})")
+        col_type = None
+        for col in self.cur.fetchall():
+            if col["name"] == col_name:
+                col_type = col["type"].upper()
+                break
+        if col_type is None:
+            raise ValueError(f"Invalid column name: {col_name}")
+
+        # Validate the value's Python type against the column affinity.
+        # bool is a subclass of int but is rejected for INTEGER/REAL columns.
+        allowed = type_map.get(col_type)
+        if allowed is not None and (
+            isinstance(value, bool) or not isinstance(value, allowed)
+        ):
+            raise TypeError(
+                f"Value {value!r} ({type(value).__name__}) does not match "
+                f"column '{col_name}' type {col_type}"
+            )
+
+        comm = f"UPDATE {self.name} SET {col_name} = ? WHERE {index_col} = ?"
+        self.cur.execute(comm, [value, index_value])
+        self.conn.commit()
+
     def delete(self) -> None:
         """
         Drop this table from the database.
