@@ -59,6 +59,7 @@ from ..codegen import Codegen as cg
 from ..codegen import TemplateParser
 from ..common import motd
 from ..drivers import HDF5, Toml
+from ..errors import ParserError
 from ..io import JaffLogger, jaff_progress
 from ..types import HDF5Dict
 from ._typing import JaffgenProps
@@ -213,6 +214,29 @@ class JaffGen:
 
         # Create the Network instance and immediately run code generation.
         self.net: Network = Network(**self.jaffgen_config["netprops"])
+
+        reaction_props = None
+        if self.jaffgen_config_raw:
+            reaction_props = self.jaffgen_config_raw.get_key("reaction")
+
+        if reaction_props:
+            for reaction, rprops in reaction_props.items():
+                if reaction not in self.net.reactions:
+                    raise ParserError(f"Invalid serialized reaction: {reaction}")
+
+                if "shielding" in rprops:
+                    if self.net.reactions[reaction].get_rtype() != "photo":
+                        raise ParserError(f"{reaction} is not a photo reaction")
+
+                    shielding_props = rprops["shielding"]
+                    if "type" not in shielding_props:
+                        shielding_props["type"] = "leiden"
+
+                    self.net.reactions[reaction].metadata["shielding"] = {
+                        k: (v.lower() if isinstance(v, str) else v)
+                        for k, v in shielding_props.items()
+                    }
+
         self.__process_files()
 
     # ------------------------------------------------------------------

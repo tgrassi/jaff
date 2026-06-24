@@ -54,6 +54,7 @@ import sympy as sp
 
 from ...common._integrators import arr_integrate, smart_integrate
 from .._typing import RadiationGroupReactionProps
+from ._photochemistry import Photochemistry
 from ._typing._photochemistry import XsecsProps
 
 if TYPE_CHECKING:
@@ -346,6 +347,11 @@ class Radiation:
             # Symbolic rate coefficient: k_i = c · den[i] · <σ>_i
             # (units: s⁻¹ for photon-density mode, cm³ s⁻¹ for two-body)
             k = self.c * den[sp.Idx(i)] * rad_xsec_avg
+            if "shielding" in reaction.metadata:
+                if "value" in reaction.metadata["shielding"]:
+                    k *= reaction.metadata["shielding"]["value"]
+                else:
+                    k *= Photochemistry.shielding(reaction)
 
             self.groups[i].props[reaction] = {
                 "k": k,

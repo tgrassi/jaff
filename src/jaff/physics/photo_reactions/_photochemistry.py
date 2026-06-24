@@ -14,13 +14,17 @@ Both are keyed by ``reaction.serialized``.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sympy import Basic, sympify
+from sympy import Basic, Expr, sympify
 
+from ...common._helper import load_module_from_path
+from ...config import SHIELDING_FUNCTIONS_DIR
 from ...drivers import HDF5, JaffDb
 from ...drivers.pooch import download_xsecs
+from ...errors import ParserError
 from ._typing import XsecsProps
 
 if TYPE_CHECKING:
@@ -135,3 +139,31 @@ class Photochemistry:
         }
 
         return xsecs
+
+    @staticmethod
+    def shielding(reaction: Reaction) -> Expr:
+        with JaffDb() as jdb:
+            table = jdb.table("photo_reaction_shielding")
+            rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")
+
+        if not rows:
+            raise ParserError(f"{reaction} doesn't have a shielding function")
+
+        row = rows[0]
+        sprops = reaction.metadata["shielding"]
+
+        global_types = json.loads(row["global"])
+        local_types = json.loads(row["local"])
+
+        if sprops["type"] in global_types:
+            fpath = SHIELDING_FUNCTIONS_DIR / f"{sprops['type']}.py"
+        elif sprops["type"] in local_types:
+            fpath = SHIELDING_FUNCTIONS_DIR / reaction.serialized / f"{sprops['type']}.py"
+        else:
+            raise ParserError(f"Invalid shielding type: {sprops['type']}")
+
+        smod = load_module_from_path(fpath, "shielding")
+        shielding = smod.get_shielding(reaction)
+        reaction.metadata["shielding"]["value"] = shielding
+
+        return shielding

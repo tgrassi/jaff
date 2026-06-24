@@ -15,6 +15,7 @@ This module provides:
 
 from __future__ import annotations
 
+import importlib.util
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -300,3 +301,19 @@ def is_jaff_file(file: Path) -> bool:
         ".jaff",
         ".gz",
     ]
+
+
+def load_module_from_path(path: str | Path, module_name: str):
+    mpath: Path = path  # type: ignore
+    if isinstance(path, str):
+        mpath = Path(path).resolve()
+
+    spec = importlib.util.spec_from_file_location(module_name, mpath)
+
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load module from {mpath}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module
