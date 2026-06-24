@@ -52,13 +52,12 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import sympy as sp
 
-from jaff.physics._typing._photochemistry import XsecsProps
-
-from ..common._integrators import arr_integrate, smart_integrate
-from ._typing import RadiationGroupReactionProps
+from ...common._integrators import arr_integrate, smart_integrate
+from .._typing import RadiationGroupReactionProps
+from ._typing._photochemistry import XsecsProps
 
 if TYPE_CHECKING:
-    from ..core.reaction import Reaction
+    from ...core.reaction import Reaction
 
 
 class RadiationGroup:

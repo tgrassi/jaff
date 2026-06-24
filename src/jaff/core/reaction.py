@@ -50,7 +50,7 @@ from sympy import (
 )
 
 from ..io import JaffLogger
-from ..physics._typing import XsecsProps
+from ..physics.photo_reactions._typing import XsecsProps
 from ..types import Catalogue, Vector
 from .elements import Elements
 from .species import Specie, Species

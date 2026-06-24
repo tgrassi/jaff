@@ -19,12 +19,12 @@ from typing import TYPE_CHECKING
 
 from sympy import Basic, sympify
 
-from ..drivers import HDF5, JaffDb
-from ..drivers.pooch import download_xsecs
+from ...drivers import HDF5, JaffDb
+from ...drivers.pooch import download_xsecs
 from ._typing import XsecsProps
 
 if TYPE_CHECKING:
-    from ..core import Reaction
+    from ...core import Reaction
 
 
 class Photochemistry:
@@ -115,7 +115,7 @@ class Photochemistry:
 
         row = rows[0]
         loc: str = row["leiden"] if row["leiden"] else row["norad"]
-        jaff_dir = Path(__file__).parent.parent.resolve()
+        jaff_dir = Path(__file__).parent.parent.parent.resolve()
         h5group = str(jaff_dir / loc)
         pr_xsec = HDF5().to_dict(h5group)
 
