@@ -39,7 +39,6 @@ from sympy import (
 from sympy.core.function import AppliedUndef, UndefinedFunction
 
 from ..common import is_jaff_file, load_mass_dict, motd, resolve_dependencies
-from ._typing import ElementProps
 from ..errors import ParserError
 from ..io import JaffLogger, jaff_progress
 from ..io._io import JaffProps, from_jaff_file, to_jaff_file, write_data_table
@@ -53,6 +52,7 @@ from ..physics import (
 )
 from ._auxiliary_engine import AuxiliaryFunctionParser, FunctionsDict
 from ._network_engine import NetworkParser
+from ._typing import ElementProps
 from .elements import Elements
 from .reaction import Reaction, Reactions
 from .species import Specie, Species
