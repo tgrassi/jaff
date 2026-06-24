@@ -62,11 +62,10 @@ class Plotter:
     ``Plotter(**{"font.size": 13})``.
     """
 
-    #: Display labels for the three cross-section processes.
+    #: Display labels for the cross-section processes.
     _PROC_LABELS: dict[str, str] = {
         "photo_absorption": "Photoabsorption",
-        "photo_dissociation": "Photodissociation",
-        "photo_ionization": "Photoionization",
+        "photodecay": "Photodecay",
     }
 
     _PALETTE: list[str] = [
@@ -346,9 +345,9 @@ class Plotter:
         xsecs
             Mapping as returned by :func:`jaff.physics.get_xsec` -- carries
             ``photon_energy`` (eV) plus any of ``photo_absorption``,
-            ``photo_dissociation``, ``photo_ionization`` (all in cm^2).
+            ``photodecay`` (all in cm^2).
         processes
-            Subset of the three process keys to draw.  Default: every
+            Subset of the process keys to draw.  Default: every
             process present (non-``None``) in ``xsecs``.
         layout
             ``"overlay"`` (default) draws every process on one axes;

@@ -101,10 +101,11 @@ class Photochemistry:
         -------
         XsecsProps or None
             Dict with ``units`` (photon energy in eV, cross section in cm²),
-            ``_equations`` flags (``pa``/``pi``/``pd`` for photo-absorption,
-            -ionization, -dissociation), the shared ``photon_energy`` grid, and a
-            cross-section array per process (``None`` when absent).  Returns
-            ``None`` if the reaction has no cross-section entry.
+            ``_equations`` (``pa`` photo-absorption flag and ``decay_type``,
+            either ``"dissociation"`` or ``"ionization"``), the ``photon_energy``
+            grid, the optional ``photo_absorption`` array, and the reaction's
+            single ``photodecay`` cross-section array (``None`` when absent).
+            Returns ``None`` if the reaction has no cross-section entry.
         """
         with JaffDb() as jdb:
             table = jdb.table("photo_reaction_cross_sections")
@@ -126,13 +127,11 @@ class Photochemistry:
             },
             "_equations": {
                 "pa": bool(row["photo_absorption"]),
-                "pi": bool(row["photo_ionization"]),
-                "pd": bool(row["photo_dissociation"]),
+                "decay_type": row["decay_type"],
             },
             "photon_energy": pr_xsec.get("photon_energy", {}).get("_data", None),
             "photo_absorption": pr_xsec.get("photoabsorption", {}).get("_data", None),
-            "photo_ionization": pr_xsec.get("photoionization", {}).get("_data", None),
-            "photo_dissociation": pr_xsec.get("photodissociation", {}).get("_data", None),
+            "photodecay": pr_xsec.get("photodecay", {}).get("_data", None),
         }
 
         return xsecs

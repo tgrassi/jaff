@@ -257,8 +257,7 @@ class Radiation:
         type) is written to ``reaction.rate``.
 
         If the reaction has no tabulated cross section (no ``xsecs_dict``, or
-        neither a photoionisation nor photodissociation array) the method
-        returns silently (no-op).
+        no ``photodecay`` array) the method returns silently (no-op).
 
         Parameters
         ----------
@@ -292,14 +291,9 @@ class Radiation:
         if xsec is None:
             return
 
-        if xsec["photo_ionization"] is None and xsec["photo_dissociation"] is None:
-            return
-
-        if xsec["_equations"]["pi"]:
-            pr_xsec = xsec["photo_ionization"]
-        elif xsec["_equations"]["pd"]:
-            pr_xsec = xsec["photo_dissociation"]
-        else:
+        # Each reaction carries a single decay-channel cross section.
+        pr_xsec = xsec["photodecay"]
+        if pr_xsec is None:
             return
 
         assert isinstance(xsec["photon_energy"], np.ndarray)

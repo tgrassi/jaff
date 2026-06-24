@@ -13,14 +13,22 @@ Each group has datasets, all co-sorted by **ascending photon energy**:
 
 - ``photon_energy``   -- eV   (Leiden wavelengths in nm are converted via
   ``E = h c / lambda``).
-- ``photoabsorption`` / ``photodissociation`` / ``photoionization`` -- cm^2.
-  Leiden groups carry all three; NORAD groups carry only ``photoionization``.
+- ``photodecay``      -- cm^2, the reaction's single decay-channel cross section
+  (dissociation xsec for a dissociation reaction, ionisation xsec for an
+  ionisation reaction).
+- ``photoabsorption`` -- cm^2, optional, shared between a species' channels.
+
+Each source Leiden file bundles both decay channels, so it is split into one
+group per channel: the dissociation reaction keeps the serialized stem, while
+the ionisation reaction is keyed ``<R>__<R+>_e-``.  NORAD files are
+photoionisation only.
 
 Every dataset has a ``unit`` attr ("eV" or "cm2").
 
 Group attrs:
 
-- ``reactants`` / ``products`` -- string lists parsed from the serialized stem.
+- ``reactants`` / ``products`` -- string lists for the channel reaction.
+- ``decay_type`` -- ``"dissociation"`` or ``"ionization"``.
 - NORAD groups additionally: ``Z``, ``n_electrons``, ``charge``,
   ``accuracy_variant``, ``data_format``, ``source_url`` (from the ``.dat``
   ``#`` header).
@@ -44,13 +52,6 @@ from jaff.physics import constants
 EV_PER_ERG: float = 1.0 / 1.602176634e-12
 #: cm per nm.
 CM_PER_NM: float = 1e-7
-
-#: Leiden source dataset name (British spelling) -> output name.
-LEIDEN_XSEC_DATASETS: dict[str, str] = {
-    "photoabsorption": "photoabsorption",
-    "photodissociation": "photodissociation",
-    "photoionisation": "photoionization",
-}
 
 _STR_DT = h5py.string_dtype(encoding="utf-8")
 
@@ -76,41 +77,91 @@ def wavelength_nm_to_eV(wavelength_nm: np.ndarray) -> np.ndarray:
     return energy_erg * EV_PER_ERG
 
 
+def _ionize(species: str) -> str:
+    """Singly-ionise a species name: ``X`` -> ``X+``, anion ``X-`` -> ``X``."""
+    return species[:-1] if species.endswith("-") else species + "+"
+
+
+def _has_signal(arr: np.ndarray) -> bool:
+    """True if the array has at least one non-zero, all-finite value."""
+    return bool(np.any(arr != 0)) and bool(np.all(np.isfinite(arr)))
+
+
+def _write_channel(
+    h5: h5py.File,
+    key: str,
+    reactants: list[str],
+    products: list[str],
+    decay_type: str,
+    energy: np.ndarray,
+    photodecay: np.ndarray,
+    photoabsorption: np.ndarray | None,
+) -> None:
+    """Create one per-channel reaction group with a ``photodecay`` dataset."""
+    grp = h5.create_group(key)
+    grp.attrs["reactants"] = np.array(reactants, dtype=_STR_DT)
+    grp.attrs["products"] = np.array(products, dtype=_STR_DT)
+    grp.attrs["decay_type"] = decay_type
+    e = grp.create_dataset("photon_energy", data=energy, **COMPRESSION_KW)
+    e.attrs["unit"] = "eV"
+    d = grp.create_dataset("photodecay", data=photodecay, **COMPRESSION_KW)
+    d.attrs["unit"] = "cm2"
+    if photoabsorption is not None:
+        a = grp.create_dataset("photoabsorption", data=photoabsorption, **COMPRESSION_KW)
+        a.attrs["unit"] = "cm2"
+
+
 def collapse_leiden(leiden_dir: Path, out_path: Path, logger) -> int:
-    """Merge all Leiden per-reaction ``.h5`` files into a single HDF5 file."""
+    """Merge Leiden per-reaction ``.h5`` files, split by decay channel."""
     files = sorted(leiden_dir.glob("*.h5"))
+    emitted = 0
+    ionis_seen: set[str] = set()
     with h5py.File(out_path, "w") as h5:
         h5.attrs["database"] = "leiden"
         h5.attrs["description"] = (
-            "Leiden photodissociation/ionisation cross sections, one group per "
-            "reaction; photon_energy in eV, cross sections in cm^2."
+            "Leiden photo cross sections, one group per reaction (split by decay "
+            "channel); photon_energy in eV, photodecay/photoabsorption in cm^2."
         )
         h5.attrs["created"] = date.today().isoformat()
 
         for f in files:
             stem = f.stem
+            reactants, products = split_reaction(stem)
+            reactant = reactants[0]
             with h5py.File(f, "r") as src:
-                wavelength = src["wavelength"][:].astype(float)
-                energy_ev = wavelength_nm_to_eV(wavelength)
+                energy_ev = wavelength_nm_to_eV(src["wavelength"][:].astype(float))
                 order = np.argsort(energy_ev)  # ascending energy
+                energy = energy_ev[order]
 
-                grp = h5.create_group(stem)
-                reactants, products = split_reaction(stem)
-                grp.attrs["reactants"] = np.array(reactants, dtype=_STR_DT)
-                grp.attrs["products"] = np.array(products, dtype=_STR_DT)
+                photoabs = None
+                if "photoabsorption" in src:
+                    pa = src["photoabsorption"][:].astype(float)[order]
+                    photoabs = pa if _has_signal(pa) else None
 
-                e_ds = grp.create_dataset(
-                    "photon_energy", data=energy_ev[order], **COMPRESSION_KW
-                )
-                e_ds.attrs["unit"] = "eV"
-                for src_name, out_name in LEIDEN_XSEC_DATASETS.items():
-                    if src_name not in src:
-                        continue
-                    xs = src[src_name][:].astype(float)[order]
-                    ds = grp.create_dataset(out_name, data=xs, **COMPRESSION_KW)
-                    ds.attrs["unit"] = "cm2"
-    logger.info(f"Wrote {len(files)} Leiden groups to {out_path}")
-    return len(files)
+                # Dissociation channel -> serialized stem.
+                if "photodissociation" in src:
+                    pd_xs = src["photodissociation"][:].astype(float)[order]
+                    if _has_signal(pd_xs):
+                        _write_channel(
+                            h5, stem, reactants, products, "dissociation",
+                            energy, pd_xs, photoabs,
+                        )
+                        emitted += 1
+
+                # Ionisation channel -> constructed key (deduped per reactant).
+                if "photoionisation" in src:
+                    pi_xs = src["photoionisation"][:].astype(float)[order]
+                    ion_products = sorted([_ionize(reactant), "e-"])
+                    ion_key = f"{reactant}__{'_'.join(ion_products)}"
+                    if _has_signal(pi_xs) and ion_key not in ionis_seen:
+                        ionis_seen.add(ion_key)
+                        _write_channel(
+                            h5, ion_key, reactants, ion_products, "ionization",
+                            energy, pi_xs, photoabs,
+                        )
+                        emitted += 1
+    logger.info(f"Wrote {emitted} Leiden channel groups to {out_path}")
+    return emitted
 
 
 def _parse_op_header(lines: list[str]) -> dict:
@@ -150,6 +201,7 @@ def collapse_op(op_dir: Path, out_path: Path, logger) -> int:
             reactants, products = split_reaction(stem)
             grp.attrs["reactants"] = np.array(reactants, dtype=_STR_DT)
             grp.attrs["products"] = np.array(products, dtype=_STR_DT)
+            grp.attrs["decay_type"] = "ionization"  # NORAD is photoionisation only
             if "Z" in hdr:
                 grp.attrs["Z"] = int(hdr["Z"])
                 grp.attrs["n_electrons"] = int(hdr["NE"])
@@ -163,7 +215,7 @@ def collapse_op(op_dir: Path, out_path: Path, logger) -> int:
             )
             e_ds.attrs["unit"] = "eV"
             x_ds = grp.create_dataset(
-                "photoionization", data=xsec_cm2[order], **COMPRESSION_KW
+                "photodecay", data=xsec_cm2[order], **COMPRESSION_KW
             )
             x_ds.attrs["unit"] = "cm2"
     logger.info(f"Wrote {len(files)} NORAD groups to {out_path}")

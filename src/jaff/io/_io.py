@@ -391,8 +391,7 @@ def from_jaff_file(filename: str | Path, errors=False):
             for key in (
                 "photon_energy",
                 "photo_absorption",
-                "photo_ionization",
-                "photo_dissociation",
+                "photodecay",
             ):
                 if xsecs.get(key) is not None:
                     xsecs[key] = np.asarray(xsecs[key], dtype=float)

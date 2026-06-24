@@ -98,8 +98,9 @@ class Reaction:
         ``True`` when the radiation rate was supplied via a ``.jfunc`` aux
         function rather than computed from cross-sections.
     xsecs_dict : dict or None
-        Photo-ionisation cross-section data: ``{"energy": [...], "xsecs":
-        [...]}``, energies in erg and cross-sections in cm².  ``None`` for
+        Photo cross-section data for the reaction's single decay channel:
+        ``photon_energy`` (eV), optional ``photo_absorption`` and the
+        ``photodecay`` array (cm²), plus ``_equations`` metadata.  ``None`` for
         non-photo reactions.
     """
 
@@ -711,9 +712,8 @@ class Reaction:
         processes : str | list[str] | None, optional
             Which cross-section processes to draw.  ``"all"`` (default) or
             ``None`` plots every process with data; a single key (e.g.
-            ``"photo_ionization"``) or a list of keys selects a subset.
-            Valid keys: ``"photo_absorption"``, ``"photo_dissociation"``,
-            ``"photo_ionization"``.
+            ``"photodecay"``) or a list of keys selects a subset.
+            Valid keys: ``"photo_absorption"``, ``"photodecay"``.
         layout : str, optional
             ``"overlay"`` (default) draws all processes on one axes;
             ``"subplots"`` gives each process its own stacked panel.
@@ -747,8 +747,7 @@ class Reaction:
 
         _XSEC_PROCESSES = (
             "photo_absorption",
-            "photo_dissociation",
-            "photo_ionization",
+            "photodecay",
         )
 
         # Normalise the process selection to a list of valid keys.
