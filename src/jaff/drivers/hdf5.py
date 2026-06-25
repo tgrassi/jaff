@@ -68,7 +68,13 @@ class HDF5:
     # Public interface
     # ------------------------------------------------------------------
 
-    def to_dict(self, h5file: h5py.File | h5py.Group | Path | str) -> HDF5Dict:
+    def to_dict(
+        self,
+        h5file: h5py.File | h5py.Group | Path | str,
+        *,
+        include: str | list[str] | None = None,
+        exclude: str | list[str] | None = None,
+    ) -> HDF5Dict:
         """
         Load an HDF5 file (or sub-group) into a nested :class:`~jaff.types.HDF5Dict`.
 
@@ -79,13 +85,24 @@ class HDF5:
             from that group onward), or a path to an HDF5 file on disk.  A
             ``"file.h5::/internal/group"`` string (``::`` delimiter) parses
             from the named internal group onward.
+        include : str, list of str, or None, optional
+            Keep only datasets whose own name — or the name of any parent group
+            — matches one of these bare-name patterns (:func:`fnmatch.fnmatch`,
+            so exact names and ``*``/``?``/``[seq]`` wildcards both work).
+            Datasets filtered out are never read into memory.  ``None``
+            (default) keeps everything.
+        exclude : str, list of str, or None, optional
+            Drop any dataset or group whose name, or any ancestor group name,
+            matches one of these bare-name patterns.  Excluding a group drops
+            its whole subtree.  Takes precedence over *include*.  ``None``
+            (default) drops nothing.
 
         Returns
         -------
         HDF5Dict
             Nested dictionary representation of the HDF5 contents.
         """
-        return HDF5Dict(h5file)
+        return HDF5Dict(h5file, include=include, exclude=exclude)
 
     def from_dict(self, h5file: str | Path, h5dict: dict | HDF5Dict) -> None:
         """
