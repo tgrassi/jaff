@@ -27,7 +27,7 @@ from ..io._logger import jaff_progress
 
 if TYPE_CHECKING:
     from .. import Reactions, Species
-    from ._radiation import Radiation
+    from .photo_reactions._radiation import Radiation
 
 
 def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
@@ -75,7 +75,7 @@ def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
         for reactant in reaction.reactants:
             flux *= nden_matrix[species[str(reactant)].index]
 
-        fluxes[i] = flux  # type: ignore
+        fluxes[i] = flux
 
     return fluxes
 
@@ -245,7 +245,7 @@ def get_sradodes(
         for reaction, props in group.props.items():
             rrate = props["k"]
             # Accumulate any user-supplied radiation source terms
-            group_dRad_dt_extra += rrate * props["delta_rad"]  # type: ignore
+            group_dRad_dt_extra += rrate * props["delta_rad"]
             # Multiply by all reactant number densities (mass-action kinetics)
             for reactant in reaction.reactants:
                 rrate *= nden[Idx(species[str(reactant)].index)]

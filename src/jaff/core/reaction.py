@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from sympy import (
     Basic,
+    Expr,
     Function,
     ccode,
     cxxcode,
@@ -108,7 +109,7 @@ class Reaction:
         self,
         reactants: list[Specie],
         products: list[Specie],
-        rate: Basic,
+        rate: Expr,
         tmin: float | None,
         tmax: float | None,
         dE: Basic,
@@ -152,7 +153,7 @@ class Reaction:
         self.logger = JaffLogger().get_logger()
         self.reactants: Species = Species(reactants, check_length=False)
         self.products: Species = Species(products, check_length=False)
-        self.rate: Basic = rate
+        self.rate: Expr = rate
         self.tmin: float | None = tmin
         self.tmax: float | None = tmax
         self.dE: Basic = dE

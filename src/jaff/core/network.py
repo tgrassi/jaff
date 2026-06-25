@@ -168,6 +168,7 @@ class Network:
         if not _from_cli:
             print(motd())
 
+        self._replace_nH: bool = replace_nH
         self.mass_dict: dict[str, ElementProps] = {}
         self.species: Species = Species()
         self.reactions: Reactions = Reactions()
@@ -177,7 +178,7 @@ class Network:
         self.dEdt_other: Basic = Float(0.0)
         self.dRad_dt_extra: Basic = Float(0.0)
         self.radiation: Radiation | None = (
-            Radiation(rad_bands, rad_powerlaw_index, rad_energy_density, c)
+            Radiation(self, rad_bands, rad_powerlaw_index, rad_energy_density, c)
             if len(rad_bands) > 0
             else None
         )
@@ -329,7 +330,7 @@ class Network:
 
         if "heatingcoolingrate" in aux_funcs:
             self.dEdt_other = aux_funcs["heatingcoolingrate"]["def"]
-            self.dEdt_other = self.__standardize_symbols(self.dEdt_other, replace_nH)
+            self.dEdt_other = self._standardize_symbols(self.dEdt_other, replace_nH)
             free_symbols |= self.free_symbols(self.dEdt_other)
             self.__detect_undefined_functions(self.dEdt_other, undef_funcs, interp_funcs)
 
@@ -397,26 +398,26 @@ class Network:
         """
         nden = MatrixSymbol("nden", self.species.count, 1)
         for r in self.reactions:
-            r.rate = self.__standardize_symbols(r.rate, replace_nH)
+            r.rate = self._standardize_symbols(r.rate, replace_nH)
 
-            dE_dt = r.dE * r.rate  # type: ignore
-            dRad_dt = r.dRad * r.rate  # type: ignore
+            dE_dt = r.dE * r.rate
+            dRad_dt = r.dRad * r.rate
             for s in r.reactants:
                 dE_dt *= nden[self.species[s.name].index]
                 dRad_dt *= nden[self.species[s.name].index]
             self.dEdt_chem += dE_dt
             self.dRad_dt_extra += r.dRad  # type: ignore
-        self.dEdt_chem = self.__standardize_symbols(self.dEdt_chem, replace_nH)
-        self.dRad_dt_extra = self.__standardize_symbols(self.dRad_dt_extra, replace_nH)
+        self.dEdt_chem = self._standardize_symbols(self.dEdt_chem, replace_nH)
+        self.dRad_dt_extra = self._standardize_symbols(self.dRad_dt_extra, replace_nH)
 
     @staticmethod
     def __parse_rate(
         aux_chem_rate: str,
         rate: str,
         aux_funcs: dict[str, FunctionsDict],
-        global_vars: dict[str, Basic],
+        global_vars: dict[str, Expr],
         n_photo: int,
-    ) -> tuple[Basic, bool, int]:
+    ) -> tuple[Expr, bool, int]:
         """Convert a raw rate string to a SymPy expression.
 
         Checks, in priority order:
@@ -475,6 +476,9 @@ class Network:
                 rate_expr = f(n_photo, photo_args[1], photo_args[2])
         else:
             rate_expr = parse_expr(rate, evaluate=False)
+
+        if not isinstance(rate_expr, Expr):
+            raise ParserError(f"Rate expression is not an Expr: {rate_expr}")
 
         return rate_expr, is_photoreaction, n_photo
 
@@ -804,14 +808,14 @@ class Network:
             for product in reaction.products:
                 self.product_matrix[i, product.index] += 1
 
-    def __standardize_symbols(self, expr: Basic, replace_nH: bool) -> Basic:
+    def _standardize_symbols(self, expr: Basic, replace_nH: bool) -> Expr:
         """Replace convenience symbols (nh, ne, ntot, n_X, …) with nden[i] references.
 
         When replace_nH is False, H/He element sums become ``nh``/``nhe`` symbols
         instead of being expanded over all species.
         """
         if expr == Float(0.0):
-            return expr
+            return Float(0.0)
 
         nden = MatrixSymbol("nden", self.species.count, 1)
         reps = {}

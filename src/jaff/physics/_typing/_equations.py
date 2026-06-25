@@ -1,11 +1,11 @@
 from typing import TypedDict
 
-from sympy import Basic
+from sympy import Expr
 
 RadiationGroupReactionProps = TypedDict(
     "RadiationGroupReactionProps",
     {
-        "k": Basic,
+        "k": Expr,
         "xsec": float | None,
         "xsec_frac": float,
         "delta_rad": float,

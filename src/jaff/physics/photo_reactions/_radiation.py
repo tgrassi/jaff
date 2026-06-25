@@ -427,7 +427,7 @@ class Radiation:
                 0.0 if delta_rad_total_is_zero else delta_rad_band / delta_rad_total
             )
             # Scale the total user-supplied rate by the band fraction.
-            k = reaction.rate * xsec_frac  # type: ignore
+            k = reaction.rate * xsec_frac
 
             self.groups[i].props[reaction] = {
                 "k": k,
