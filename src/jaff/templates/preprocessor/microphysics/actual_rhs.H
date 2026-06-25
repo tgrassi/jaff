@@ -41,6 +41,31 @@ actual_rhs(burn_t &state, amrex::Array1D<amrex::Real, 1, neqs> &ydot) {
   rhs_specie(state, ydot, nden);
 }
 
+AMREX_GPU_HOST_DEVICE AMREX_INLINE void
+rhs_specie_qss(const burn_t &state, amrex::Array1D<amrex::Real, 1, 2 * neqs> &ydot,
+               const amrex::Array1D<amrex::Real, 0, NumSpec - 1> &nden) {
+
+  using namespace Rates;
+
+  amrex::Real tgas = state.T;
+  amrex::Real crate = 0.0; // placeholder
+  amrex::Real av = 0.0;    // placeholder
+
+  // PREPROCESS_QSS_ODE
+  // PREPROCESS_END
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_INLINE void
+actual_rhs_qss(const burn_t &state, amrex::Array1D<amrex::Real, 1, 2 * neqs> &ydot) {
+
+  amrex::Array1D<amrex::Real, 0, NumSpec - 1> nden;
+  for (int i = 0; i < NumSpec; ++i) {
+    nden(i) = state.xn[i];
+  }
+
+  rhs_specie_qss(state, ydot, nden);
+}
+
 template <class MatrixType>
 AMREX_GPU_HOST_DEVICE AMREX_INLINE void
 jac_chem(const burn_t &state, MatrixType &jac,

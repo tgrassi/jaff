@@ -1350,6 +1350,20 @@ class TemplateParser:
                         "func": lambda **kwargs: self.cg.get_indexed_rhs(**kwargs),
                         "vars": ["idx", "rhs", "cse"],
                     },
+                    # Returns: IndexedReturn - QSS production/destruction RHS split
+                    # ordered as species production, species destruction pairs.
+                    "qss_rhses": {
+                        "func": lambda **kwargs: self.cg.get_indexed_qss_rhs(**kwargs),
+                        "vars": ["idx", "rhs", "cse"],
+                    },
+                    # Returns: IndexedReturn - QSS radiation moment RHS split
+                    # as production/destruction pairs at absolute QSS indices.
+                    "qss_rad_rhses": {
+                        "func": lambda **kwargs: self.cg.get_indexed_qss_radodes(
+                            **kwargs
+                        ),
+                        "vars": ["idx", "rhs", "cse"],
+                    },
                     # Returns: IndexedReturn - Jacobian matrix elements with optional CSE
                     # USE_DEDT TRUE/FALSE can be passed for this prop in templated syntax
                     "jacobian": {

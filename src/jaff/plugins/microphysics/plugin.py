@@ -21,6 +21,14 @@ def main(
         brac_format="()",
         ode_var="ydot",
     )
+    qss_ode = cg.get_qss_rhs_str(
+        idx_offset=1,
+        use_cse=True,
+        cse_var="qss_cse",
+        def_prefix="const amrex::Real ",
+        brac_format="()",
+        ode_var="ydot",
+    )
     jac = cg.get_jacobian_str(
         idx_offset=1,
         use_dedt=True,
@@ -30,7 +38,22 @@ def main(
         matrix_format="(,)",
     )
     ode = re.sub(r"nden\[\s*(\d+)\s*\]", r"nden(\1)", ode)
+    qss_ode = re.sub(r"nden\[\s*(\d+)\s*\]", r"nden(\1)", qss_ode)
     jac = re.sub(r"nden\[\s*(\d+)\s*\]", r"nden(\1)", jac)
+    qss_dedt = re.sub(
+        r"nden\[\s*(\d+)\s*\]",
+        r"nden(\1)",
+        cg.get_dedt(),
+    )
+    qss_ode += f"const amrex::Real qss_dedt = {qss_dedt} / state.rho;\n"
+    qss_ode += (
+        f"ydot({2 * network.species.count + 1}) = "
+        "amrex::max(qss_dedt, amrex::Real(0.0));\n"
+    )
+    qss_ode += (
+        f"ydot({2 * network.species.count + 2}) = "
+        "amrex::max(-qss_dedt, amrex::Real(0.0));\n"
+    )
 
     electron_found = False
     for i, specie in enumerate(network.species):
@@ -54,6 +77,7 @@ def main(
         {
             "ODE": ode,
             "JACOBIAN": jac,
+            "QSS_ODE": qss_ode,
         },
     ]
 

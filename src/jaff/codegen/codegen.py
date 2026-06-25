@@ -948,6 +948,255 @@ class Codegen:
 
         return ode_code
 
+    def get_indexed_qss_rhs(
+        self,
+        use_cse: bool = True,
+        cse_var: str = "cse",
+    ) -> IndexedReturn:
+        """Return stoichiometric QSS production/destruction RHS expressions.
+
+        QSS integrators need nonnegative production and destruction
+        accumulators separately instead of only the net derivative. For each
+        reaction flux ``F_j`` and species ``i`` this emits
+
+        ``f_plus_i  += product_stoich[j, i] * F_j``
+        ``f_minus_i += reactant_stoich[j, i] * F_j``
+
+        The output is ordered as ``[plus_0, minus_0, plus_1, minus_1, ...]``.
+        Repeated reactants or products are therefore preserved as integer
+        stoichiometric coefficients before any algebraic simplification or CSE.
+
+        Parameters
+        ----------
+        use_cse : bool, optional
+            Apply SymPy CSE across all split expressions. Default ``True``.
+        cse_var : str, optional
+            Prefix for CSE temporary variable names. Default ``"cse"``.
+
+        Returns
+        -------
+        IndexedReturn
+            Dictionary with CSE temporaries under ``extras["cse"]`` and one
+            expression per QSS RHS slot under ``expressions``.
+        """
+        with jaff_progress.indeterminate("Generating QSS rhs equations"):
+            ir: IndexedReturn = {
+                "extras": {"cse": IndexedList()},
+                "expressions": IndexedList(),
+            }
+
+            fluxes = self.net.sfluxes()
+            nspec = self.net.species.count
+            f_plus = [sp.Float(0.0) for _ in range(nspec)]
+            f_minus = [sp.Float(0.0) for _ in range(nspec)]
+
+            for reaction_idx, flux in enumerate(fluxes):
+                for species_idx in range(nspec):
+                    product_count = int(
+                        self.net.product_matrix[reaction_idx, species_idx]
+                    )
+                    reactant_count = int(
+                        self.net.reactant_matrix[reaction_idx, species_idx]
+                    )
+
+                    if product_count:
+                        f_plus[species_idx] += product_count * flux
+                    if reactant_count:
+                        f_minus[species_idx] += reactant_count * flux
+
+            qss_symbols = []
+            for species_idx in range(nspec):
+                qss_symbols.extend([f_plus[species_idx], f_minus[species_idx]])
+
+        if use_cse:
+            with jaff_progress.indeterminate("Generating QSS cse expressions"):
+                cse_symbols = sp.numbered_symbols(prefix=cse_var)
+                replacements, reduced_exprs = sp.cse(qss_symbols, symbols=cse_symbols)
+
+                replacements = self.__prune_cse(replacements, reduced_exprs)
+
+                pattern = re.compile(r"(\d+)")
+                for var, expr in replacements:
+                    match = pattern.search(str(var))
+                    idx: int = int(match.group(0)) if match is not None else 0
+                    expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
+                    ir["extras"]["cse"].append(IndexedValue([idx], expr))
+
+                qss_symbols = reduced_exprs
+
+        for i, expr in enumerate(
+            jaff_progress.track(qss_symbols, description="Generating QSS RHS code")
+        ):
+            expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
+            ir["expressions"].append(IndexedValue([i], expr))
+
+        return ir
+
+    def get_qss_rhs_str(
+        self,
+        idx_offset: int = 0,
+        use_cse: bool = True,
+        cse_var: str = "cse",
+        ode_var: str = "f",
+        brac_format: str = "",
+        def_prefix: str = "",
+        assignment_op: str = "",
+        line_end: str = "",
+    ) -> str:
+        """Generate QSS production/destruction RHS assignment code.
+
+        The emitted assignments use the same ordering as
+        :meth:`get_indexed_qss_rhs`: production and destruction slots are
+        interleaved for each species.
+
+        Parameters
+        ----------
+        idx_offset : int, optional
+            Base index for output array subscripts. Default ``0``.
+        use_cse : bool, optional
+            Enable CSE across split expressions. Default ``True``.
+        cse_var : str, optional
+            Prefix for CSE temporary variable names. Default ``"cse"``.
+        ode_var : str, optional
+            Name of the output RHS array. Default ``"f"``.
+        brac_format : str, optional
+            Override 1-D bracket style. Empty string uses the language default.
+        def_prefix : str, optional
+            Type declaration prefix for CSE temporaries. Empty string uses the
+            language-default type qualifier and ``double`` type.
+        assignment_op : str, optional
+            Assignment operator override. Empty string uses the language default.
+        line_end : str, optional
+            Line terminator override. Empty string uses the language default.
+
+        Returns
+        -------
+        str
+            Multi-line string of QSS RHS assignments, including CSE temporaries.
+        """
+        ioff = idx_offset if idx_offset >= 0 else self.ioff
+        prefix = (
+            def_prefix
+            or f"{self.extras.get('type_qualifier', '')}{self.types.get('double', '')}"
+        )
+        lb, rb = brac_format or (self.lb, self.rb)
+        assign_op = assignment_op or self.assignment_op
+        lend = line_end or self.line_end
+
+        qss_code = ""
+        qss_expressions = self.get_indexed_qss_rhs(
+            use_cse=use_cse,
+            cse_var=cse_var,
+        )
+
+        if use_cse:
+            for idx, expression in qss_expressions["extras"]["cse"]:
+                _idx = idx[0]
+                qss_code += f"{prefix}{cse_var}{_idx} {assign_op} {expression}{lend}\n"
+
+        for idx, expression in qss_expressions["expressions"]:
+            _idx = idx[0]
+            qss_code += f"{ode_var}{lb}{ioff + _idx}{rb} {assign_op} {expression}{lend}\n"
+
+        return qss_code
+
+    def get_indexed_qss_radodes(
+        self,
+        order: int = 0,
+        use_cse: bool = True,
+        cse_var: str = "cse",
+    ) -> IndexedReturn:
+        """Return QSS production/destruction RHS expressions for radiation moments.
+
+        Radiation QSS slots follow the same ``plus, minus`` split used for
+        species and energy equations.  The returned indices are absolute
+        zero-based positions in the ``2 * neqs`` QSS output array, so the
+        radiation entries begin after all species pairs and the energy pair.
+        """
+        ir: IndexedReturn = {
+            "extras": {"cse": IndexedList()},
+            "expressions": IndexedList(),
+        }
+
+        rad = self.net.radiation
+        if rad is None:
+            return ir
+
+        if order not in [0, 1, 2, 3]:
+            raise ValueError("Invalid order: Supported orders are 0, 1, 2, 3")
+
+        nden = sp.MatrixSymbol("nden", self.net.species.count, 1)
+        den = sp.MatrixSymbol(
+            "radeden" if rad.energy_density else "photden",
+            rad.nbands,
+            1,
+        )
+        rflux = sp.MatrixSymbol("rflux", rad.nbands, 1)
+        flux_map = {den[sp.Idx(i)]: rflux[sp.Idx(i)] for i in range(rad.nbands)}
+
+        rad_plus = [sp.Float(0.0) for _ in range(2 * rad.nbands)]
+        rad_minus = [sp.Float(0.0) for _ in range(2 * rad.nbands)]
+
+        for group in rad.groups:
+            density_production = sp.Float(0.0)
+            density_destruction = sp.Float(0.0)
+            flux_destruction = sp.Float(0.0)
+
+            for reaction, props in group.props.items():
+                destruction_rate = props["k"]
+                density_production += (
+                    props["k"]
+                    * props["delta_rad"]
+                    / (1 if rad.energy_density else (group.eavg or 1))
+                )
+
+                for reactant in reaction.reactants:
+                    species_idx = self.net.species[str(reactant)].index
+                    destruction_rate *= nden[sp.Idx(species_idx)]
+
+                density_destruction += destruction_rate
+                flux_destruction += destruction_rate.xreplace(flux_map)
+
+            density_idx, flux_idx = rad.ordered_index(group.index, order)
+            rad_plus[density_idx] = density_production
+            rad_minus[density_idx] = density_destruction
+            rad_minus[flux_idx] = flux_destruction
+
+        qss_symbols = []
+        qss_indices = []
+        nspec = self.net.species.count
+        for rad_idx in range(2 * rad.nbands):
+            qss_slot = 2 * (nspec + 1 + rad_idx)
+            qss_indices.extend([qss_slot, qss_slot + 1])
+            qss_symbols.extend([rad_plus[rad_idx], rad_minus[rad_idx]])
+
+        if use_cse:
+            with jaff_progress.indeterminate("Generating QSS radiation cse expressions"):
+                cse_symbols = sp.numbered_symbols(prefix=cse_var)
+                replacements, reduced_exprs = sp.cse(qss_symbols, symbols=cse_symbols)
+
+                replacements = self.__prune_cse(replacements, reduced_exprs)
+
+                pattern = re.compile(r"(\d+)")
+                for var, expr in replacements:
+                    match = pattern.search(str(var))
+                    idx: int = int(match.group(0)) if match is not None else 0
+                    expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
+                    ir["extras"]["cse"].append(IndexedValue([idx], expr))
+
+                qss_symbols = reduced_exprs
+
+        for qss_idx, expr in zip(
+            qss_indices,
+            jaff_progress.track(
+                qss_symbols, description="Generating QSS radiation RHS code"
+            ),
+        ):
+            expr = self.code_gen(expr, strict=False, allow_unknown_functions=True)
+            ir["expressions"].append(IndexedValue([qss_idx], expr))
+
+        return ir
+
     def get_indexed_rhs(
         self,
         use_cse: bool = True,
