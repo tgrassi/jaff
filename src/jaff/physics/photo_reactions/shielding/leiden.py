@@ -38,7 +38,7 @@ def get_shielding(reaction: Reaction, network: Network) -> Expr:
 
     shielding_table = h5obj.to_dict(h5group, include=sprops["shielded_by"])
     h5obj.from_dict(
-        f"{reaction.metadata['jaffgen']['jaffgen_object'].jaffgen_config['output_dir']}/shielding_{reaction.serialized}",
+        f"{reaction.metadata['jaffgen']['jaffgen_object'].jaffgen_config['output_dir']}/shielding_{reaction.serialized}.hdf5",
         shielding_table,
     )
 
