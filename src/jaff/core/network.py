@@ -198,8 +198,6 @@ class Network:
         else:
             self.__load_network_from_jaff_file(jaff_props)
         self.__normalize_network_extras(replace_nH)
-        for reaction in self.reactions:
-            print(reaction.rate)
 
         self.check_sink_sources(errors)
         self.check_recombinations(errors)
