@@ -171,6 +171,110 @@ tabulated entry exists.
 
 ---
 
+## Shielding
+
+Photo-rates computed from cross sections assume an _unattenuated_ radiation
+field. In a real cloud the photons that drive a reaction are absorbed by
+intervening gas — including the dissociating species shielding itself
+("self-shielding"). JAFF models this with a dimensionless **shielding factor**
+$f_\text{sh} \in [0, 1]$ that multiplies the rate coefficient:
+
+$$
+k_i \;\longrightarrow\; k_i \cdot f_\text{sh}
+$$
+
+The factor is applied to **every band** of a reaction (it multiplies each
+band's $k_i$ before the band sum), so a single $f_\text{sh}$ attenuates the
+whole reaction rate. $f_\text{sh}$ is a symbolic expression in runtime
+quantities — column densities (`ncol_<species>`) and, for H2, the velocity
+dispersion (`vdisp`) — that the host code supplies at integration time.
+
+When a shielding function depends on **several** shielding species, the
+per-species factors are **multiplied together**:
+
+$$
+f_\text{sh} = \prod_{s} f_s\big(N_s\big)
+$$
+
+### Enabling shielding
+
+Shielding is opt-in per reaction, declared in `jaff.toml` under
+`[reaction.<serialized>.shielding]` (see the
+[configuration reference](../code-generation/jaff-toml.md#reactionserializedshielding-section)).
+The reaction **must be a photo-reaction**; the `type` key selects the shielding
+function (default `"leiden"`).
+
+```toml
+# Leiden tabulated line shielding for CO photodissociation
+[reaction.CO__C_O.shielding]
+type        = "leiden"
+radiation   = "ISRF"           # radiation-field subgroup (default "ISRF")
+shielded_by = ["self", "H2"]   # shielding species; "self" = the reactant (CO)
+
+# H2 self-shielding via the Hartwig et al. (2015) fit
+[reaction.H2__H_H.shielding]
+type      = "hg2015"
+min_ncol  = 1.0e-35            # optional floors (see below)
+min_vdisp = 1.0e-20
+```
+
+### Shielding types
+
+| `type`     | Function                               | Reactions          | Reference                                                                                                                                                                                |
+| ---------- | -------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"leiden"` | Leiden tabulated tables                | any photo-reaction | [Leiden photodissociation database](https://home.strw.leidenuniv.nl/~ewine/photo/); [Heays et al. 2017, A&A 602, A105](https://ui.adsabs.harvard.edu/abs/2017A%26A...602A.105H/abstract) |
+| `"db1996"` | H2 self-shielding fit ($\alpha = 2$)   | `H2__H_H`          | [Draine & Bertoldi 1996, ApJ 468, 269](https://ui.adsabs.harvard.edu/abs/1996ApJ...468..269D/abstract) (DOI [10.1086/177689](https://doi.org/10.1086/177689))                            |
+| `"hg2015"` | H2 self-shielding fit ($\alpha = 1.1$) | `H2__H_H`          | [Hartwig et al. 2015, MNRAS 452, 1233](https://ui.adsabs.harvard.edu/abs/2015MNRAS.452.1233H/abstract) (DOI [10.1093/mnras/stv1368](https://doi.org/10.1093/mnras/stv1368))              |
+
+#### Leiden tabulated shielding (`type = "leiden"`)
+
+The shielding factor is read from the collapsed Leiden tables
+(`data/shielding/leiden.hdf5`, one group per reaction, downloaded on first use
+alongside the cross sections). Parameters:
+
+| Key           | Required | Default  | Description                                                                                                     |
+| ------------- | -------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `shielded_by` | **yes**  | —        | List of shielding species. Allowed: `"self"` (the reactant's own column), `"H2"`, `"H"`, `"C"`, `"N2"`, `"CO"`. |
+| `radiation`   | no       | `"ISRF"` | Radiation-field subgroup in the table (e.g. `"ISRF"`, `"bb-10000"`, `"Ly-alpha"`).                              |
+
+For each species in `shielded_by`, JAFF emits a per-reaction
+`shielding_<reaction>.hdf5` table next to the generated code and one
+[interpolation call](../code-generation/table-interpolation.md)
+`interp_<index>_shielding_<species>(ncol_<species>)`; the total factor is their
+product. `"self"` resolves to the reaction's reactant, so it interpolates over
+that species' own column density (e.g. `ncol_CO` for `CO__C_O`).
+
+#### H2 self-shielding (`type = "db1996"` / `"hg2015"`)
+
+Both apply only to the `H2__H_H` (H2 → H + H) reaction and evaluate the
+standard three-term analytic fit
+
+$$
+f_\text{sh} = \frac{0.965}{(1 + x/b_5)^{\alpha}}
+  + \frac{0.035}{(1 + x)^{1/2}}\,
+    \exp\!\big(-8.5\times10^{-4}\,(1 + x)^{1/2}\big)
+$$
+
+with $x = N_{\text{H2}}/5\times10^{14}\,\text{cm}^{-2}$ and
+$b_5 = b/10^5\,\text{cm s}^{-1}$, where the Doppler parameter
+$b = \sqrt{2}\,\sigma_v$. The exponent $\alpha$ is the only difference between
+the two: $\alpha = 2$ for `db1996`, $\alpha = 1.1$ for `hg2015`. The runtime
+inputs are the H2 column density `ncol_H2` and velocity dispersion `vdisp`.
+
+| Key         | Required | Default | Description                                                          |
+| ----------- | -------- | ------- | -------------------------------------------------------------------- |
+| `min_ncol`  | no       | `1e-50` | Lower floor applied in the fit to avoid a zero denominator (cm⁻²).   |
+| `min_vdisp` | no       | `1e-50` | Lower floor applied in the fit to avoid a zero denominator (cm s⁻¹). |
+
+<!-- prettier-ignore -->
+!!! note "Shielding is exposed programmatically too"
+    `jaff.physics.Photochemistry.shielding(reaction, network)` returns the
+    symbolic factor and caches it on
+    `reaction.metadata["shielding"]["value"]`; the radiation integrator reuses
+    that cached value across bands.
+
+---
+
 ## Python API
 
 ```python
