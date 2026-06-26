@@ -229,8 +229,11 @@ nav = [
         "api/drivers/sqlite/table/index.md",
         "api/drivers/sqlite/table/all_rows.md",
         "api/drivers/sqlite/table/rows.md",
+        "api/drivers/sqlite/table/get_cell.md",
+        "api/drivers/sqlite/table/set_cell.md",
         "api/drivers/sqlite/table/insert_row.md",
         "api/drivers/sqlite/table/insert_rows.md",
+        "api/drivers/sqlite/table/add_column.md",
         "api/drivers/sqlite/table/delete.md"
       ] },
       { "drivers.JaffDb" = ["api/drivers/sqlite/jaffdb/index.md"] },
