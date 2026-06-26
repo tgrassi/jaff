@@ -41,12 +41,14 @@ class Photochemistry:
     """
 
     def __init__(self):
-        """Ensure the cross-section data files are available locally.
+        """Ensure the cross-section and shielding data files are available locally.
 
         Constructing a :class:`Photochemistry` triggers
-        :func:`~jaff.drivers.pooch.download_xsecs`, which downloads the Leiden /
-        NORAD / Verner files on first use (a network fetch unless already
-        cached). Instantiate once and reuse rather than per reaction.
+        :func:`~jaff.drivers.pooch.download_xsecs` (Leiden / NORAD / Verner
+        cross sections) and :func:`~jaff.drivers.pooch.download_shielding` (the
+        Leiden line-shielding tables), downloading both on first use (a network
+        fetch unless already cached). Instantiate once and reuse rather than per
+        reaction.
         """
         download_xsecs()
         download_shielding()
@@ -144,6 +146,39 @@ class Photochemistry:
 
     @staticmethod
     def shielding(reaction: Reaction, network: Network) -> Expr:
+        """Build the symbolic shielding factor for a photo-reaction.
+
+        The ``photo_reaction_shielding`` table records, per reaction, the
+        available shielding function names split into ``global`` (shared across
+        reactions, loaded from ``SHIELDING_FUNCTIONS_DIR/<type>.py``) and
+        ``local`` (reaction-specific, loaded from
+        ``SHIELDING_FUNCTIONS_DIR/<reaction>/<type>.py``).  The function named by
+        ``reaction.metadata["shielding"]["type"]`` is loaded dynamically and its
+        ``get_shielding(reaction, network)`` is called to produce the factor.
+
+        The result is cached on ``reaction.metadata["shielding"]["value"]`` so
+        repeated calls (e.g. once per radiation band) reuse it.
+
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to shield; its ``metadata["shielding"]["type"]`` selects
+            the shielding function.
+        network : Network
+            Network the reaction belongs to, forwarded to the shielding
+            function for species/column-density look-ups.
+
+        Returns
+        -------
+        sympy.Expr
+            Dimensionless shielding factor multiplying the photo-rate.
+
+        Raises
+        ------
+        ParserError
+            If the reaction has no shielding entry, or ``type`` is not listed in
+            the reaction's ``global`` or ``local`` shielding functions.
+        """
         with JaffDb() as jdb:
             table = jdb.table("photo_reaction_shielding")
             rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")

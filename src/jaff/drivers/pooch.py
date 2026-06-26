@@ -110,7 +110,7 @@ class Pooch:
         Notes
         -----
         ``__new__`` returns cached instances, but Python still re-invokes
-        ``__init__`` on each construction. The ``__initialized`` guard makes
+        ``__init__`` on each construction. The ``_initialized`` guard makes
         repeat calls a no-op so the fetcher and registry are built only once.
         """
         if getattr(self, "_initialized", False):
@@ -154,6 +154,12 @@ def download_xsecs() -> None:
 
 
 def download_shielding() -> None:
+    """Fetch the line-shielding data files into ``data/shielding``.
+
+    Downloads the collapsed Leiden line-shielding HDF5 file from the ANU
+    mirror, caching it under the package ``data/shielding`` directory. Files
+    already present and hash-valid are not re-downloaded.
+    """
     pooch = Pooch(
         "https://www.mso.anu.edu.au/~anishs",
         Path(__file__).parent.parent / "data",
