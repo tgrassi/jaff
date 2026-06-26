@@ -1,0 +1,13 @@
+[radiation]
+bands = [13.6, "inf"]
+power_law_index = 0
+energy_density = false
+rsl = 2.99792458e10
+
+[reaction.CO__C_O.shielding]
+type = "Leiden"
+radiation = "ISRF"
+shielded_by = ["self", "H2"]
+
+[reaction.H2__H_H.shielding]
+type = "HG2015"
