@@ -844,7 +844,7 @@ def write_data_table(
             }
         )
 
-        HDF5().from_dict(fname, hdfdict)
+        HDF5().from_dict(fname, hdfdict, mode="w")
 
     # Write output in appropriate format
     if out_type == "txt":

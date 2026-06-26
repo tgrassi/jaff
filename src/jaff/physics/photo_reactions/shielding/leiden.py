@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from astropy.units.cds import K
 from sympy import Expr, Float, parse_expr
 
 from ....config import SHIELDING_DATA_DIR
@@ -33,13 +34,18 @@ def get_shielding(reaction: Reaction, network: Network) -> Expr:
         raise ParserError(f"Invalid shielding specie detected for reaction: {reaction}")
 
     sprops["radiation"] = sprops["radiation"].lower()
-    h5group = f"{SHIELDING_DATA_DIR}/leiden.hdf5::{reaction.serialized}"
+    h5group_core = f"{SHIELDING_DATA_DIR}/leiden.hdf5::{reaction.serialized}"
+    h5group_rad = f"{h5group_core}/{sprops['radiation']}"
     h5obj = HDF5()
 
-    shielding_table = h5obj.to_dict(h5group, include=sprops["shielded_by"])
+    ncol = h5obj.to_dict(h5group_core, include="N")
+    shielding_table = h5obj.to_dict(h5group_rad, include=sprops["shielded_by"])
+    h5dict = {**ncol, **shielding_table}
+
     h5obj.from_dict(
         f"{reaction.metadata['jaffgen']['jaffgen_object'].jaffgen_config['output_dir']}/shielding_{reaction.serialized}.hdf5",
-        shielding_table,
+        h5dict,
+        mode="w",
     )
 
     shielding: Expr = Float(1.0)
