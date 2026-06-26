@@ -303,6 +303,8 @@ class Reaction:
             ):
                 if self.rate.func.__name__ == "photorates":
                     rtype = "photo"
+            elif "photden" in str(self.rate) or "radeden" in str(self.rate):
+                rtype = "photo"
             elif self.rate.has(symbols("crate")):
                 rtype = "cosmic_ray"
             elif self.rate.has(symbols("av")):

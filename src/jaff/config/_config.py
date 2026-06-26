@@ -1,9 +1,9 @@
 from pathlib import Path
 
 CONFIG_DIR = Path(__file__).resolve().parent
-JAFF_DIR = CONFIG_DIR
-SRC_DIR = CONFIG_DIR.parent
-NETWORK_DIR = CONFIG_DIR.parent.parent / "network"
+JAFF_DIR = CONFIG_DIR.parent
+SRC_DIR = JAFF_DIR.parent
+NETWORK_DIR = SRC_DIR.parent / "network"
 DATA_DIR = JAFF_DIR / "data"
 XSECS_DATA_DIR = DATA_DIR / "xsecs"
 SHIELDING_DATA_DIR = DATA_DIR / "shielding"

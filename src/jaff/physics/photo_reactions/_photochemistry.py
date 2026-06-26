@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from sympy import Basic, Expr, sympify
 
 from ...common._helper import load_module_from_path
-from ...config import SHIELDING_FUNCTIONS_DIR
+from ...config import SHIELDING_FUNCTIONS_DIR, SRC_DIR
 from ...drivers import HDF5, JaffDb
 from ...drivers.pooch import download_xsecs
 from ...errors import ParserError
@@ -29,6 +29,7 @@ from ._typing import XsecsProps
 
 if TYPE_CHECKING:
     from ...core import Reaction
+    from ...core.network import Network
 
 
 class Photochemistry:
@@ -141,7 +142,7 @@ class Photochemistry:
         return xsecs
 
     @staticmethod
-    def shielding(reaction: Reaction) -> Expr:
+    def shielding(reaction: Reaction, network: Network) -> Expr:
         with JaffDb() as jdb:
             table = jdb.table("photo_reaction_shielding")
             rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")
@@ -162,8 +163,9 @@ class Photochemistry:
         else:
             raise ParserError(f"Invalid shielding type: {sprops['type']}")
 
-        smod = load_module_from_path(fpath, "shielding")
-        shielding = smod.get_shielding(reaction)
-        reaction.metadata["shielding"]["value"] = shielding
+        module_name = ".".join(fpath.resolve().relative_to(SRC_DIR).with_suffix("").parts)
+        smod = load_module_from_path(fpath, module_name)
+        shielding_expr = smod.get_shielding(reaction, network)
+        reaction.metadata["shielding"]["value"] = shielding_expr
 
-        return shielding
+        return shielding_expr

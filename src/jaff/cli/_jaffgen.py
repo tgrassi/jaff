@@ -212,31 +212,18 @@ class JaffGen:
             if table_props:
                 self.__handle_data_tables(table_props)
 
-        # Create the Network instance and immediately run code generation.
-        self.net: Network = Network(**self.jaffgen_config["netprops"])
-
         reaction_props = None
         if self.jaffgen_config_raw:
             reaction_props = self.jaffgen_config_raw.get_key("reaction")
 
         if reaction_props:
-            for reaction, rprops in reaction_props.items():
-                if reaction not in self.net.reactions:
-                    raise ParserError(f"Invalid serialized reaction: {reaction}")
+            self.jaffgen_config["netprops"]["_metadata"] = {
+                "reaction_props": reaction_props,
+                "jaffgen_object": self,
+            }
 
-                if "shielding" in rprops:
-                    if self.net.reactions[reaction].get_rtype() != "photo":
-                        raise ParserError(f"{reaction} is not a photo reaction")
-
-                    shielding_props = rprops["shielding"]
-                    if "type" not in shielding_props:
-                        shielding_props["type"] = "leiden"
-
-                    self.net.reactions[reaction].metadata["shielding"] = {
-                        k: (v.lower() if isinstance(v, str) else v)
-                        for k, v in shielding_props.items()
-                    }
-
+        # Create the Network instance and immediately run code generation.
+        self.net: Network = Network(**self.jaffgen_config["netprops"])
         self.__process_files()
 
     # ------------------------------------------------------------------

@@ -22,8 +22,10 @@ import logging
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+from astropy.io.votable import UnimplementedWarning
 from sympy import (
     Basic,
     Expr,
@@ -107,6 +109,7 @@ class Network:
         rad_energy_density: bool = False,
         c: float = constants.c.cgs.value,  # Speed of light in cgs unit
         _from_cli: bool = False,
+        _metadata: dict[str, Any] = {},
     ):
         """Load a reaction network from *fname*.
 
@@ -168,6 +171,7 @@ class Network:
         if not _from_cli:
             print(motd())
 
+        self._metadata: dict[str, Any] = _metadata
         self._replace_nH: bool = replace_nH
         self.mass_dict: dict[str, ElementProps] = {}
         self.species: Species = Species()
@@ -194,7 +198,9 @@ class Network:
             self.__load_network(fname, funcfile, replace_nH)
         else:
             self.__load_network_from_jaff_file(jaff_props)
-        self.__normalize_nework_extras(replace_nH)
+        self.__normalize_network_extras(replace_nH)
+        for reaction in self.reactions:
+            print(reaction.rate)
 
         self.check_sink_sources(errors)
         self.check_recombinations(errors)
@@ -304,8 +310,18 @@ class Network:
                 self.__detect_undefined_functions(expr, undef_funcs, interp_funcs)
 
             rea = Reaction(
-                rr, pp, rate_expr, tmin, tmax, deltaE, deltaRad, reaction["string"], i
+                reactants=rr,
+                products=pp,
+                rate=rate_expr,
+                tmin=tmin,
+                tmax=tmax,
+                dE=deltaE,
+                dRad=deltaRad,
+                original_string=reaction["string"],
+                index=i,
             )
+            if "reaction_props" in self._metadata:
+                self.__parse_reaction_metadata(rea)
             self.reactions.add(rea)
 
             if is_photoreaction:
@@ -382,7 +398,7 @@ class Network:
 
                 self.radiation.set_reaction_rate_coefficient(rea)
 
-    def __normalize_nework_extras(self, replace_nH):
+    def __normalize_network_extras(self, replace_nH):
         """Standardize convenience symbols in all rate and auxiliary expressions.
 
         Replaces shorthand symbols (``nh``, ``ne``, ``ntot``, ``n_X``, …) with
@@ -481,6 +497,27 @@ class Network:
             raise ParserError(f"Rate expression is not an Expr: {rate_expr}")
 
         return rate_expr, is_photoreaction, n_photo
+
+    def __parse_reaction_metadata(self, reaction: Reaction) -> None:
+        if reaction.serialized not in self._metadata["reaction_props"]:
+            return
+
+        rprops = self._metadata["reaction_props"][reaction.serialized]
+        if "shielding" in rprops:
+            if reaction.rtype() != "photo":
+                raise ParserError(f"{reaction} is not a photo reaction")
+
+            shielding_props = rprops["shielding"]
+            if "type" not in shielding_props:
+                shielding_props["type"] = "leiden"
+
+            reaction.metadata["shielding"] = {
+                k: (v.lower() if isinstance(v, str) else v)
+                for k, v in shielding_props.items()
+            }
+            reaction.metadata["jaffgen"] = {
+                "jaffgen_object": self._metadata["jaffgen_object"]
+            }
 
     @staticmethod
     def __detect_undefined_functions(

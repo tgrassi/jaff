@@ -58,6 +58,7 @@ from ._photochemistry import Photochemistry
 from ._typing._photochemistry import XsecsProps
 
 if TYPE_CHECKING:
+    from ...core.network import Network
     from ...core.reaction import Reaction
 
 
@@ -98,7 +99,8 @@ class RadiationGroup:
         :class:`~jaff.physics._typing.RadiationGroupReactionProps` dict with
         keys:
 
-        - ``"k"``         : symbolic rate coefficient for this band.
+        - ``"k"``         : symbolic rate coefficient (SymPy ``Expr``) for
+          this band.
         - ``"xsec"``      : photon-number-weighted band-average cross section
           (cm²), or ``None`` for custom-rate reactions.
         - ``"xsec_frac"`` : fraction of the total cross section (or total
@@ -201,6 +203,7 @@ class Radiation:
 
     def __init__(
         self,
+        network: Network,
         bands: list[int | float | str | sp.Basic],
         powerlaw_idx: int | float,
         energy_density: bool,
@@ -222,6 +225,7 @@ class Radiation:
         c : float
             Speed of light in cm/s (CGS).
         """
+        self.network: Network = network
         self.bands: list[int | float | sp.Basic] = []
         self.powerlaw_idx: int | float = powerlaw_idx
         self.energy_density: bool = energy_density
@@ -351,7 +355,7 @@ class Radiation:
                 if "value" in reaction.metadata["shielding"]:
                     k *= reaction.metadata["shielding"]["value"]
                 else:
-                    k *= Photochemistry.shielding(reaction)
+                    k *= Photochemistry.shielding(reaction, self.network)
 
             self.groups[i].props[reaction] = {
                 "k": k,
