@@ -23,7 +23,7 @@ from sympy import Basic, Expr, sympify
 from ...common._helper import load_module_from_path
 from ...config import SHIELDING_FUNCTIONS_DIR, SRC_DIR
 from ...drivers import HDF5, JaffDb
-from ...drivers.pooch import download_xsecs
+from ...drivers.pooch import download_shielding, download_xsecs
 from ...errors import ParserError
 from ._typing import XsecsProps
 
@@ -49,6 +49,7 @@ class Photochemistry:
         cached). Instantiate once and reuse rather than per reaction.
         """
         download_xsecs()
+        download_shielding()
 
     def get_verner_xsec(self, reaction: Reaction) -> Basic | None:
         """

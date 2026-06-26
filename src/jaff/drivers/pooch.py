@@ -146,8 +146,18 @@ def download_xsecs() -> None:
     already present and hash-valid are not re-downloaded.
     """
     pooch = Pooch(
-        "https://www.mso.anu.edu.au/~anishs/",
-        Path(__file__).parent.parent / "data" / "xsecs",
+        "https://www.mso.anu.edu.au/~anishs",
+        Path(__file__).parent.parent / "data",
     )
-    for file in ["leiden.hdf5", "norad.hdf5", "verner_1996.csv"]:
+    for file in ["xsecs/leiden.hdf5", "xsecs/norad.hdf5", "xsecs/verner_1996.csv"]:
+        pooch.fetch_file(file)
+
+
+def download_shielding() -> None:
+    pooch = Pooch(
+        "https://www.mso.anu.edu.au/~anishs",
+        Path(__file__).parent.parent / "data",
+    )
+
+    for file in ["shielding/leiden.hdf5"]:
         pooch.fetch_file(file)
