@@ -11,11 +11,11 @@ if TYPE_CHECKING:
     from ....core.network import Network
 
 LEIDEN_SPECIES_MAP: dict[str, str] = {
-    "H2": "n_H2",
-    "H": "n_H",
-    "C": "n_C",
-    "N2": "n_N2",
-    "CO": "n_CO",
+    "H2": "H2",
+    "H": "H",
+    "C": "C",
+    "N2": "N2",
+    "CO": "CO",
     "self": "",
 }
 
@@ -28,7 +28,7 @@ def get_shielding(reaction: Reaction, network: Network) -> Expr:
     if "radiation" not in sprops:
         sprops["radiation"] = "ISRF"
 
-    species_map = {**LEIDEN_SPECIES_MAP, "self": f"n_{reaction.reactants[0]}"}
+    species_map = {**LEIDEN_SPECIES_MAP, "self": f"{reaction.reactants[0]}"}
     if any(sp not in species_map for sp in sprops["shielded_by"]):
         raise ParserError(f"Invalid shielding specie detected for reaction: {reaction}")
 
@@ -45,7 +45,7 @@ def get_shielding(reaction: Reaction, network: Network) -> Expr:
     shielding: Expr = Float(1.0)
     for specie in sprops["shielded_by"]:
         shielding *= parse_expr(
-            f"interp_{reaction.index}_shielding_{specie}({species_map[specie]})"
+            f"interp_{reaction.index}_shielding_{specie}(ncol_{species_map[specie]})"
         )
 
     return shielding
