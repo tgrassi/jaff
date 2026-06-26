@@ -113,9 +113,9 @@ class Pooch:
         ``__init__`` on each construction. The ``__initialized`` guard makes
         repeat calls a no-op so the fetcher and registry are built only once.
         """
-        if getattr(self, "__initialized", False):
+        if getattr(self, "_initialized", False):
             return
-        self.__initialized = True
+        self._initialized = True
 
         self.pooch: pooch.Pooch = pooch.create(
             path=cache_path,
