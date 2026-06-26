@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from astropy.io.votable import UnimplementedWarning
 from sympy import (
     Basic,
     Expr,
