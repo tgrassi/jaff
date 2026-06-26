@@ -22,22 +22,25 @@ Physical constants and photochemical cross-section lookup for astrochemical calc
 
 ## Photochemistry methods
 
-`jaff.physics.Photochemistry` resolves a reaction's cross sections from `jaff.db`.
-Constructing it downloads the cross-section data files on first use (cached
-thereafter), so instantiate once and reuse:
+`jaff.physics.Photochemistry` resolves a reaction's cross sections and
+shielding factors from `jaff.db`. Constructing it downloads the cross-section
+and line-shielding data files on first use (cached thereafter), so instantiate
+once and reuse:
 
 ```python
 from jaff.physics import Photochemistry
 
 photo = Photochemistry()
-photo.get_xsec(rxn)         # XsecsProps from the tabulated databases
-photo.get_verner_xsec(rxn)  # analytic Verner σ(E) (sympy) or None
+photo.get_xsec(rxn)              # XsecsProps from the tabulated databases
+photo.get_verner_xsec(rxn)       # analytic Verner σ(E) (sympy) or None
+Photochemistry.shielding(rxn, net)  # symbolic shielding factor (sympy)
 ```
 
-| Method                      | Returns               | Description                                                                                                                           |
-| --------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `get_xsec(reaction)`        | `XsecsProps or None`  | Tabulated cross sections (Leiden / NORAD): `photon_energy` (eV) plus `photo_absorption`/`photo_ionization`/`photo_dissociation` (cm²) |
-| `get_verner_xsec(reaction)` | `sympy.Basic or None` | Analytic Verner (1996) σ(E) expression (symbol `E` in erg, σ in cm²)                                                                  |
+| Method                          | Returns               | Description                                                                                                              |
+| ------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `get_xsec(reaction)`            | `XsecsProps or None`  | Tabulated cross sections (Leiden / NORAD): `photon_energy` (eV) plus `photo_absorption` and `photodecay` (cm²)          |
+| `get_verner_xsec(reaction)`     | `sympy.Basic or None` | Analytic Verner (1996) σ(E) expression (symbol `E` in erg, σ in cm²)                                                     |
+| `shielding(reaction, network)`  | `sympy.Expr`          | Dimensionless line-shielding factor; dispatches to the global/local shielding function named by the reaction metadata   |
 
 ## Unit systems
 

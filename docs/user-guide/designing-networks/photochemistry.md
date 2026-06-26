@@ -135,28 +135,30 @@ files are not bundled in the package: on first network load JAFF downloads them
 reuses the cached copies on subsequent runs:
 
 ```text
-src/jaff/data/xsecs/leiden.hdf5      # one group per reaction (abs/diss/ion)
-src/jaff/data/xsecs/norad.hdf5       # one group per reaction (ionization)
+src/jaff/data/xsecs/leiden.hdf5      # one group per reaction (absorption + decay)
+src/jaff/data/xsecs/norad.hdf5       # one group per reaction (ionization decay)
 src/jaff/data/xsecs/verner_1996.csv  # analytic-fit parameters
 ```
 
 `photon_energy` is stored in **eV** and every cross-section dataset
-(`photoabsorption` / `photodissociation` / `photoionization`) in **cm²**.
+(`photoabsorption` / `photodecay`) in **cm²**, where `photodecay` is the
+reaction's single ionization-or-dissociation channel.
 
 These assets feed two SQLite tables in `jaff.db`, which is what JAFF actually
 queries at runtime (see [Codebase Structure](../../development/codebase-structure.md)):
 
-- `photo_reaction_cross_sections` — one row per reaction, with `pa`/`pi`/`pd`
-  process flags and a `file.hdf5::<group>` pointer into the Leiden or NORAD
-  HDF5 file.
+- `photo_reaction_cross_sections` — one row per reaction, with a
+  `photo_absorption` flag, a `decay_type` (`"ionization"` / `"dissociation"`)
+  and a `file.hdf5::<group>` pointer into the Leiden or NORAD HDF5 file.
 - `verner_cross_sections` — the Verner analytic σ(E) expression as a
   SymPy-parseable string (symbol `E`, photon energy in erg, σ in cm²).
 
 ### What lands on the reaction
 
 For tabulated sources, `reaction.xsecs_dict` is an `XsecsProps` dict carrying
-the `photon_energy` grid (eV) plus any of `photo_absorption`,
-`photo_dissociation`, `photo_ionization` (cm² arrays, or `None`). The radiation
+the `photon_energy` grid (eV) plus `photo_absorption` and the single
+`photodecay` channel (cm² arrays, or `None`); `_equations["decay_type"]`
+records whether that channel is ionization or dissociation. The radiation
 integrator reads these arrays directly and integrates them numerically over
 each band; for photoionization it falls back to the Verner analytic fit when no
 tabulated entry exists.
@@ -190,7 +192,7 @@ for rxn in photo:
 # Cross sections are attached at load time
 rxn = photo[0]
 rxn.xsecs_dict["photon_energy"]     # eV grid
-rxn.xsecs_dict["photo_ionization"]  # cm² array (or None)
+rxn.xsecs_dict["photodecay"]        # cm² array (or None)
 rxn.plot_xsecs()                    # visualise σ(E)
 
 # Symbolic radiation ODEs
@@ -199,7 +201,8 @@ print(net.sradodes())
 
 Cross-section lookup is also exposed directly via the
 `jaff.physics.Photochemistry` class. Constructing it downloads the cross-section
-data files on first use (cached thereafter), so instantiate once and reuse:
+and line-shielding data files on first use (cached thereafter), so instantiate
+once and reuse:
 
 ```python
 from jaff.physics import Photochemistry

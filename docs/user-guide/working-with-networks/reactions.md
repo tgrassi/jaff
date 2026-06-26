@@ -109,7 +109,7 @@ net.reactions[0].rate       # photorates(1, 13.6, 1.0e+99)
 | `serialized_exploded` | `str`           | Canonical **atom-level** identity (isomer-insensitive)                    |
 | `metadata`            | `dict`          | Key/value store; `metadata["type"]` holds the classified reaction type    |
 | `custom_rad_rate`     | `bool`          | `True` when the radiation rate came from a `.jfunc`, not cross-sections   |
-| `xsecs_dict`          | `XsecsProps or None` | Photo cross-section data: `photon_energy` (eV) plus `photo_absorption`/`photo_ionization`/`photo_dissociation` (cm²); else `None` |
+| `xsecs_dict`          | `XsecsProps or None` | Photo cross-section data for the reaction's single decay channel: `photon_energy` (eV) plus `photo_absorption` and `photodecay` (cm²); else `None` |
 
 <!-- prettier-ignore -->
 !!! tip "`reactants` and `products` are `Species` Catalogues"
@@ -243,15 +243,16 @@ photo = net.reactions[0]
 
 photo.rate                              # photorates(1, 13.6, 1.0e+99)
 photo.xsecs_dict.keys()                 # units, _equations, photon_energy,
-                                        #   photo_absorption, photo_ionization,
-                                        #   photo_dissociation
+                                        #   photo_absorption, photodecay
 len(photo.xsecs_dict["photon_energy"])  # number of grid points (energies in eV)
-photo.xsecs_dict["photo_ionization"]    # cross sections in cm^2 (or None)
+photo.xsecs_dict["photodecay"]          # cross sections in cm^2 (or None)
 ```
 
 The `photon_energy` grid is in eV and each process array is in cm² (or `None`
 when that process has no data for the reaction). The `_equations` sub-dict
-carries boolean `pa`/`pi`/`pd` flags marking which processes apply.
+carries the boolean `pa` photo-absorption flag and `decay_type`
+(`"ionization"` or `"dissociation"`), identifying the single decay channel held
+in `photodecay`.
 
 The catalogue gives you dedicated ways to pick them out:
 
@@ -406,7 +407,7 @@ rec.plot_rate_coefficient()         # rate vs temperature (log–log)
 
 photo = net.reactions[0]
 photo.plot_xsecs()                              # all processes, overlay, eV vs Mb
-photo.plot_xsecs(processes="photo_ionization")  # one process only
+photo.plot_xsecs(processes="photodecay")        # one process only
 photo.plot_xsecs(layout="subplots")             # one stacked panel per process
 photo.plot_xsecs(energy_unit="nm", xsec_unit="cm^2")  # wavelength + cm² axes
 photo.plot_xsecs(save=True, filename="h_xsec.pdf")    # write to disk
