@@ -13,7 +13,7 @@ jobs:
     test-notebooks:
         runs-on: ubuntu-latest
         strategy:
-            max-parallel: 1
+            fail-fast: false
             matrix:
                 python-version: ['3.11', '3.12', '3.13']
 
@@ -32,22 +32,16 @@ jobs:
 
             - name: Install dependencies
               run: |
-                  uv pip install --system .
+                  uv pip install --system -e .
                   uv pip install --system nbconvert ipykernel matplotlib scipy
-
-            - name: Locate jaff data dir
-              id: datadir
-              run: |
-                  dir=$(python -c 'import jaff, os; print(os.path.join(os.path.dirname(jaff.__file__), "data"))')
-                  echo "dir=$dir" >> "$GITHUB_OUTPUT"
 
             - name: Cache downloaded xsec/shielding data
               uses: actions/cache@v4
               with:
-                  path: ${{ steps.datadir.outputs.dir }}
-                  key: jaff-data-${{ matrix.python-version }}-${{ hashFiles('src/jaff/registry.txt') }}
+                  path: src/jaff/data
+                  key: jaff-data-${{ hashFiles('src/jaff/registry.txt') }}
                   restore-keys: |
-                      jaff-data-${{ matrix.python-version }}-
+                      jaff-data-
 
             - name: Find and run notebooks
               run: |

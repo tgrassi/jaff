@@ -33,20 +33,13 @@ jobs:
               run: |
                   uv pip install --system -e ".[dev]"
 
-            - name: Locate jaff data dir
-              id: datadir
-              shell: bash
-              run: |
-                  dir=$(python -c 'import jaff, os; print(os.path.join(os.path.dirname(jaff.__file__), "data"))')
-                  echo "dir=$dir" >> "$GITHUB_OUTPUT"
-
             - name: Cache downloaded xsec/shielding data
               uses: actions/cache@v4
               with:
-                  path: ${{ steps.datadir.outputs.dir }}
-                  key: jaff-data-${{ matrix.os }}-${{ matrix.python-version }}-${{ hashFiles('src/jaff/registry.txt') }}
+                  path: src/jaff/data
+                  key: jaff-data-${{ matrix.os }}-${{ hashFiles('src/jaff/registry.txt') }}
                   restore-keys: |
-                      jaff-data-${{ matrix.os }}-${{ matrix.python-version }}-
+                      jaff-data-${{ matrix.os }}-
 
             - name: Run tests with pytest
               run: |
