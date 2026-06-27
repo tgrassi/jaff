@@ -292,6 +292,9 @@ class Reaction:
 
         The result is also cached in ``self.metadata["type"]``.
         """
+        if "type" in self.metadata:
+            return self.metadata["type"]
+
         rtype = "unknown"
 
         if type(self.rate) is str:
@@ -303,7 +306,10 @@ class Reaction:
             ):
                 if self.rate.func.__name__ == "photorates":
                     rtype = "photo"
-            elif "photden" in str(self.rate) or "radeden" in str(self.rate):
+            elif any(
+                getattr(s, "name", None) in ("photden", "radeden")
+                for s in self.rate.free_symbols
+            ):
                 rtype = "photo"
             elif self.rate.has(symbols("crate")):
                 rtype = "cosmic_ray"

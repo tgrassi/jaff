@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,19 @@ from ._typing import ElementProps
 from .elements import Elements
 from .reaction import Reaction, Reactions
 from .species import Specie, Species
+
+
+@lru_cache(maxsize=200000)
+def _parse_rate_expr(rate: str) -> Expr:
+    """Parse a rate string into a (non-evaluated) SymPy expression, memoized.
+
+    Large networks contain many reactions with identical rate strings (≈40% of
+    KIDA-2024 rates repeat), and the parsed expression depends only on the
+    string — species substitution happens later in ``_standardize_symbols`` —
+    so results are cached across reactions and networks.  SymPy expressions are
+    immutable, making the shared objects safe to reuse.
+    """
+    return parse_expr(rate, evaluate=False)
 
 
 class Network:
@@ -187,6 +201,11 @@ class Network:
         )
         self.__photochemistry: None | Photochemistry = None
 
+        self.__nden_symbol: MatrixSymbol | None = None
+        self.__ntot_sum: Expr | None = None
+        self.__element_sums: dict[str, Expr | None] = {}
+        self.__tgas_clamp_cache: dict[tuple[float | None, float | None], Expr] = {}
+
         self.logger.info(f"Loading network from {fname}")
         self.logger.info(f"Network label: [yellow]{self.label}[/]")
 
@@ -273,15 +292,18 @@ class Network:
 
             local_subs_dict = {**subs_dict}
 
-            local_subs_dict[tgas] = (
-                Max(Min(tgas, tmax), tmin)
-                if tmin and tmax
-                else Max(tgas, tmin)
-                if tmin
-                else Min(tgas, tmax)
-                if tmax
-                else tgas
-            )
+            clamp_key = (tmin, tmax)
+            if clamp_key not in self.__tgas_clamp_cache:
+                self.__tgas_clamp_cache[clamp_key] = (
+                    Max(Min(tgas, tmax), tmin)
+                    if tmin and tmax
+                    else Max(tgas, tmin)
+                    if tmin
+                    else Min(tgas, tmax)
+                    if tmax
+                    else tgas
+                )
+            local_subs_dict[tgas] = self.__tgas_clamp_cache[clamp_key]
             for sym, expr in local_subs_dict.items():
                 if sym != tgas and expr.has(tgas):
                     local_subs_dict[sym] = expr.xreplace({tgas: local_subs_dict[tgas]})
@@ -488,7 +510,7 @@ class Network:
 
                 rate_expr = f(n_photo, photo_args[1], photo_args[2])
         else:
-            rate_expr = parse_expr(rate, evaluate=False)
+            rate_expr = _parse_rate_expr(rate)
 
         if not isinstance(rate_expr, Expr):
             raise ParserError(f"Rate expression is not an Expr: {rate_expr}")
@@ -808,9 +830,15 @@ class Network:
             If ``True``, call ``sys.exit(1)`` when duplicates are detected.
         """
         has_duplicates = False
-        for i, rea1 in enumerate(self.reactions):
-            for rea2 in self.reactions[i + 1 :]:
-                if rea1 == rea2:
+        buckets: dict[str, list] = {}
+        for rea in self.reactions:
+            buckets.setdefault(rea.serialized, []).append(rea)
+
+        for group in buckets.values():
+            if len(group) < 2:
+                continue
+            for i, rea1 in enumerate(group):
+                for rea2 in group[i + 1 :]:
                     if rea1.tmin != rea2.tmin or rea1.tmax != rea2.tmax:
                         continue
                     if rea1.is_isomer_version(rea2):
@@ -851,17 +879,25 @@ class Network:
         if expr == Float(0.0):
             return Float(0.0)
 
-        nden = MatrixSymbol("nden", self.species.count, 1)
+        if self.__nden_symbol is None:
+            self.__nden_symbol = MatrixSymbol("nden", self.species.count, 1)
+        nden = self.__nden_symbol
         reps = {}
 
-        def get_element_sum(element):
-            terms = []
-            for i, spec in enumerate(self.species):
-                count = spec.exploded.count(element)
-                if count > 0:
-                    terms.append(count * nden[Idx(i)])
+        def get_ntot_sum():
+            if self.__ntot_sum is None:
+                self.__ntot_sum = sum(nden[Idx(i)] for i in range(self.species.count))
+            return self.__ntot_sum
 
-            return sum(terms) if terms else None
+        def get_element_sum(element):
+            if element not in self.__element_sums:
+                terms = []
+                for i, spec in enumerate(self.species):
+                    count = spec.exploded.count(element)
+                    if count > 0:
+                        terms.append(count * nden[Idx(i)])
+                self.__element_sums[element] = sum(terms) if terms else None
+            return self.__element_sums[element]
 
         simple_map = {
             "nh0": "H",
@@ -879,7 +915,7 @@ class Network:
             repl = None
 
             if low_name == "ntot":
-                repl = sum(nden[Idx(i)] for i in range(self.species.count))
+                repl = get_ntot_sum()
 
             elif low_name == "nh":
                 repl = get_element_sum("H") if replace_nH else symbols("nh")
