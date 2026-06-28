@@ -15,6 +15,13 @@ class UdfaReaction(NetworkFormat):
     priority = 50
     name = "udfa"
 
+    SPECIAL_MAP = {
+        "CR": "_CR",
+        "CRP": "_CRP",
+        "CRPHOT": "_CRPHOT",
+        "PHOTON": "_PHOTON",
+    }
+
     @cache
     def _global_re(self, ctx: ParseContext) -> re.Pattern:
         return re.compile(r"^(?!\s*[!#@]).*:.*$")
@@ -53,8 +60,6 @@ class UdfaReaction(NetworkFormat):
         if not local:
             self._handle_errors(match, ctx)
 
-        ignore_species = {"CR", "CRP", "PHOTON", "CRPHOT", ""}
-
         rtype: str = local.group("rtype")
         reactants: str = local.group("reactants")
         products: str = local.group("products")
@@ -81,12 +86,14 @@ class UdfaReaction(NetworkFormat):
             rate = rate_dict[rtype]
 
         rr = [
-            r.strip()
+            self.SPECIAL_MAP.get(r.strip(), r.strip())
             for r in reactants.split(":")[:-1]
-            if r.strip() not in ignore_species
+            if r.strip() != ""
         ]
         pp = [
-            p.strip() for p in products.split(":")[:-1] if p.strip() not in ignore_species
+            self.SPECIAL_MAP.get(p.strip(), p.strip())
+            for p in products.split(":")[:-1]
+            if p.strip() != ""
         ]
 
         ctx.parsed_list.append(

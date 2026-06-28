@@ -733,7 +733,7 @@ class Network:
         """
         produced = {p.name for rea in self.reactions for p in rea.products}
         consumed = {r.name for rea in self.reactions for r in rea.reactants}
-        species_names = {s.name for s in self.species if s.name != "dummy"}
+        species_names = {s.name for s in self.species if s.name != "_DUMMY"}
 
         sinks = species_names - produced
         sources = species_names - consumed

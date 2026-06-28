@@ -15,6 +15,32 @@ class UclchemReaction(NetworkFormat):
     priority = 70
     name = "uclchem"
 
+    SPECIAL_MAP = {
+        "CR": "_CR",
+        "CRP": "_CRP",
+        "CRPHOT": "_CRPHOT",
+        "PHOTON": "_PHOTON",
+    }
+
+    ELEMENT_REPS = {"HE": "He", "SI": "Si", "CL": "Cl", "MG": "Mg"}
+
+    IGNORE_SPECIES = {
+        "NAN",
+        "",
+        "ER",
+        "ERDES",
+        "FREEZE",
+        "H2FORM",
+        "BULKSWAP",
+        "DESCR",
+        "DESOH2",
+        "DEUVCR",
+        "LH",
+        "LHDES",
+        "SURFSWAP",
+        "THERM",
+    }
+
     @cache
     def _global_re(self, ctx: ParseContext) -> re.Pattern:
         return re.compile(r"^(?!\s*[!]|(?:\s*#\s)).*,\s*(?i:NAN)\s*(?:,|$)")
@@ -62,27 +88,6 @@ class UclchemReaction(NetworkFormat):
         tmax: float = float(local.group("tmax"))
         extrapolate: bool = local.group("extrapolate").strip().lower() == "true"
 
-        ignore_species = {
-            "CR",
-            "CRP",
-            "CRPHOT",
-            "PHOTON",
-            "NAN",
-            "",
-            "ER",
-            "ERDES",
-            "FREEZE",
-            "H2FORM",
-            "BULKSWAP",
-            "DESCR",
-            "DESOH2",
-            "DEUVCR",
-            "LH",
-            "LHDES",
-            "SURFSWAP",
-            "THERM",
-        }
-
         t_min: float = 3.0 if extrapolate else tmin
         t_max: float = 1e6 if extrapolate else tmax
 
@@ -90,7 +95,7 @@ class UclchemReaction(NetworkFormat):
         pp: list[str] = [
             self._normalize_species(p)
             for p in products.split(",")
-            if p.strip().upper() not in ignore_species
+            if p.strip().upper() not in self.IGNORE_SPECIES
         ]
 
         rate = "0.0"
@@ -104,7 +109,11 @@ class UclchemReaction(NetworkFormat):
             if r.upper() in rate_dict:
                 rate = rate_dict[r.upper()]
                 break
-        rr = [r for r in rr if r.strip().upper() not in ignore_species]
+        rr = [r for r in rr if r.strip().upper() not in self.IGNORE_SPECIES]
+
+        # Normalise exotics after rate selection (which keys off raw tokens).
+        rr = [self.SPECIAL_MAP.get(r, r) for r in rr]
+        pp = [self.SPECIAL_MAP.get(p, p) for p in pp]
 
         # FIXME: old parser sets rate = "0.0" at the very end
         rate = "0.0"
@@ -152,9 +161,7 @@ class UclchemReaction(NetworkFormat):
         if s == "E-":
             s = "e-"
 
-        reps = {"HE": "He", "SI": "Si", "CL": "Cl", "MG": "Mg"}
-
-        for k, v in reps.items():
+        for k, v in UclchemReaction.ELEMENT_REPS.items():
             s = s.replace(k, v)
 
         return s

@@ -15,6 +15,16 @@ class PrizmoReaction(NetworkFormat):
     priority = 40
     name = "prizmo"
 
+    SPECIAL_MAP = {
+        "GRAIN0": "_GRAIN",
+        "GRAIN": "_GRAIN",
+        "CR": "_CR",
+        "CRP": "_CRP",
+        "CRPHOT": "_CRPHOT",
+        "PHOTON": "_PHOTON",
+        "dummy": "_DUMMY",
+    }
+
     @cache
     def _global_re(self, ctx: ParseContext) -> re.Pattern:
         return re.compile(r"^(?!\s*[!#]).*->.*$")
@@ -40,9 +50,11 @@ class PrizmoReaction(NetworkFormat):
 
         Extracts reactants, products, optional temperature bounds, and rate
         expression from the ``R1 + R2 -> P1 + P2 [tmin, tmax] rate`` pattern.
-        Applies species-name normalisation (``HE`` → ``He``, ``E`` → ``e-``,
-        ``GRAIN0`` → ``GRAIN``) and converts ``user_crflux``/``user_av``
-        aliases to canonical JAFF symbols.
+        Applies species-name normalisation (``HE`` → ``He``, ``E`` → ``e-``)
+        and exotic pseudo-species normalisation (``GRAIN0``/``GRAIN`` →
+        ``_GRAIN``, ``CR`` → ``_CR``, ``PHOTON`` → ``_PHOTON``, ``dummy`` →
+        ``_DUMMY``, ...), and converts ``user_crflux``/``user_av`` aliases to
+        canonical JAFF symbols.
 
         Raises
         ------
@@ -61,20 +73,16 @@ class PrizmoReaction(NetworkFormat):
         rate: str = local.group("rate").strip()
 
         reactants = (
-            reactants.replace("HE", "He")
-            .replace(" E", " e-")
-            .replace("E ", "e- ")
-            .replace("GRAIN0", "GRAIN")
+            reactants.replace("HE", "He").replace(" E", " e-").replace("E ", "e- ")
         )
-        products = (
-            products.replace("HE", "He")
-            .replace(" E", " e-")
-            .replace("E ", "e- ")
-            .replace("GRAIN0", "GRAIN")
-        )
+        products = products.replace("HE", "He").replace(" E", " e-").replace("E ", "e- ")
 
-        rr: list[str] = [r.strip() for r in reactants.split(" + ")]
-        pp: list[str] = [p.strip() for p in products.split(" + ")]
+        rr: list[str] = [
+            self.SPECIAL_MAP.get(r.strip(), r.strip()) for r in reactants.split(" + ")
+        ]
+        pp: list[str] = [
+            self.SPECIAL_MAP.get(p.strip(), p.strip()) for p in products.split(" + ")
+        ]
 
         t_min: float | None = (
             float(tmin.strip().replace("d", "e")) if tmin and tmin.strip() else None

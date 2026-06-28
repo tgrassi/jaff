@@ -15,6 +15,14 @@ class KidaReaction(NetworkFormat):
     priority = 80
     name = "kida"
 
+    SPECIAL_MAP = {
+        "CR": "_CR",
+        "CRP": "_CRP",
+        "CRPHOT": "_CRPHOT",
+        "Photon": "_PHOTON",
+        "PHOTON": "_PHOTON",
+    }
+
     @cache
     def _global_re(self, ctx: ParseContext) -> re.Pattern:
         return re.compile(r"^(?!\s*[!#@]).{34}.{57}")
@@ -66,7 +74,6 @@ class KidaReaction(NetworkFormat):
 
         rr = [r.strip() for r in reactants.split() if r != "+"]
         pp = [p.strip() for p in products.split() if p != "+"]
-        ignore_species = {"cr", "crp", "photon"}
         rates_dict = {
             1: (
                 f"{ka:.2e} * crate"
@@ -82,10 +89,13 @@ class KidaReaction(NetworkFormat):
         }
         rate = rates_dict.get(formula, "0.0")
 
+        rr = [self.SPECIAL_MAP.get(r, r) for r in rr]
+        pp = [self.SPECIAL_MAP.get(p, p) for p in pp]
+
         ctx.parsed_list.append(
             {
-                "r": [r for r in rr if r.lower() not in ignore_species],
-                "p": [p for p in pp if p.lower() not in ignore_species],
+                "r": rr,
+                "p": pp,
                 "tmin": t_min,
                 "tmax": t_max,
                 "rate": rate,

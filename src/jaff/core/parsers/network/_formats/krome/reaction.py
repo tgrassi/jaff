@@ -17,6 +17,33 @@ class KromeReaction(NetworkFormat):
     name = "krome"
     state_key = "krome"
 
+    SPECIAL_MAP = {
+        "CR": "_CR",
+        "CRP": "_CRP",
+        "CRPHOT": "_CRPHOT",
+        "PHOTON": "_PHOTON",
+    }
+
+    WHOLE_TOKEN_MAP = {"E": "e-", "e": "e-", "g": "_GRAIN", **SPECIAL_MAP}
+
+    SUBSTRING_MAP = {"HE": "He"}
+
+    TMINMAX_REPS = {
+        "d": "e",
+        ".le.": "",
+        ".ge.": "",
+        ".lt.": "",
+        ".gt.": "",
+        ">": "",
+        "<": "",
+    }
+
+    RATE_REPS = {
+        "user_crflux": "crate",
+        "user_crate": "crate",
+        "user_av": "av",
+    }
+
     @cache
     def _global_re(self, ctx: ParseContext) -> re.Pattern:
         return re.compile(
@@ -46,8 +73,10 @@ class KromeReaction(NetworkFormat):
 
         Extracts the index, reactants, products, temperature bounds, and rate
         expression from the comma-delimited KROME format.  Applies species
-        normalisation (``E``/``e`` → ``e-``, ``g`` → empty, ``HE`` → ``He``)
-        and converts ``user_crflux``/``user_av`` aliases.  Fortran exponent
+        normalisation (``E``/``e`` → ``e-``, ``g`` → ``_GRAIN``,
+        ``HE`` → ``He``), normalises exotic pseudo-species
+        (``CR``/``CRP``/``CRPHOT``/``PHOTON`` → underscore form), and converts
+        ``user_crflux``/``user_av`` aliases.  Fortran exponent
         notation is converted to Python notation via :func:`~jaff.common.f90_convert`.
 
         Raises
@@ -88,45 +117,27 @@ class KromeReaction(NetworkFormat):
         t_min: None | float = None
         t_max: None | float = None
 
-        sp_reps = {"E": "e-", "e": "e-", "g": ""}
-        rr = [sp_reps.get(r, r) for r in rr]
-        pp = [sp_reps.get(p, p) for p in pp]
+        rr = [self.WHOLE_TOKEN_MAP.get(r, r) for r in rr]
+        pp = [self.WHOLE_TOKEN_MAP.get(p, p) for p in pp]
 
-        sp_sreps = {"HE": "He"}
-
-        for k, v in sp_sreps.items():
+        for k, v in self.SUBSTRING_MAP.items():
             rr = [x.replace(k, v) for x in rr]
             pp = [x.replace(k, v) for x in pp]
 
         rr = [r for r in rr if r != ""]
         pp = [p for p in pp if p != ""]
 
-        tminmax_reps = {
-            "d": "e",
-            ".le.": "",
-            ".ge.": "",
-            ".lt.": "",
-            ".gt.": "",
-            ">": "",
-            "<": "",
-        }
-
         if tmin != "none" and tmin != "":
-            for k, v in tminmax_reps.items():
+            for k, v in self.TMINMAX_REPS.items():
                 tmin = tmin.replace(k, v)
             t_min = float(tmin)
 
         if tmax != "none" and tmax != "":
-            for k, v in tminmax_reps.items():
+            for k, v in self.TMINMAX_REPS.items():
                 tmax = tmax.replace(k, v)
             t_max = float(tmax)
 
-        rate_reps = {
-            "user_crflux": "crate",
-            "user_crate": "crate",
-            "user_av": "av",
-        }
-        for k, v in rate_reps.items():
+        for k, v in self.RATE_REPS.items():
             rate = rate.replace(k, v)
 
         rate = f90_convert(rate)

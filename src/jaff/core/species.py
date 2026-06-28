@@ -357,7 +357,7 @@ class Specie:
         if "_DUST" in latex:
             latex = latex.replace("_DUST", "") + "ice"
 
-        latex = latex.replace("GRAIN", "g")
+        latex = latex.replace("_GRAIN", "g")
 
         self.__latex = f"{{\\rm {latex}}}"
 
