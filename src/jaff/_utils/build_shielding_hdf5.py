@@ -121,7 +121,11 @@ def _resolve_reaction(
     if entry is not None and entry["is_ionisation"]:
         return entry["key"], entry["reactants"], entry["products"]
     ion = _ionize(species)
-    return f"{species}__{ion}.e-", [species], [ion, "e-"]
+    return (
+        f"{'.'.join(sorted([species, '_PHOTON']))}__{ion}.e-",
+        sorted([species, "_PHOTON"]),
+        [ion, "e-"],
+    )
 
 
 def _parse_table(path: Path) -> tuple[list[str], np.ndarray, dict]:

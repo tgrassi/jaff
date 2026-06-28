@@ -11,7 +11,7 @@ reaction is unambiguously either a dissociation or an ionisation -- never both.
 Columns
 -------
 - ``reaction``          -- PK, serialized reaction / HDF5 group name.
-- ``photo_absorption``  -- 1 only for the H2 dissociation ``H2__H_H``, else 0.
+- ``photo_absorption``  -- 1 only for the H2 dissociation ``H2._PHOTON__H.H``, else 0.
 - ``decay_type``        -- ``"dissociation"`` or ``"ionization"`` (from the
   group's ``decay_type`` attribute).
 - ``leiden``            -- ``data/xsecs/leiden.hdf5::<group>`` if present, else NULL.
@@ -27,7 +27,7 @@ from jaff.drivers.sqlite import JaffDb
 from jaff.io import JaffLogger
 
 #: Reaction stem flagged as photo-absorption (H2 dissociation).
-H2_DISSOCIATION: str = "H2__H_H"
+H2_DISSOCIATION: str = "H2._PHOTON__H.H"
 
 #: Package root (``src/jaff``) -- HDF5 paths are stored relative to this.
 PKG_ROOT: Path = Path(__file__).parent.parent

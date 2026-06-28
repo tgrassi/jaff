@@ -152,7 +152,10 @@ def collapse_leiden(leiden_dir: Path, out_path: Path, logger) -> int:
                 if "photoionisation" in src:
                     pi_xs = src["photoionisation"][:].astype(float)[order]
                     ion_products = sorted([_ionize(reactant), "e-"])
-                    ion_key = f"{reactant}__{'.'.join(ion_products)}"
+                    ion_key = (
+                        f"{'.'.join(sorted([reactant, '_PHOTON']))}"
+                        f"__{'.'.join(ion_products)}"
+                    )
                     if _has_signal(pi_xs) and ion_key not in ionis_seen:
                         ionis_seen.add(ion_key)
                         _write_channel(

@@ -35,12 +35,15 @@ def verner_xsecs(
 
 def main():
     verner_data = (
-        Path(__file__).parent.parent / "data" / "xsecs" / "verner" / "verner_1996.csv"
+        Path(__file__).parent.parent / "data" / "xsecs" / "verner_1996.csv"
     )
     df = pd.read_csv(verner_data, sep=r"\s+", index_col=0)
     rows = [
         {
-            "reaction": f"{ion}__{'.'.join(sorted([f'{ion}+', 'e-']))}",
+            "reaction": (
+                f"{'.'.join(sorted([ion, '_PHOTON']))}"
+                f"__{'.'.join(sorted([f'{ion}+', 'e-']))}"
+            ),
             "Z": row["Z"],
             "N": row["N"],
             "xsecs": srepr(
