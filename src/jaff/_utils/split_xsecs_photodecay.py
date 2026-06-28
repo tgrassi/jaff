@@ -61,7 +61,7 @@ def _ionize(species: str) -> str:
 def _ionis_key(reactant: str) -> tuple[str, list[str]]:
     """Return ``(serialized_key, products)`` for the photoionisation channel."""
     products = sorted([_ionize(reactant), "e-"])
-    return f"{reactant}__{'_'.join(products)}", products
+    return f"{reactant}__{'.'.join(products)}", products
 
 
 def _has_signal(dataset: h5py.Dataset) -> bool:

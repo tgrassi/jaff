@@ -11,10 +11,15 @@ The serialized form of a reaction is::
 
     "<sorted_reactant_names>__<sorted_product_names>"
 
-where species names are sorted alphabetically and joined with ``"_"``.
-For example ``H + H2O+ -> H2O + H+`` serializes as
-``"H_H2O+__H+_H2O"``.  This canonical form is used for equality testing,
-hashing, and duplicate detection.
+where species names are sorted alphabetically and joined with ``"."``, and
+the two sides are separated by ``"__"``.  For example
+``H + H2O+ -> H2O + H+`` serializes as ``"H.H2O+__H+.H2O"``.  This canonical
+form is used for equality testing, hashing, and duplicate detection.
+
+The ``"."`` species joiner (rather than ``"_"``) is required because special
+pseudo-species names start with an underscore (e.g. ``_PHOTON``, ``_GRAIN``)
+and underscore-suffixed grain/ice species exist (``X_DUST``); a ``"_"`` joiner
+would collide with those and make the form ambiguous.
 
 Reaction types
 --------------
@@ -353,29 +358,29 @@ class Reaction:
 
         Each species is replaced by its ``Specie.serialized`` form (e.g.
         H2O+ → ``"+/H/H/O"``), then species tokens are sorted and joined
-        with ``"_"``.  Reactants and products are separated by ``"__"``.
+        with ``"."``.  Reactants and products are separated by ``"__"``.
 
         Returns
         -------
         str
         """
-        sr = "_".join(sorted([x.serialized for x in self.reactants]))
-        sp = "_".join(sorted([x.serialized for x in self.products]))
+        sr = ".".join(sorted([x.serialized for x in self.reactants]))
+        sp = ".".join(sorted([x.serialized for x in self.products]))
 
         return f"{sr}__{sp}"
 
     def serialize(self) -> str:
         """Build the name-level serialized form (isomer-sensitive).
 
-        Species names are sorted alphabetically and joined with ``"_"``.
+        Species names are sorted alphabetically and joined with ``"."``.
         Reactants and products are separated by ``"__"``.
 
         Returns
         -------
         str
         """
-        sr = "_".join(sorted([x.name for x in self.reactants]))
-        sp = "_".join(sorted([x.name for x in self.products]))
+        sr = ".".join(sorted([x.name for x in self.reactants]))
+        sp = ".".join(sorted([x.name for x in self.products]))
 
         return f"{sr}__{sp}"
 

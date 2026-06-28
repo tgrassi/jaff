@@ -3,7 +3,7 @@
 The Leiden (``data/xsecs/leiden/*.h5``) and NORAD/OP (``data/xsecs/op/*.dat``)
 folders each hold one file per reaction.  This utility merges each folder into a
 single HDF5 file -- ``data/xsecs/leiden.h5`` and ``data/xsecs/op.h5`` -- with one
-group per reaction (group name = the serialized stem, e.g. ``"CH__C_H"``).
+group per reaction (group name = the serialized stem, e.g. ``"CH__C.H"``).
 
 Schema
 ------
@@ -20,7 +20,7 @@ Each group has datasets, all co-sorted by **ascending photon energy**:
 
 Each source Leiden file bundles both decay channels, so it is split into one
 group per channel: the dissociation reaction keeps the serialized stem, while
-the ionisation reaction is keyed ``<R>__<R+>_e-``.  NORAD files are
+the ionisation reaction is keyed ``<R>__<R+>.e-``.  NORAD files are
 photoionisation only.
 
 Every dataset has a ``unit`` attr ("eV" or "cm2").
@@ -64,10 +64,10 @@ COMPRESSION_KW: dict = {"compression": "gzip", "compression_opts": 4, "chunks": 
 def split_reaction(stem: str) -> tuple[list[str], list[str]]:
     """Split a serialized stem into ``(reactants, products)`` string lists.
 
-    ``"CH__C_H"`` -> ``(["CH"], ["C", "H"])``.
+    ``"CH__C.H"`` -> ``(["CH"], ["C", "H"])``.
     """
     react, _, prod = stem.partition("__")
-    return react.split("_"), prod.split("_")
+    return react.split("."), prod.split(".")
 
 
 def wavelength_nm_to_eV(wavelength_nm: np.ndarray) -> np.ndarray:
@@ -152,7 +152,7 @@ def collapse_leiden(leiden_dir: Path, out_path: Path, logger) -> int:
                 if "photoionisation" in src:
                     pi_xs = src["photoionisation"][:].astype(float)[order]
                     ion_products = sorted([_ionize(reactant), "e-"])
-                    ion_key = f"{reactant}__{'_'.join(ion_products)}"
+                    ion_key = f"{reactant}__{'.'.join(ion_products)}"
                     if _has_signal(pi_xs) and ion_key not in ionis_seen:
                         ionis_seen.add(ion_key)
                         _write_channel(

@@ -40,7 +40,7 @@ def main():
     df = pd.read_csv(verner_data, sep=r"\s+", index_col=0)
     rows = [
         {
-            "reaction": f"{ion}__{'_'.join(sorted([f'{ion}+', 'e-']))}",
+            "reaction": f"{ion}__{'.'.join(sorted([f'{ion}+', 'e-']))}",
             "Z": row["Z"],
             "N": row["N"],
             "xsecs": srepr(
