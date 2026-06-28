@@ -96,6 +96,11 @@ class UdfaReaction(NetworkFormat):
             if p.strip() != ""
         ]
 
+        if rtype == "PH" and "_PHOTON" not in rr:
+            rr.append("_PHOTON")
+        elif rtype == "CR" and not any(cr in rr for cr in ("_CR", "_CRP", "_CRPHOT")):
+            rr.append("_CR")
+
         ctx.parsed_list.append(
             {
                 "r": rr,

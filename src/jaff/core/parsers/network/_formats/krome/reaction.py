@@ -144,6 +144,9 @@ class KromeReaction(NetworkFormat):
         if "auto" in rate:
             rate = rate.replace("auto", "PHOTO, 1e99")
 
+        if "photo" in rate.lower() and "_PHOTON" not in rr:
+            rr.append("_PHOTON")
+
         ctx.parsed_list.append(
             {
                 "r": rr,

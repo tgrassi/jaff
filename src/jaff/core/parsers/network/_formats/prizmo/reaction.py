@@ -96,6 +96,9 @@ class PrizmoReaction(NetworkFormat):
 
         rate = rate.replace("user_crflux", "crate").replace("user_av", "av")
 
+        if "photo" in rate.lower() and "_PHOTON" not in rr:
+            rr.append("_PHOTON")
+
         ctx.parsed_list.append(
             {
                 "r": rr,

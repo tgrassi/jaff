@@ -92,6 +92,11 @@ class KidaReaction(NetworkFormat):
         rr = [self.SPECIAL_MAP.get(r, r) for r in rr]
         pp = [self.SPECIAL_MAP.get(p, p) for p in pp]
 
+        if formula == 2 and "_PHOTON" not in rr:
+            rr.append("_PHOTON")
+        elif formula == 1 and not any(cr in rr for cr in ("_CR", "_CRP", "_CRPHOT")):
+            rr.append("_CR")
+
         ctx.parsed_list.append(
             {
                 "r": rr,
