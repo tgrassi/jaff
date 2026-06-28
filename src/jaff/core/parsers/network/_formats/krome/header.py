@@ -17,7 +17,7 @@ class KromeFormatHeader(NetworkFormat):
     name = "krome_format"
     state_key = "krome"
 
-    def default_state(self) -> kromeFormatProps:
+    def default_state(self) -> kromeFormatProps:  # type: ignore
         return {
             "format_nline": 0,  # line where @format was declared (0 = not yet seen)
             "idx": True,
