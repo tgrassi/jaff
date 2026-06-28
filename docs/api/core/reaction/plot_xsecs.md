@@ -13,7 +13,7 @@ Plots photo cross sections against photon energy or wavelength. Drawing, unit co
 **Parameters**
 
 **processes** : _str or list\[str\] or None, optional_
-: Which cross-section processes to draw. `"all"` (default) or `None` plots every process that has data; a single key or a list of keys selects a subset. Valid keys: `"photo_absorption"`, `"photo_dissociation"`, `"photo_ionization"`. An invalid key raises `KeyError`.
+: Which cross-section processes to draw. `"all"` (default) or `None` plots every process that has data; a single key or a list of keys selects a subset. Valid keys: `"photo_absorption"`, `"photodecay"` (the reaction's single ionization/dissociation channel). An invalid key raises `KeyError`.
 
 **layout** : _str, optional_
 : `"overlay"` (default) draws all processes on one axes; `"subplots"` gives each process its own stacked panel.

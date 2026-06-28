@@ -22,7 +22,7 @@ The `Reaction` class represents a single chemical reaction, holding its reactant
 **products** : _list\[Specie\]_
 : Product species.
 
-**rate** : _sympy.Basic_
+**rate** : _sympy.Expr_
 : Symbolic rate expression.
 
 **tmin** : _float or None_
@@ -52,7 +52,7 @@ The `Reaction` class represents a single chemical reaction, holding its reactant
 | --------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `reactants`           | `Species`       | Ordered species catalogue of reactant species                                                                                                    |
 | `products`            | `Species`       | Ordered species catalogue of product species                                                                                                     |
-| `rate`                | `sympy.Basic`   | SymPy expression for the rate coefficient (units depend on reaction order; typically cm³ s⁻¹ for two-body reactions)                             |
+| `rate`                | `sympy.Expr`    | SymPy expression for the rate coefficient (units depend on reaction order; typically cm³ s⁻¹ for two-body reactions)                             |
 | `tmin`                | `float or None` | Minimum gas temperature at which the rate is valid (K). `None` means no lower bound                                                              |
 | `tmax`                | `float or None` | Maximum gas temperature at which the rate is valid (K). `None` means no upper bound                                                              |
 | `dE`                  | `sympy.Basic`   | SymPy expression for the energy released per reaction event (erg)                                                                                |
@@ -63,4 +63,4 @@ The `Reaction` class represents a single chemical reaction, holding its reactant
 | `index`               | `int`           | Zero-based position in the parent `Reactions` catalogue                                                                                          |
 | `metadata`            | `dict`          | Arbitrary key/value store. `metadata["type"]` is populated by `rtype()`                                                                          |
 | `custom_rad_rate`     | `bool`          | `True` when the radiation rate was supplied via a `.jfunc` aux function rather than computed from cross-sections                                 |
-| `xsecs_dict`          | `XsecsProps or None` | Photo cross-section data keyed by process. Holds `units`, `_equations` (`pa`/`pi`/`pd` flags), `photon_energy` (eV), and `photo_absorption` / `photo_ionization` / `photo_dissociation` (cm² arrays, or `None` where absent). `None` for non-photo reactions |
+| `xsecs_dict`          | `XsecsProps or None` | Photo cross-section data for the reaction's single decay channel. Holds `units`, `_equations` (`pa` photo-absorption flag and `decay_type`, either `"ionization"` or `"dissociation"`), `photon_energy` (eV), and the `photo_absorption` / `photodecay` arrays (cm², or `None` where absent). `None` for non-photo reactions |

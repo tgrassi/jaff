@@ -62,7 +62,7 @@ class Toml:
 
         return data
 
-    def get_key(self, key: str) -> Any:
+    def get_key(self, key: str) -> dict | None:
         """
         Retrieve the value for a top-level TOML key.
 

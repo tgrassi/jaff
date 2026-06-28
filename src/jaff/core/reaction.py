@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from sympy import (
     Basic,
+    Expr,
     Function,
     ccode,
     cxxcode,
@@ -50,7 +51,7 @@ from sympy import (
 )
 
 from ..io import JaffLogger
-from ..physics._typing import XsecsProps
+from ..physics.photo_reactions._typing import XsecsProps
 from ..types import Catalogue, Vector
 from .elements import Elements
 from .species import Specie, Species
@@ -98,8 +99,9 @@ class Reaction:
         ``True`` when the radiation rate was supplied via a ``.jfunc`` aux
         function rather than computed from cross-sections.
     xsecs_dict : dict or None
-        Photo-ionisation cross-section data: ``{"energy": [...], "xsecs":
-        [...]}``, energies in erg and cross-sections in cm².  ``None`` for
+        Photo cross-section data for the reaction's single decay channel:
+        ``photon_energy`` (eV), optional ``photo_absorption`` and the
+        ``photodecay`` array (cm²), plus ``_equations`` metadata.  ``None`` for
         non-photo reactions.
     """
 
@@ -107,7 +109,7 @@ class Reaction:
         self,
         reactants: list[Specie],
         products: list[Specie],
-        rate: Basic,
+        rate: Expr,
         tmin: float | None,
         tmax: float | None,
         dE: Basic,
@@ -151,7 +153,7 @@ class Reaction:
         self.logger = JaffLogger().get_logger()
         self.reactants: Species = Species(reactants, check_length=False)
         self.products: Species = Species(products, check_length=False)
-        self.rate: Basic = rate
+        self.rate: Expr = rate
         self.tmin: float | None = tmin
         self.tmax: float | None = tmax
         self.dE: Basic = dE
@@ -290,6 +292,9 @@ class Reaction:
 
         The result is also cached in ``self.metadata["type"]``.
         """
+        if "type" in self.metadata:
+            return self.metadata["type"]
+
         rtype = "unknown"
 
         if type(self.rate) is str:
@@ -301,6 +306,11 @@ class Reaction:
             ):
                 if self.rate.func.__name__ == "photorates":
                     rtype = "photo"
+            elif any(
+                getattr(s, "name", None) in ("photden", "radeden")
+                for s in self.rate.free_symbols
+            ):
+                rtype = "photo"
             elif self.rate.has(symbols("crate")):
                 rtype = "cosmic_ray"
             elif self.rate.has(symbols("av")):
@@ -711,9 +721,8 @@ class Reaction:
         processes : str | list[str] | None, optional
             Which cross-section processes to draw.  ``"all"`` (default) or
             ``None`` plots every process with data; a single key (e.g.
-            ``"photo_ionization"``) or a list of keys selects a subset.
-            Valid keys: ``"photo_absorption"``, ``"photo_dissociation"``,
-            ``"photo_ionization"``.
+            ``"photodecay"``) or a list of keys selects a subset.
+            Valid keys: ``"photo_absorption"``, ``"photodecay"``.
         layout : str, optional
             ``"overlay"`` (default) draws all processes on one axes;
             ``"subplots"`` gives each process its own stacked panel.
@@ -747,8 +756,7 @@ class Reaction:
 
         _XSEC_PROCESSES = (
             "photo_absorption",
-            "photo_dissociation",
-            "photo_ionization",
+            "photodecay",
         )
 
         # Normalise the process selection to a list of valid keys.

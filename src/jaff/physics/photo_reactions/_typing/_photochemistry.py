@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import numpy as np
 
@@ -7,8 +7,7 @@ _equations = TypedDict(
     "_equations",
     {
         "pa": bool,
-        "pi": bool,
-        "pd": bool,
+        "decay_type": Literal["dissociation", "ionization"],
     },
 )
 
@@ -19,7 +18,6 @@ XsecsProps = TypedDict(
         "_equations": _equations,
         "photon_energy": np.ndarray | None,
         "photo_absorption": np.ndarray | None,
-        "photo_ionization": np.ndarray | None,
-        "photo_dissociation": np.ndarray | None,
+        "photodecay": np.ndarray | None,
     },
 )

@@ -15,11 +15,12 @@ This module provides:
 
 from __future__ import annotations
 
+import importlib.util
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sympy import Basic, Piecewise
+from sympy import Basic, Expr, Piecewise
 from sympy.core.function import AppliedUndef
 
 from ..errors import ParserError
@@ -202,7 +203,7 @@ def resolve_dependencies(
     expr: Basic,
     subs_dict: dict[Basic, Basic] | None = None,
     aux_funcs: dict[str, FunctionsDict] | None = None,
-) -> Basic:
+) -> Expr:
     """
     Resolve undefined SymPy function calls inside a single expression.
 
@@ -230,7 +231,7 @@ def resolve_dependencies(
 
     Returns
     -------
-    sympy.Basic
+    sympy.Expr
         The expression with all recognized undefined function calls replaced.
         Unrecognized functions are left unchanged.
     """
@@ -275,9 +276,7 @@ def resolve_dependencies(
 
             subs_dict[f] = func_def.xreplace(arg_map)
 
-    expr = expr.xreplace(subs_dict)
-
-    return expr
+    return expr.xreplace(subs_dict)
 
 
 def is_jaff_file(file: Path) -> bool:
@@ -300,3 +299,19 @@ def is_jaff_file(file: Path) -> bool:
         ".jaff",
         ".gz",
     ]
+
+
+def load_module_from_path(path: str | Path, module_name: str):
+    mpath: Path = path  # type: ignore
+    if isinstance(path, str):
+        mpath = Path(path).resolve()
+
+    spec = importlib.util.spec_from_file_location(module_name, mpath)
+
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load module from {mpath}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module

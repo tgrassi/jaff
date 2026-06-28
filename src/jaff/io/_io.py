@@ -30,7 +30,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
-from sympy import Basic, Symbol, __version__, expand_log, lambdify, log, srepr, symbols
+from sympy import (
+    Basic,
+    Float,
+    Heaviside,
+    Max,
+    Min,
+    Piecewise,
+    Symbol,
+    __version__,
+    expand_log,
+    lambdify,
+    log,
+    symbols,
+)
 from sympy.core.function import AppliedUndef
 
 from .. import __version__ as jaff_version
@@ -391,8 +404,7 @@ def from_jaff_file(filename: str | Path, errors=False):
             for key in (
                 "photon_energy",
                 "photo_absorption",
-                "photo_ionization",
-                "photo_dissociation",
+                "photodecay",
             ):
                 if xsecs.get(key) is not None:
                     xsecs[key] = np.asarray(xsecs[key], dtype=float)
@@ -522,26 +534,46 @@ def get_table(
 
     react_sympy = [r.get_sympy() for r in reactions]
 
-    react_subst = []
-    for r in react_sympy:
-        r = r.subs(symbols("av"), 0.0)
-        r = r.subs(symbols("crate"), 1.0)
-        react_subst.append(r)
+    trivial_subs = {symbols("av"): Float(0.0), symbols("crate"): Float(1.0)}
+    react_subst = [r.xreplace(trivial_subs) for r in react_sympy]
 
+    tgas = symbols("tgas")
     react_func = []
+    react_vectorizable = []
+    branchy = (Piecewise, Heaviside, Min, Max)
     for r in jaff_progress.track(react_subst, description="Compiling rate functions"):
-        if len(r.free_symbols) == 0:
+        free_symbols = r.free_symbols
+        if len(free_symbols) == 0:
             react_func.append(np.log(float(r)))
+            react_vectorizable.append(False)
         elif (
-            (len(r.free_symbols) > 1)
-            or (symbols("tgas") not in r.free_symbols)
-            or ("Function" in srepr(r))
+            (len(free_symbols) > 1)
+            or (tgas not in free_symbols)
+            or bool(r.atoms(AppliedUndef))
         ):
             react_func.append(None)
+            react_vectorizable.append(False)
         else:
             # log-expand before lambdify to avoid overflow; exponentiate at the end
             logr = expand_log(log(r))
-            react_func.append(lambdify(symbols("tgas"), logr, "numpy"))
+            react_func.append(lambdify(tgas, logr, "numpy"))
+            react_vectorizable.append(not logr.has(*branchy))
+
+    def eval_rate(i, f, grid):
+        """Evaluate lambdified rate *f* (index *i*) over a temperature array.
+
+        Uses a single vectorised call for analytic rates and falls back to a
+        scalar Python loop for branching rates.  The vectorised result is
+        verified against the scalar one the first time it is used so that a
+        mis-broadcasting lambdified function silently demotes itself to scalar.
+        """
+        if not react_vectorizable[i]:
+            return np.array([f(t) for t in grid])
+        vec = np.asarray(f(grid), dtype=float)
+        if vec.shape != grid.shape:
+            react_vectorizable[i] = False
+            return np.array([f(t) for t in grid])
+        return vec
 
     nTemp = nT
     if not fast_log:
@@ -560,11 +592,7 @@ def get_table(
         elif f is None:
             log_rates[i, :] = np.nan
         else:
-            # Note: it would be much faster to do this via an array operation
-            # rather than a list comprehension, but sympy (as of v1.13) does
-            # not consistently generate numpy expressions that work properly
-            # with vector inputs, so restricting the input to scalars is safer.
-            f_eval = np.array([f(t) for t in temp])
+            f_eval = eval_rate(i, f, temp)
             log_rates[i, :] = np.clip(f_eval, a_min=None, a_max=np.log(rate_max))
 
     # Fifth step: do adaptive growth of table
@@ -592,7 +620,7 @@ def get_table(
                         log_rates_grow[i, 1::2] = np.nan
                         log_rates_approx[i, :] = np.nan
                     else:
-                        f_eval = np.array([f(t) for t in temp_grow[1::2]])
+                        f_eval = eval_rate(i, f, temp_grow[1::2])
                         log_rates_grow[i, 1::2] = np.clip(
                             f_eval, a_min=None, a_max=np.log(rate_max)
                         )
@@ -845,7 +873,7 @@ def write_data_table(
             }
         )
 
-        HDF5().from_dict(fname, hdfdict)
+        HDF5().from_dict(fname, hdfdict, mode="w")
 
     # Write output in appropriate format
     if out_type == "txt":

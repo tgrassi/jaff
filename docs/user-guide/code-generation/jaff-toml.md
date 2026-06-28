@@ -112,6 +112,51 @@ rsl             = 2.99792458e10    # speed of light (cm/s). Used to configure re
 
 `power_law_index` is used to configure the weight factor of the photo-reaction cross-sections (Refer to the [Photochemistry](../designing-networks/photochemistry.md) section for more information).
 
+---
+
+## `[reaction.<serialized>.shielding]` section
+
+Attaches a shielding factor to one photo-reaction, keyed by the reaction's
+[serialized form](../working-with-networks/reactions.md). The factor multiplies
+that reaction's rate coefficient at runtime; the conceptual model, the formulae
+and the original papers are in the
+[Shielding](../designing-networks/photochemistry.md#shielding) section. The
+reaction **must** be a photo-reaction or generation aborts.
+
+```toml
+# Leiden tabulated line shielding
+[reaction.CO__C_O.shielding]
+type        = "leiden"           # default if omitted
+radiation   = "ISRF"
+shielded_by = ["self", "H2"]
+
+# H2 self-shielding (Hartwig et al. 2015)
+[reaction.H2__H_H.shielding]
+type      = "hg2015"
+min_ncol  = 1.0e-35
+min_vdisp = 1.0e-20
+```
+
+Common key:
+
+| Key    | Type  | Default    | Description                                                       |
+| ------ | ----- | ---------- | ---------------------------------------------------------------- |
+| `type` | `str` | `"leiden"` | Shielding function: `"leiden"`, `"db1996"`, or `"hg2015"`. Case-insensitive |
+
+`type = "leiden"` keys:
+
+| Key           | Type   | Default  | Description                                                                                     |
+| ------------- | ------ | -------- | --------------------------------------------------------------------------------------------- |
+| `shielded_by` | `list` | required | Shielding species; allowed: `"self"`, `"H2"`, `"H"`, `"C"`, `"N2"`, `"CO"`. Per-species factors are multiplied |
+| `radiation`   | `str`  | `"ISRF"` | Radiation-field subgroup in the Leiden table                                                    |
+
+`type = "db1996"` / `"hg2015"` keys (only on the `H2__H_H` reaction):
+
+| Key         | Type    | Default | Description                                            |
+| ----------- | ------- | ------- | ----------------------------------------------------- |
+| `min_ncol`  | `float` | `1e-50` | Lower floor used in the fit (cm⁻²)                     |
+| `min_vdisp` | `float` | `1e-50` | Lower floor used in the fit (cm s⁻¹)                   |
+
 ## `[[table]]` section
 
 A `[[table]]` array entry converts a data table from one format to another as

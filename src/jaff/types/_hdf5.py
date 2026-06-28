@@ -44,6 +44,7 @@ Examples
 'f64'
 """
 
+import fnmatch
 from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
@@ -88,7 +89,13 @@ class HDF5Dict(dict):
     >>> hd2 = HDF5Dict(Path("output.hdf5"))
     """
 
-    def __init__(self, h5obj: "h5py.File | h5py.Group | Path | str | dict"):
+    def __init__(
+        self,
+        h5obj: "h5py.File | h5py.Group | Path | str | dict",
+        *,
+        include: "str | list[str] | None" = None,
+        exclude: "str | list[str] | None" = None,
+    ):
         """Build the HDF5Dict from an HDF5 file path, open file/group handle, or plain dict.
 
         Parameters
@@ -98,6 +105,21 @@ class HDF5Dict(dict):
             that group onward.  A ``"file.h5::/internal/group"`` string does
             the same via the ``::`` delimiter.  Plain dicts are stored directly
             without any HDF5 parsing.
+        include : str, list of str, or None, optional
+            Keep only datasets whose name — or the name of any of their parent
+            groups — matches at least one of these patterns.  Matching is by
+            **bare name** (the last path component of each ancestor), using
+            :func:`fnmatch.fnmatch` so shell-style wildcards (``*``, ``?``,
+            ``[seq]``) and exact names both work.  ``None`` (default) keeps all
+            datasets.  Datasets excluded by this filter are never read into
+            memory.  Ignored when *h5obj* is a plain ``dict``.
+        exclude : str, list of str, or None, optional
+            Drop any object — dataset or group — whose name, or any ancestor
+            group name, matches one of these patterns.  Excluding a group name
+            drops its entire subtree.  ``exclude`` takes precedence over
+            ``include``.  Same bare-name :func:`fnmatch.fnmatch` semantics.
+            ``None`` (default) drops nothing.  Ignored when *h5obj* is a plain
+            ``dict``.
 
         Raises
         ------
@@ -134,8 +156,13 @@ class HDF5Dict(dict):
                 result["_attrs"] = dict(target.attrs)
             # Walk every group and dataset, building the nested dict.
             target.visititems(
-                lambda name, obj: self.__build_nested_dict(result, name, obj)
+                lambda name, obj: self.__build_nested_dict(
+                    result, name, obj, include, exclude
+                )
             )
+
+        if include is not None or exclude is not None:
+            self.__prune_empty(result)
 
         super().__init__(result)
 
@@ -245,7 +272,12 @@ class HDF5Dict(dict):
     # ------------------------------------------------------------------
 
     def __build_nested_dict(
-        self, root: dict, name: str, obj: "h5py.Group | h5py.Dataset"
+        self,
+        root: dict,
+        name: str,
+        obj: "h5py.Group | h5py.Dataset",
+        include: "str | list[str] | None" = None,
+        exclude: "str | list[str] | None" = None,
     ) -> None:
         """
         Callback for :meth:`h5py.File.visititems` — populate *root* in-place.
@@ -263,13 +295,24 @@ class HDF5Dict(dict):
             :meth:`h5py.File.visititems`).
         obj : h5py.Group or h5py.Dataset
             The HDF5 object at *name*.
+        include : str, list of str, or None, optional
+            Dataset-only allowlist of bare-name patterns; see :meth:`__init__`.
+            Groups are never dropped here (dead branches are pruned afterwards),
+            so a kept dataset's ancestor groups retain their attributes.
+        exclude : str, list of str, or None, optional
+            Denylist of bare-name patterns applied to both datasets and groups;
+            see :meth:`__init__`.  Takes precedence over *include*.
 
         Returns
         -------
         None
         """
-        # Navigate to the parent node, creating intermediate group dicts.
         parts = name.split("/")
+
+        if exclude is not None and self.__name_match(parts, exclude):
+            return
+
+        # Navigate to the parent node, creating intermediate group dicts.
         current = root
         for part in parts[:-1]:
             current = current.setdefault(part, {})
@@ -277,6 +320,10 @@ class HDF5Dict(dict):
         leaf_key = parts[-1]
 
         if isinstance(obj, h5py.Dataset):
+            # Apply the dataset allowlist *before* touching the data, so
+            # filtered-out datasets are never read into memory.
+            if include is not None and not self.__name_match(parts, include):
+                return
             # Read all dataset attributes; extract the optional _name tag.
             attrs = dict(obj.attrs)
             ds_name = attrs.pop("_name", None)
@@ -302,6 +349,65 @@ class HDF5Dict(dict):
             group_node = current.setdefault(leaf_key, {})
             if obj.attrs:
                 group_node["_attrs"] = dict(obj.attrs)
+
+    @staticmethod
+    def __name_match(parts: list[str], patterns: "str | list[str]") -> bool:
+        """
+        Return ``True`` if any path component matches any of *patterns*.
+
+        Matching is by bare name using :func:`fnmatch.fnmatch`, so both exact
+        names and shell-style wildcards (``*``, ``?``, ``[seq]``) are accepted.
+        Testing every component means a match on an ancestor group name applies
+        to its whole subtree.
+
+        Parameters
+        ----------
+        parts : list of str
+            Path components of the HDF5 object (``name.split("/")``).
+        patterns : str or list of str
+            A single pattern or a list of patterns to test against.
+
+        Returns
+        -------
+        bool
+            ``True`` if at least one component matches at least one pattern.
+        """
+        pats = [patterns] if isinstance(patterns, str) else patterns
+        return any(fnmatch.fnmatch(part, pat) for part in parts for pat in pats)
+
+    @classmethod
+    def __prune_empty(cls, node: dict) -> None:
+        """
+        Recursively drop group sub-dicts that contain no surviving dataset.
+
+        Walks *node* depth-first and removes any child group whose subtree holds
+        no dataset leaf (no ``_kind`` anywhere).  Dataset leaves and metadata
+        keys (those starting with ``"_"``) are left untouched.  Used after
+        ``include``/``exclude`` filtering to discard groups emptied by the
+        filter while keeping the ancestor groups of any retained dataset (and
+        therefore their attributes).
+
+        Parameters
+        ----------
+        node : dict
+            Group dictionary to prune in-place.
+
+        Returns
+        -------
+        None
+        """
+        for key in list(node):
+            if key.startswith("_"):
+                continue
+            child = node[key]
+            # Dataset leaves carry "_kind" and are always kept.
+            if not isinstance(child, dict) or "_kind" in child:
+                continue
+            # Group node: prune its descendants first, then drop it if nothing
+            # but metadata keys remain (i.e. it lost all its datasets/subgroups).
+            cls.__prune_empty(child)
+            if all(k.startswith("_") for k in child):
+                del node[key]
 
     def __decode_dtype(self, dtype) -> str:
         """
