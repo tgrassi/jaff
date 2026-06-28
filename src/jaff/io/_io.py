@@ -199,6 +199,7 @@ def to_jaff_file(filename: str | Path, net: "Network"):
                 "dRad": encode_maybe_sympy(r.dRad),
                 "custom_rad_rate": r.custom_rad_rate,
                 "original_string": r.original_string,
+                "type": r.rtype(),
                 "xsecs": jsonable(r.xsecs_dict),
             }
             for r in net.reactions
@@ -396,6 +397,7 @@ def from_jaff_file(filename: str | Path, errors=False):
         tmin = rj.get("tmin")
         tmax = rj.get("tmax")
         original_string = rj.get("original_string") or ""
+        reaction_type = rj.get("type") or "unknown"
         xsecs = rj.get("xsecs")
 
         # Cross-section arrays are JSON-serialized as plain lists; restore them
@@ -420,6 +422,7 @@ def from_jaff_file(filename: str | Path, errors=False):
                 "tmin": tmin,
                 "tmax": tmax,
                 "original_string": original_string,
+                "reaction_type": reaction_type,
                 "xsecs_dict": xsecs,
             }
         )

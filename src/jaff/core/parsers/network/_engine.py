@@ -8,6 +8,7 @@ into a format-independent ``parsedListProps`` dict with keys:
 - ``"tmin"``   — lower temperature bound in Kelvin, or ``None``
 - ``"tmax"``   — upper temperature bound in Kelvin, or ``None``
 - ``"rate"``   — rate expression as a Python/SymPy-compatible string
+- ``"type"``   — reaction type concluded by the parser (e.g. ``"photo"``)
 - ``"string"`` — the original network-file line (for error reporting)
 
 Supported file formats
@@ -136,7 +137,7 @@ class NetworkParser:
         tuple[list[parsedListProps], dict[str, Basic]]
             - ``list[parsedListProps]``: one dict per reaction with keys
               ``"r"``, ``"p"``, ``"tmin"``, ``"tmax"``, ``"rate"``,
-              ``"string"``.
+              ``"type"``, ``"string"``.
             - ``dict[str, Basic]``: global symbolic constants defined in the
               file (e.g. ``@var`` entries), with all inter-dependencies
               resolved via SymPy substitution.

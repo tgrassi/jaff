@@ -104,6 +104,7 @@ class KidaReaction(NetworkFormat):
                 "tmin": t_min,
                 "tmax": t_max,
                 "rate": rate,
+                "type": self._reaction_type(formula, rr),
                 "string": ctx.line.strip(),
             }
         )
@@ -111,3 +112,21 @@ class KidaReaction(NetworkFormat):
     def _handle_errors(self, match: re.Match, ctx: ParseContext) -> None:
         """Raise an error for a malformed KIDA reaction line."""
         ctx.raise_error("Invalid KIDA reaction detected")
+
+    @staticmethod
+    def _reaction_type(formula: int, rr: list[str]) -> str:
+        """Conclude the reaction type from the KIDA formula index and reactants.
+
+        1 = cosmic-ray, 2 = photoprocess. Otherwise a reaction with three or
+        more real (non-pseudo) reactants is three-body; else ``"unknown"``.
+        Reactant-count classification is rate-independent, so it survives
+        custom auxiliary-function rates.
+        """
+        agent = {1: "cosmic_ray", 2: "photo"}.get(formula)
+        if agent:
+            return agent
+
+        if sum(1 for r in rr if not r.startswith("_")) >= 3:
+            return "3_body"
+
+        return "unknown"

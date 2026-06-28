@@ -340,6 +340,7 @@ class Network:
                 dRad=deltaRad,
                 original_string=reaction["string"],
                 index=i,
+                type=reaction.get("type", "unknown"),
             )
             if "reaction_props" in self._metadata:
                 self.__parse_reaction_metadata(rea)
@@ -407,6 +408,7 @@ class Network:
                 tmax=reaction["tmax"],
                 original_string=reaction["original_string"],
                 index=i,
+                type=reaction.get("reaction_type", "unknown"),
             )
             rea.xsecs_dict = reaction["xsecs_dict"]
             rea.custom_rad_rate = reaction["custom_rad_rate"]

@@ -21,6 +21,7 @@ ReactionProps = TypedDict(
         "dE": Basic,
         "dRad": Basic,
         "custom_rad_rate": bool,
+        "reaction_type": str,
         "tmin": float | None,
         "tmax": float | None,
         "original_string": str,

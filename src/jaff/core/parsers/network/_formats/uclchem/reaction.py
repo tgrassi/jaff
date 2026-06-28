@@ -125,9 +125,42 @@ class UclchemReaction(NetworkFormat):
                 "tmin": t_min,
                 "tmax": t_max,
                 "rate": rate,
+                "type": self._reaction_type(rate, rr),
                 "string": ctx.line.strip(),
             }
         )
+
+    @staticmethod
+    def _reaction_type(rate: str, rr: list[str]) -> str:
+        """Conclude the reaction type from the reactants, falling back to rate.
+
+        Structural signals are checked first so the result survives custom
+        auxiliary-function rates: a ``_PHOTON`` reactant -> ``"photo"``, a
+        cosmic-ray pseudo-species (``_CR``/``_CRP``/``_CRPHOT``) ->
+        ``"cosmic_ray"``, three or more real reactants -> ``"3_body"``. Only
+        then is the rate inspected (``photo``/``av`` -> ``"photo"``, ``crate``
+        -> ``"cosmic_ray"``, ``ntot`` -> ``"3_body"``); otherwise ``"unknown"``.
+        The UCLCHEM rate is FIXME-forced to ``"0.0"`` upstream, so the rate
+        fallback never contributes; classification relies on the reactants.
+        """
+        if "_PHOTON" in rr:
+            return "photo"
+        if any(c in rr for c in ("_CR", "_CRP", "_CRPHOT")):
+            return "cosmic_ray"
+        if sum(1 for r in rr if not r.startswith("_")) >= 3:
+            return "3_body"
+
+        r = rate.lower()
+        if "photo" in r:
+            return "photo"
+        if "crate" in r:
+            return "cosmic_ray"
+        if "av" in r:
+            return "photo"
+        if "ntot" in r:
+            return "3_body"
+            
+        return "unknown"
 
     def _handle_errors(self, match: re.Match, ctx: ParseContext) -> None:
         """Raise an error for a malformed UCLCHEM reaction line."""

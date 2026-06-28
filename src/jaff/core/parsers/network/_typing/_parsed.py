@@ -8,6 +8,7 @@ parsedListProps = TypedDict(
         "tmin": float | None,
         "tmax": float | None,
         "rate": str,
+        "type": str,
         "string": str,
     },
 )

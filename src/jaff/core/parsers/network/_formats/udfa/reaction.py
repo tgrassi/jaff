@@ -108,6 +108,7 @@ class UdfaReaction(NetworkFormat):
                 "tmin": t_min,
                 "tmax": t_max,
                 "rate": rate,
+                "type": self._reaction_type(rtype, rr),
                 "string": ctx.line.strip(),
             }
         )
@@ -115,3 +116,20 @@ class UdfaReaction(NetworkFormat):
     def _handle_errors(self, match: re.Match, ctx: ParseContext) -> None:
         """Raise an error for a malformed UDFA reaction line."""
         ctx.raise_error("Invalid UDFA reaction detected")
+
+    @staticmethod
+    def _reaction_type(rtype: str, rr: list[str]) -> str:
+        """Conclude the reaction type from the UDFA code and reactants.
+
+        ``"CR"`` = cosmic-ray, ``"PH"`` = photoprocess. Otherwise a reaction
+        with three or more real (non-pseudo) reactants is three-body; else
+        ``"unknown"``. Reactant-count classification is rate-independent, so it
+        survives custom auxiliary-function rates.
+        """
+        agent = {"CR": "cosmic_ray", "PH": "photo"}.get(rtype)
+        if agent:
+            return agent
+        if sum(1 for r in rr if not r.startswith("_")) >= 3:
+            return "3_body"
+
+        return "unknown"
