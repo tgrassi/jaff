@@ -23,7 +23,7 @@ import re
 import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sympy import (
@@ -52,12 +52,14 @@ from ..physics import (
     get_sodes,
     get_sradodes,
 )
-from ._auxiliary_engine import AuxiliaryFunctionParser, FunctionsDict
-from ._network_engine import NetworkParser
-from ._typing import ElementProps
 from .elements import Elements
+from .parsers import AuxiliaryFunctionParser, NetworkParser
 from .reaction import Reaction, Reactions
 from .species import Specie, Species
+
+if TYPE_CHECKING:
+    from ._typing import ElementProps
+    from .parsers.auxiliary_func._typing import AuxiliaryFunctionsDict
 
 
 @lru_cache(maxsize=200000)
@@ -449,7 +451,7 @@ class Network:
     def __parse_rate(
         aux_chem_rate: str,
         rate: str,
-        aux_funcs: dict[str, FunctionsDict],
+        aux_funcs: dict[str, AuxiliaryFunctionsDict],
         global_vars: dict[str, Expr],
         n_photo: int,
     ) -> tuple[Expr, bool, int]:
@@ -596,7 +598,7 @@ class Network:
             raise FileNotFoundError(funcfile)
 
         with AuxiliaryFunctionParser(funcfile) as afp:
-            func_dict: FunctionsDict = afp.get_dict()
+            func_dict: AuxiliaryFunctionsDict = afp.get_dict()
 
         return func_dict
 

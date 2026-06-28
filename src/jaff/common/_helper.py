@@ -26,8 +26,8 @@ from sympy.core.function import AppliedUndef
 from ..errors import ParserError
 
 if TYPE_CHECKING:
-    from ..core._auxiliary_engine import FunctionsDict
     from ..core._typing import ElementProps
+    from ..core.parsers.auxiliary_func._typing import AuxiliaryFunctionsDict
 
 # ---------------------------------------------------------------------------
 # File-extension groups used by parsers and code generators
@@ -202,7 +202,7 @@ def resolve_symbolic_dependencies(
 def resolve_dependencies(
     expr: Basic,
     subs_dict: dict[Basic, Basic] | None = None,
-    aux_funcs: dict[str, FunctionsDict] | None = None,
+    aux_funcs: dict[str, AuxiliaryFunctionsDict] | None = None,
 ) -> Expr:
     """
     Resolve undefined SymPy function calls inside a single expression.
@@ -224,7 +224,7 @@ def resolve_dependencies(
     subs_dict : dict[sympy.Basic, sympy.Basic] or None, optional
         Pre-populated substitution table.  Modified in-place as new
         substitutions are discovered.  Defaults to an empty dict.
-    aux_funcs : dict[str, FunctionsDict] or None, optional
+    aux_funcs : dict[str, AuxiliaryFunctionsDict] or None, optional
         Auxiliary function definitions keyed by lowercase function name.
         Each entry must have ``"def"`` (the body expression) and ``"args"``
         (the ordered parameter list).  Defaults to an empty dict.
