@@ -17,9 +17,23 @@ src/jaff/
 │   ├── reaction.py             # Reaction + Reactions catalogue
 │   ├── species.py              # Specie + Species catalogue
 │   ├── elements.py             # Element + Elements catalogue
-│   ├── _network_engine.py      # Multi-format network file parser
-│   ├── _auxiliary_engine.py    # .jfunc auxiliary function parser
-│   └── _typing/                # TypedDicts for all core types
+│   ├── parsers/                # File parsers (network + auxiliary)
+│   │   ├── network/            # Multi-format network file parser
+│   │   │   ├── _engine.py      # NetworkParser — drives format plugins
+│   │   │   ├── _typing/        # parsedListProps, krome/prizmoFormatProps
+│   │   │   └── _formats/       # One subpackage per format (plugins)
+│   │   │       ├── _base.py    # NetworkFormat ABC (plugin contract)
+│   │   │       ├── _context.py # ParseContext — shared per-parse state
+│   │   │       ├── __init__.py # register / all_formats / build_state
+│   │   │       ├── krome/      # header.py · var.py · reaction.py
+│   │   │       ├── prizmo/     # vars.py · reaction.py
+│   │   │       ├── udfa/       # reaction.py
+│   │   │       ├── uclchem/    # reaction.py
+│   │   │       └── kida/       # reaction.py
+│   │   └── auxiliary_func/     # .jfunc auxiliary function parser
+│   │       ├── _engine.py      # AuxiliaryFunctionParser
+│   │       └── _typing/        # AuxiliaryFunctionsDict
+│   └── _typing/                # Shared core TypedDicts (Network/Element/Reaction)
 │
 ├── physics/                    # Symbolic ODE/flux generation + physics helpers
 │   ├── _equations.py           # get_sfluxes, get_sodes, get_sradodes
@@ -122,8 +136,8 @@ flowchart TD
         CFG["jaff.toml / CLI"]
     end
 
-    subgraph parse_sg ["Parsing  —  core"]
-        NE["NetworkParser\nauto-detect format\nregex → dicts"]
+    subgraph parse_sg ["Parsing  —  core.parsers"]
+        NE["NetworkParser\nauto-detect format\nformat plugins → dicts"]
         AE["AuxiliaryParser\n@var / @function\nSymPy expressions"]
     end
 
@@ -161,8 +175,8 @@ The table below traces a single `jaffgen` invocation from command line to output
 | Step | Component                   | What happens                                                                                       |
 | ---- | --------------------------- | -------------------------------------------------------------------------------------------------- |
 | 1    | `cli/_jaffgen.py`           | Parse CLI args, read `jaff.toml` via `_config_engine.py`                                           |
-| 2    | `core/_network_engine.py`   | Auto-detect format; convert each reaction line to a `parsedListProps` dict                         |
-| 3    | `core/_auxiliary_engine.py` | Parse `.jfunc` file (if present); resolve `@var`/`@function` blocks into SymPy expressions         |
+| 2    | `core/parsers/network/_engine.py`        | Auto-detect format via registered plugins; convert each reaction line to a `parsedListProps` dict |
+| 3    | `core/parsers/auxiliary_func/_engine.py` | Parse `.jfunc` file (if present); resolve `@var`/`@function` blocks into SymPy expressions         |
 | 4    | `core/network.py`           | Build `Species`, `Reactions`, `Elements` catalogues; validate duplicates, sinks, isomers           |
 | 5    | `physics/_equations.py`     | Compute symbolic fluxes (`sfluxes`) and ODE RHS (`sodes`) using SymPy                              |
 | 6    | `codegen/codegen.py`        | Translate SymPy expressions into assignment strings for the chosen language                        |
@@ -171,8 +185,8 @@ The table below traces a single `jaffgen` invocation from command line to output
 
 ## Key Design Decisions
 
-**Regex-driven, format-agnostic parser.**
-`NetworkParser` uses an ordered dict of `(global_re, local_re, handler)` triples. The fast `global_re` filters candidate lines; `local_re` extracts named groups. Adding a new format means adding one entry — no branching in shared code. See [Adding a Parser](adding-parsers.md).
+**Plugin-based, format-agnostic parser.**
+Each network format is a `NetworkFormat` subclass living in its own subpackage under `core/parsers/network/_formats/`. A class registers itself with the `@register` decorator; `NetworkParser` discovers all formats via `all_formats()`, ordered by each format's `priority` (not file or import order). Every format exposes a fast `_global_re` filter and a detailed `_local_re` extractor, and writes results through a shared `ParseContext`. Adding a new format means adding one subpackage — no edits to the engine or shared code. See [Adding a Parser](adding-parsers.md).
 
 **SymPy as the intermediate representation.**
 All rate expressions, fluxes, and ODEs live as SymPy objects inside `Network`. Code generation (`Codegen`) calls SymPy's language-specific printers (`ccode`, `cxxcode`, `fcode`, etc.), so adding a new target language is isolated to `LangModifier` token tables.
