@@ -71,8 +71,7 @@ def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
 
     for i, reaction in enumerate(reactions):
         flux = reaction.rate
-        # Multiply by number density of every reactant (mass-action kinetics)
-        for reactant in reaction.reactants:
+        for reactant in reaction.reactants.core:
             flux *= nden_matrix[species[str(reactant)].index]
 
         fluxes[i] = flux
@@ -119,8 +118,7 @@ def get_sodes(reactions: "Reactions", species: Species) -> list[Basic]:
     sodes: list[Basic] = [Float(0.0) for _ in range(species.count)]
 
     for i, reaction in enumerate(reactions):
-        # Subtract flux from every reactant (destruction term)
-        for rr in reaction.reactants:
+        for rr in reaction.reactants.core:
             # Choose the output-array slot: either the species' runtime index
             # (when fidx is a "idx_*" tag) or a literal integer position.
             idx = (
@@ -131,7 +129,7 @@ def get_sodes(reactions: "Reactions", species: Species) -> list[Basic]:
             sodes[idx] -= fluxes[i]
 
         # Add flux to every product (creation term)
-        for pp in reaction.products:
+        for pp in reaction.products.core:
             idx = (
                 pp.index
                 if isinstance(pp.fidx, str) and pp.fidx.startswith("idx_")
@@ -247,7 +245,7 @@ def get_sradodes(
             # Accumulate any user-supplied radiation source terms
             group_dRad_dt_extra += rrate * props["delta_rad"]
             # Multiply by all reactant number densities (mass-action kinetics)
-            for reactant in reaction.reactants:
+            for reactant in reaction.reactants.core:
                 rrate *= nden[Idx(species[str(reactant)].index)]
 
             # Photochemical reactions *remove* radiation, hence the minus sign.
