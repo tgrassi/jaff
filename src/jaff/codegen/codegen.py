@@ -503,7 +503,7 @@ class Codegen:
             # we need the full product expression, not individual terms.
             for rr in rea.reactants:
                 flux = f"k{self.lb}$IDX${self.rb} * " + " * ".join(
-                    [f"y{self.lb}{x.fidx}{self.rb}" for x in rea.reactants]
+                    [f"y{self.lb}{x.fidx}{self.rb}" for x in rea.reactants.core]
                 )
 
             out.append(IndexedValue([i], flux))
@@ -608,10 +608,10 @@ class Codegen:
             ode = {specie.index: "" for specie in self.net.species}
             for i, rea in enumerate(self.net.reactions):
                 # Consumption: each reactant loses density at the reaction flux rate
-                for rr in rea.reactants:
+                for rr in rea.reactants.core:
                     ode[rr.index] += f" - flux{self.lb}{i + self.ioff}{self.rb}"
                 # Production: each product gains density at the reaction flux rate
-                for pp in rea.products:
+                for pp in rea.products.core:
                     ode[pp.index] += f" + flux{self.lb}{i + self.ioff}{self.rb}"
 
             out = IndexedList()
@@ -685,13 +685,13 @@ class Codegen:
         # Accumulate signed flux contributions into a dict keyed by species fidx
         ode = {}
         for i, rea in enumerate(self.net.reactions):
-            for rr in rea.reactants:
+            for rr in rea.reactants.core:
                 rrfidx = idx_prefix + rr.fidx
                 if rrfidx not in ode:
                     ode[rrfidx] = ""
                 # Reactants are consumed: negative contribution
                 ode[rrfidx] += f" - {flux_var}{self.lb}{ioff + i}{self.rb}"
-            for pp in rea.products:
+            for pp in rea.products.core:
                 ppfidx = idx_prefix + pp.fidx
                 if ppfidx not in ode:
                     ode[ppfidx] = ""

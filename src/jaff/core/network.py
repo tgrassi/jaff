@@ -249,6 +249,7 @@ class Network:
             When ``True``, expand ``nh`` to a sum over H-bearing species.
         """
         specie_names = set()
+        special_species: dict[str, Specie] = {}
         free_symbols = set()
         undef_funcs = set()
         interp_funcs = set()
@@ -285,12 +286,22 @@ class Network:
             aux_delta_e = f"deltae{i}"
 
             for s in reactants + products:
-                if s not in specie_names:
-                    specie_names.add(s)
-                    self.species.add(Specie(s, len(specie_names) - 1))
+                if s in specie_names:
+                    continue
+                specie_names.add(s)
+                if s.startswith("_"):
+                    special_species[s] = Specie(s, -1)
+                else:
+                    self.species.add(Specie(s, self.species.count))
 
-            rr = [self.species[r] for r in reactants]
-            pp = [self.species[p] for p in products]
+            rr = [
+                special_species[r] if r.startswith("_") else self.species[r]
+                for r in reactants
+            ]
+            pp = [
+                special_species[p] if p.startswith("_") else self.species[p]
+                for p in products
+            ]
 
             local_subs_dict = {**subs_dict}
 
@@ -441,7 +452,7 @@ class Network:
 
             dE_dt = r.dE * r.rate
             dRad_dt = r.dRad * r.rate
-            for s in r.reactants:
+            for s in r.reactants.core:
                 dE_dt *= nden[self.species[s.name].index]
                 dRad_dt *= nden[self.species[s.name].index]
             self.dEdt_chem += dE_dt
@@ -868,10 +879,10 @@ class Network:
         )
 
         for i, reaction in enumerate(self.reactions):
-            for reactant in reaction.reactants:
+            for reactant in reaction.reactants.core:
                 self.reactant_matrix[i, reactant.index] += 1
 
-            for product in reaction.products:
+            for product in reaction.products.core:
                 self.product_matrix[i, product.index] += 1
 
     def _standardize_symbols(self, expr: Basic, replace_nH: bool) -> Expr:

@@ -190,8 +190,8 @@ def to_jaff_file(filename: str | Path, net: "Network"):
         ],
         "reactions": [
             {
-                "reactants": [int(s.index) for s in r.reactants],
-                "products": [int(s.index) for s in r.products],
+                "reactants": [s.name for s in r.reactants],
+                "products": [s.name for s in r.products],
                 "rate": encode_maybe_sympy(r.rate),
                 "tmin": r.tmin,
                 "tmax": r.tmax,
@@ -295,16 +295,23 @@ def from_jaff_file(filename: str | Path, errors=False):
             raise ValueError(f"Duplicate species index {idx}")
         by_index[idx] = name
 
-    species_by_index = {}
     species_list = Species()
 
     for idx in sorted(by_index.keys()):
         name = by_index[idx]
-        sp_obj = Specie(name, idx)
-        species_list.add(sp_obj)
-        species_by_index[idx] = sp_obj
+        species_list.add(Specie(name, idx))
 
     net_data["species"] = species_list
+
+    species_by_name = {sp.name: sp for sp in species_list}
+    special_by_name: dict[str, "Specie"] = {}
+
+    def resolve_specie(name: str) -> "Specie":
+        if name in species_by_name:
+            return species_by_name[name]
+        if name not in special_by_name:
+            special_by_name[name] = Specie(name, -1)
+        return special_by_name[name]
 
     rate_symbols_payload = payload.get("rate_symbols") or []
     rate_symbol_assumptions = {}
@@ -380,15 +387,15 @@ def from_jaff_file(filename: str | Path, errors=False):
     for rj in reactions_payload:
         if not isinstance(rj, dict):
             raise ValueError("Invalid reaction entry in JSON")
-        reactants_idx = rj.get("reactants") or []
-        products_idx = rj.get("products") or []
-        if not isinstance(reactants_idx, list) or not isinstance(products_idx, list):
+        reactants_names = rj.get("reactants") or []
+        products_names = rj.get("products") or []
+        if not isinstance(reactants_names, list) or not isinstance(products_names, list):
             raise ValueError("Invalid reactants/products list in JSON")
         try:
-            reactants = [species_by_index[int(i)] for i in reactants_idx]
-            products = [species_by_index[int(i)] for i in products_idx]
+            reactants = [resolve_specie(str(n)) for n in reactants_names]
+            products = [resolve_specie(str(n)) for n in products_names]
         except Exception as e:
-            raise ValueError(f"Invalid species indices in reaction: {e}") from e
+            raise ValueError(f"Invalid species in reaction: {e}") from e
 
         rate = decode_maybe_sympy(rj.get("rate"))
         dE = decode_maybe_sympy(rj.get("dE"))

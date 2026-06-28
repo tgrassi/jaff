@@ -67,7 +67,7 @@ def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
     are applied in :func:`get_sodes`.
     """
     fluxes: list[Expr] = [Float(0.0) for _ in range(reactions.count)]
-    nden_matrix = MatrixSymbol("nden", species.count, 1)
+    nden_matrix = MatrixSymbol("nden", species.core.count, 1)
 
     for i, reaction in enumerate(reactions):
         flux = reaction.rate
@@ -115,7 +115,7 @@ def get_sodes(reactions: "Reactions", species: Species) -> list[Basic]:
     and fixed-layout networks produced by certain code-generation backends.
     """
     fluxes = get_sfluxes(reactions, species)
-    sodes: list[Basic] = [Float(0.0) for _ in range(species.count)]
+    sodes: list[Basic] = [Float(0.0) for _ in range(species.core.count)]
 
     for i, reaction in enumerate(reactions):
         for rr in reaction.reactants.core:
@@ -216,7 +216,7 @@ def get_sradodes(
         raise ValueError("Invalid order: Supported orders are 0, 1, 2, 3")
 
     rad_groups = radiation.groups
-    nden = MatrixSymbol("nden", species.count, 1)
+    nden = MatrixSymbol("nden", species.core.count, 1)
 
     # Choose the symbolic name for the radiation density variable based on
     # whether the field is tracked as energy density (erg/cm³) or photon

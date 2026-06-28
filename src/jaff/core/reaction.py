@@ -474,7 +474,10 @@ class Reaction:
 
         lb, rb = brackets[0], brackets[1]
         flux = f"{rate_variable}{lb}{idx}{rb} * " + " * ".join(
-            [f"{species_variable}{lb}{idx_prefix + x.fidx}{rb}" for x in self.reactants]
+            [
+                f"{species_variable}{lb}{idx_prefix + x.fidx}{rb}"
+                for x in self.reactants.core
+            ]
         )
 
         return flux
