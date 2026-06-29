@@ -47,7 +47,9 @@ def all_formats() -> list[NetworkFormat]:
         One instance per registered format, in ascending priority order
         (lower priority is matched against each line first).
     """
-    from . import kida, krome, prizmo, uclchem, udfa  # noqa: F401
+    from jaff.common._helper import import_subpackages
+
+    import_subpackages(__name__)
 
     return sorted((cls() for cls in _REGISTRY), key=lambda fmt: fmt.priority)
 

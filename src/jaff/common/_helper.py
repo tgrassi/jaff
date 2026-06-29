@@ -315,3 +315,28 @@ def load_module_from_path(path: str | Path, module_name: str):
     spec.loader.exec_module(module)
 
     return module
+
+
+def import_subpackages(package_name: str) -> None:
+    """Import every non-private subpackage of *package_name*.
+
+    Iterates the package directory and imports each non-private subpackage,
+    which triggers any registration side-effects (e.g. the ``@register``
+    decorator in ``_formats``).
+
+    Uses :func:`Path.iterdir` (not :func:`pkgutil.walk_packages`) to avoid
+    eagerly importing private subpackages while walking — a pitfall of
+    :func:`pkgutil.walk_packages` which calls :func:`__import__` internally
+    for every package it encounters.
+
+    Args:
+        package_name: Fully-qualified package name
+                      (e.g. ``"jaff.core.parsers.network._formats"``).
+    """
+    from importlib import import_module
+
+    pkg = import_module(package_name)
+    pkg_path = Path(pkg.__path__[0])
+    for entry in pkg_path.iterdir():
+        if entry.is_dir() and not entry.name.startswith("_"):
+            import_module(f"{package_name}.{entry.name}")

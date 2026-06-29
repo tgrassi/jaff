@@ -14,18 +14,15 @@ Both are keyed by ``reaction.serialized``.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from sympy import Basic, Expr, sympify
 
-from ...common._helper import load_module_from_path
-from ...config import SHIELDING_FUNCTIONS_DIR, SRC_DIR
 from ...drivers import HDF5, JaffDb
 from ...drivers.pooch import download_shielding, download_xsecs
-from ...errors import ParserError
 from ._typing import XsecsProps
+from .shielding import _get_shielding_function
 
 if TYPE_CHECKING:
     from ...core import Reaction
@@ -179,29 +176,10 @@ class Photochemistry:
             If the reaction has no shielding entry, or ``type`` is not listed in
             the reaction's ``global`` or ``local`` shielding functions.
         """
-        with JaffDb() as jdb:
-            table = jdb.table("photo_reaction_shielding")
-            rows: list = table.rows(conditions=f"reaction = '{reaction.serialized}'")
-
-        if not rows:
-            raise ParserError(f"{reaction} doesn't have a shielding function")
-
-        row = rows[0]
         sprops = reaction.metadata["shielding"]
 
-        global_types = json.loads(row["global"])
-        local_types = json.loads(row["local"])
-
-        if sprops["type"] in global_types:
-            fpath = SHIELDING_FUNCTIONS_DIR / f"{sprops['type']}.py"
-        elif sprops["type"] in local_types:
-            fpath = SHIELDING_FUNCTIONS_DIR / reaction.serialized / f"{sprops['type']}.py"
-        else:
-            raise ParserError(f"Invalid shielding type: {sprops['type']}")
-
-        module_name = ".".join(fpath.resolve().relative_to(SRC_DIR).with_suffix("").parts)
-        smod = load_module_from_path(fpath, module_name)
-        shielding_expr = smod.get_shielding(reaction, network)
+        shielding_fn = _get_shielding_function(sprops["type"], reaction.serialized)
+        shielding_expr = shielding_fn.get_shielding(reaction, network)
         reaction.metadata["shielding"]["value"] = shielding_expr
 
         return shielding_expr
