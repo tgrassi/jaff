@@ -115,8 +115,9 @@ JAFF will look up the matching cross section in its bundled database and integra
 ## Cross-Section Data
 
 JAFF bundles cross sections from three sources. At network-load time the
-serialized reaction key (`Reactant1_Reactant2__Product1_Product2`, the
-[serialized form of the reaction](../../api/core/reaction/index.md)) is looked
+serialized reaction key (`Reactant1.Reactant2__Product1.Product2`, the
+[serialized form of the reaction](../../api/core/reaction/index.md); photo
+reactions carry the `_PHOTON` agent, e.g. `H._PHOTON__H+.e-`) is looked
 up in `jaff.db`, and the cross-section arrays are attached to the reaction's
 [`xsecs_dict`](../working-with-networks/reactions.md).
 
@@ -199,20 +200,21 @@ $$
 ### Enabling shielding
 
 Shielding is opt-in per reaction, declared in `jaff.toml` under
-`[reaction.<serialized>.shielding]` (see the
+`[reaction."<serialized>".shielding]` (see the
 [configuration reference](../code-generation/jaff-toml.md#reactionserializedshielding-section)).
 The reaction **must be a photo-reaction**; the `type` key selects the shielding
-function (default `"leiden"`).
+function (default `"leiden"`). The serialized key contains `.` separators and so
+**must be quoted** in the TOML header.
 
 ```toml
 # Leiden tabulated line shielding for CO photodissociation
-[reaction.CO__C_O.shielding]
+[reaction."CO._PHOTON__C.O".shielding]
 type        = "leiden"
 radiation   = "ISRF"           # radiation-field subgroup (default "ISRF")
 shielded_by = ["self", "H2"]   # shielding species; "self" = the reactant (CO)
 
 # H2 self-shielding via the Hartwig et al. (2015) fit
-[reaction.H2__H_H.shielding]
+[reaction."H2._PHOTON__H.H".shielding]
 type      = "hg2015"
 min_ncol  = 1.0e-35            # optional floors (see below)
 min_vdisp = 1.0e-20
@@ -223,8 +225,8 @@ min_vdisp = 1.0e-20
 | `type`     | Function                               | Reactions          | Reference                                                                                                                                                                                |
 | ---------- | -------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `"leiden"` | Leiden tabulated tables                | any photo-reaction | [Leiden photodissociation database](https://home.strw.leidenuniv.nl/~ewine/photo/); [Heays et al. 2017, A&A 602, A105](https://ui.adsabs.harvard.edu/abs/2017A%26A...602A.105H/abstract) |
-| `"db1996"` | H2 self-shielding fit ($\alpha = 2$)   | `H2__H_H`          | [Draine & Bertoldi 1996, ApJ 468, 269](https://ui.adsabs.harvard.edu/abs/1996ApJ...468..269D/abstract) (DOI [10.1086/177689](https://doi.org/10.1086/177689))                            |
-| `"hg2015"` | H2 self-shielding fit ($\alpha = 1.1$) | `H2__H_H`          | [Hartwig et al. 2015, MNRAS 452, 1233](https://ui.adsabs.harvard.edu/abs/2015MNRAS.452.1233H/abstract) (DOI [10.1093/mnras/stv1368](https://doi.org/10.1093/mnras/stv1368))              |
+| `"db1996"` | H2 self-shielding fit ($\alpha = 2$)   | `H2._PHOTON__H.H`  | [Draine & Bertoldi 1996, ApJ 468, 269](https://ui.adsabs.harvard.edu/abs/1996ApJ...468..269D/abstract) (DOI [10.1086/177689](https://doi.org/10.1086/177689))                            |
+| `"hg2015"` | H2 self-shielding fit ($\alpha = 1.1$) | `H2._PHOTON__H.H`  | [Hartwig et al. 2015, MNRAS 452, 1233](https://ui.adsabs.harvard.edu/abs/2015MNRAS.452.1233H/abstract) (DOI [10.1093/mnras/stv1368](https://doi.org/10.1093/mnras/stv1368))              |
 
 #### Leiden tabulated shielding (`type = "leiden"`)
 
@@ -242,11 +244,11 @@ For each species in `shielded_by`, JAFF emits a per-reaction
 [interpolation call](../code-generation/table-interpolation.md)
 `interp_<index>_shielding_<species>(ncol_<species>)`; the total factor is their
 product. `"self"` resolves to the reaction's reactant, so it interpolates over
-that species' own column density (e.g. `ncol_CO` for `CO__C_O`).
+that species' own column density (e.g. `ncol_CO` for `CO._PHOTON__C.O`).
 
 #### H2 self-shielding (`type = "db1996"` / `"hg2015"`)
 
-Both apply only to the `H2__H_H` (H2 → H + H) reaction and evaluate the
+Both apply only to the `H2._PHOTON__H.H` (H2 → H + H) reaction and evaluate the
 standard three-term analytic fit
 
 $$

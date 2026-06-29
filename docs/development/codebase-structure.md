@@ -41,9 +41,10 @@ src/jaff/
 │   │   ├── _photochemistry.py  # get_xsec / get_verner_xsec / shielding — lookups
 │   │   ├── _radiation.py       # Radiation moment equations
 │   │   ├── _typing/            # TypedDicts (XsecsProps, ...)
-│   │   └── shielding/          # Shielding functions (dispatched by reaction metadata)
-│   │       ├── leiden.py       # Leiden tabulated line shielding (global)
-│   │       └── H2__H_H/        # H2 self-shielding (db1996, hg2015) + shared _utils
+│   │   └── shielding/          # Shielding-function registry (@_register, by reaction metadata)
+│   │       ├── _base.py        # ShieldingFunction ABC (name, reaction attrs)
+│   │       ├── global_/        # Global models, reaction=None (e.g. leiden.py)
+│   │       └── H2__PHOTON__H_H/ # Local H2 self-shielding (db1996, hg2015) + shared _utils
 │   ├── _typing/                # TypedDicts (Numeric, ...)
 │   └── constants.py            # Physical constants (astropy Quantities)
 │
@@ -111,7 +112,7 @@ src/jaff/
 │       └── leiden.hdf5         # Leiden line shielding (one group per reaction)
 │
 ├── db/                         # Prebuilt SQLite database
-│   └── jaff.db                 # Reaction/species/mass + cross-section + shielding tables, built from data/
+│   └── jaff.db                 # Mass + photo cross-section (Leiden/NORAD + Verner) tables, built from data/
 │
 └── _utils/                     # Standalone maintenance scripts
     ├── generate_mass_table.py          # Build mass tables in jaff.db from data/atom_mass.csv
@@ -120,9 +121,7 @@ src/jaff/
     ├── split_xsecs_photodecay.py       # Split source diss/ion datasets into the photodecay channel
     ├── generate_photo_xsecs_table.py   # Build photo_reaction_cross_sections table in jaff.db
     ├── generate_ion_xsecs_table.py     # Build verner_cross_sections table in jaff.db
-    ├── build_shielding_hdf5.py         # Collapse Leiden shielding tables into shielding/leiden.hdf5
-    ├── build_shielding_table.py        # Build photo_reaction_shielding table in jaff.db
-    └── add_shielding_column.py         # Add a shielding column to an existing jaff.db table
+    └── build_shielding_hdf5.py         # Collapse Leiden shielding tables into shielding/leiden.hdf5
 ```
 
 ## Architecture Diagram
@@ -215,10 +214,8 @@ SQLite lookup tables that JAFF queries at runtime.
 | `collapse_xsecs_hdf5.py`        | Merge the per-reaction Leiden and NORAD files into combined `leiden.hdf5` / `norad.hdf5` (one group per reaction, photon energy in eV, σ in cm²). |
 | `split_xsecs_photodecay.py`     | Split the source dissociation/ionisation datasets into the single `photodecay` channel used by the collapsed HDF5 files.                          |
 | `generate_photo_xsecs_table.py` | Build the `photo_reaction_cross_sections` table in `db/jaff.db` from the collapsed HDF5 files (`photo_absorption` flag, `decay_type` + `file.hdf5::<group>` pointers). |
-| `generate_ion_xsecs_table.py`   | Build the `verner_cross_sections` table in `db/jaff.db` from the Verner (1996) analytic-fit parameters in `data/xsecs/verner/`.                   |
+| `generate_ion_xsecs_table.py`   | Build the `verner_cross_sections` table in `db/jaff.db` from the Verner (1996) analytic-fit parameters in `data/xsecs/verner_1996.csv`.          |
 | `build_shielding_hdf5.py`       | Collapse the per-species Leiden line-shielding tables into `data/shielding/leiden.hdf5` (one group per reaction).                                 |
-| `build_shielding_table.py`      | Build the `photo_reaction_shielding` table in `db/jaff.db` (global/local shielding-function names per reaction).                                  |
-| `add_shielding_column.py`       | Add a shielding column to an existing `db/jaff.db` table.                                                                                         |
 
 Run a script as a module from the project root, e.g.:
 

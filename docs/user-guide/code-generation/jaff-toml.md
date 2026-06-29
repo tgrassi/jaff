@@ -123,15 +123,19 @@ and the original papers are in the
 [Shielding](../designing-networks/photochemistry.md#shielding) section. The
 reaction **must** be a photo-reaction or generation aborts.
 
+The serialized key contains `.` separators, so it **must be quoted** in the
+table header — otherwise TOML reads the dots as nested tables. Photo-reactions
+also carry the `_PHOTON` agent in their serialized form.
+
 ```toml
 # Leiden tabulated line shielding
-[reaction.CO__C_O.shielding]
+[reaction."CO._PHOTON__C.O".shielding]
 type        = "leiden"           # default if omitted
 radiation   = "ISRF"
 shielded_by = ["self", "H2"]
 
 # H2 self-shielding (Hartwig et al. 2015)
-[reaction.H2__H_H.shielding]
+[reaction."H2._PHOTON__H.H".shielding]
 type      = "hg2015"
 min_ncol  = 1.0e-35
 min_vdisp = 1.0e-20
@@ -150,7 +154,7 @@ Common key:
 | `shielded_by` | `list` | required | Shielding species; allowed: `"self"`, `"H2"`, `"H"`, `"C"`, `"N2"`, `"CO"`. Per-species factors are multiplied |
 | `radiation`   | `str`  | `"ISRF"` | Radiation-field subgroup in the Leiden table                                                    |
 
-`type = "db1996"` / `"hg2015"` keys (only on the `H2__H_H` reaction):
+`type = "db1996"` / `"hg2015"` keys (only on the `H2._PHOTON__H.H` reaction):
 
 | Key         | Type    | Default | Description                                            |
 | ----------- | ------- | ------- | ----------------------------------------------------- |

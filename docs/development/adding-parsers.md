@@ -68,12 +68,30 @@ Every handler appends a `parsedListProps` dict (defined in `core/parsers/network
 
 | Key        | Type            | Description                                         |
 | ---------- | --------------- | --------------------------------------------------- |
-| `"r"`      | `list[str]`     | Reactant name strings                               |
+| `"r"`      | `list[str]`     | Reactant name strings (include any agent pseudo-species, see below) |
 | `"p"`      | `list[str]`     | Product name strings                                |
 | `"tmin"`   | `float or None` | Lower temperature bound in Kelvin, or `None`        |
 | `"tmax"`   | `float or None` | Upper temperature bound in Kelvin, or `None`        |
 | `"rate"`   | `str`           | Rate expression as a Python/SymPy-compatible string |
+| `"type"`   | `str`           | Reaction type concluded by the parser: `"photo"`, `"cosmic_ray"`, `"3_body"`, or `"unknown"` |
 | `"string"` | `str`           | Original network-file line (for error reporting)    |
+
+### Concluding the reaction type
+
+The parser — not the rate expression — decides the reaction `"type"`. Conclude
+it **structurally** so it survives custom/auxiliary rates, and inject the driving
+**agent pseudo-species** into the reactant list when the format implies one but
+the line omits it:
+
+- A radiation-driven reaction carries `_PHOTON` as a reactant → `"photo"`.
+- A cosmic-ray reaction carries `_CR` / `_CRP` / `_CRPHOT` → `"cosmic_ray"`.
+- Three or more *real* (non-`_`) reactants → `"3_body"`.
+- Otherwise `"unknown"`.
+
+These special pseudo-species (leading `_`) give a reaction its identity and
+serialization but are excluded from the kinetics. See the existing formats'
+`_reaction_type` and agent-injection logic (e.g. `kida/reaction.py`,
+`krome/reaction.py`) for reference implementations.
 
 After all lines are parsed, `__normalize_rates` lower-cases every `"rate"` string, and `resolve_symbolic_dependencies` substitutes any global variables (e.g. from `@var` or `VARIABLES` blocks) into the expressions.
 
@@ -132,6 +150,10 @@ class MyFormatReaction(NetworkFormat):
         # Replace any format-specific symbols with JAFF canonical names
         rate = local.group("rate").strip().replace("my_crflux", "crate")
 
+        # Conclude the reaction type structurally (inject the agent species
+        # first if the format implies one). Three or more real reactants => 3-body.
+        rtype = "3_body" if sum(not r.startswith("_") for r in rr) >= 3 else "unknown"
+
         ctx.parsed_list.append(
             {
                 "r": rr,
@@ -139,6 +161,7 @@ class MyFormatReaction(NetworkFormat):
                 "tmin": t_min,
                 "tmax": t_max,
                 "rate": rate,
+                "type": rtype,
                 "string": ctx.line.strip(),
             }
         )
@@ -250,7 +273,8 @@ If your format introduces additional shorthand symbols, add them to `__set_known
 - [x] `priority` chosen so the format matches at the correct point relative to others
 - [x] `_global_re` is a fast filter; `_local_re` uses named groups for all fields (`reactants`, `products`, `tmin`, `tmax`, `rate`)
 - [x] Static regexes are `@cache`d; any state-dependent `_local_re` is left uncached
-- [x] `handle` appends a valid `parsedListProps` dict (all six keys) to `ctx.parsed_list`
+- [x] `handle` appends a valid `parsedListProps` dict (all seven keys, including `"type"`) to `ctx.parsed_list`
+- [x] Reaction `"type"` concluded structurally; agent pseudo-species (`_PHOTON`/`_CR`) injected when the format implies one
 - [x] `_handle_errors` calls `ctx.raise_error` with a descriptive message
 - [x] Subpackage added to the `from . import …` line in `_formats/__init__.py`
 - [x] Format-specific symbols replaced with JAFF canonical names in the handler or via `__set_known_replacments`
