@@ -39,7 +39,8 @@ def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
         flux_i = k_i * nden[idx_A] * nden[idx_B]
 
     The number densities are represented as entries of the SymPy
-    ``MatrixSymbol`` ``nden`` (shape ``(species.count, 1)``), so the returned
+    ``MatrixSymbol`` ``nden`` (shape ``(species.core.count, 1)`` — only core
+    species enter the integrated state), so the returned
     expressions reference ``nden[j]`` symbolically and can be differentiated or
     printed by any SymPy backend.
 
@@ -98,8 +99,9 @@ def get_sodes(reactions: "Reactions", species: Species) -> list[Basic]:
     Returns
     -------
     list of sympy.Basic
-        List of length ``species.count``.  ``sodes[j]`` is the symbolic
-        time-derivative of the *j*-th species number density.
+        List of length ``species.core.count`` (special pseudo-species are not
+        integrated).  ``sodes[j]`` is the symbolic time-derivative of the
+        *j*-th core species number density.
 
     Notes
     -----

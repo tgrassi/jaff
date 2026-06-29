@@ -441,7 +441,9 @@ class Reaction:
         """Return a source-code string for the reaction flux.
 
         The flux has the form ``k[idx] * y[idx_R1] * y[idx_R2] * ...``,
-        where ``idx_Ri`` is derived from each reactant's ``fidx`` attribute.
+        where ``idx_Ri`` is derived from each core reactant's ``fidx``
+        attribute.  Special pseudo-species (``_PHOTON``, ``_CR``, ...) are
+        excluded — they carry the reaction's identity but not its kinetics.
 
         Parameters
         ----------

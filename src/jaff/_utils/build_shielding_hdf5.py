@@ -4,7 +4,7 @@
 shielding functions (https://home.strw.leidenuniv.nl/~ewine/photo/), one plain
 text table per species, photo-channel and radiation field.  This utility merges
 them into ``data/shielding/leiden.hdf5`` with **one group per reaction**, keyed
-exactly like ``data/xsecs/leiden.hdf5`` (e.g. ``"CO__C_O"``).
+exactly like ``data/xsecs/leiden.hdf5`` (e.g. ``"CO__C.O"``).
 
 Schema
 ------
@@ -30,11 +30,12 @@ it is stored once at group level (verified equal, else the build aborts).
 Columns that are entirely NaN (some ``*_Lyalpha`` tables) are omitted.
 
 - **photodissociation** -> the Leiden reaction whose sole reactant is the
-  species (a dissociation channel, e.g. ``CO__C_O``).
+  species (a dissociation channel, e.g. ``CO__C.O``).
 - **photoionisation** -> the Leiden reaction if Leiden keyed that species by its
-  ionisation channel (e.g. ``Al__Al+_e-``, ``Ca+__Ca++_e-``, ``H-__H_e-``);
-  otherwise the key is constructed as ``"<X>__<X+>_e-"`` (neutral ``X`` -> ``X+``,
-  cation ``X+`` -> ``X++``, anion ``X-`` -> neutral ``X``).
+  ionisation channel (e.g. ``Al._PHOTON__Al+.e-``, ``Ca+._PHOTON__Ca++.e-``,
+  ``H-._PHOTON__H.e-``); otherwise the key is constructed as
+  ``"<X>._PHOTON__<X+>.e-"`` (neutral ``X`` -> ``X+``, cation ``X+`` -> ``X++``,
+  anion ``X-`` -> neutral ``X``).
 
 Values are copied verbatim from the source tables -- no numerical transform.
 """

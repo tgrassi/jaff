@@ -145,13 +145,15 @@ class Photochemistry:
     def shielding(reaction: Reaction, network: Network) -> Expr:
         """Build the symbolic shielding factor for a photo-reaction.
 
-        The ``photo_reaction_shielding`` table records, per reaction, the
-        available shielding function names split into ``global`` (shared across
-        reactions, loaded from ``SHIELDING_FUNCTIONS_DIR/<type>.py``) and
-        ``local`` (reaction-specific, loaded from
-        ``SHIELDING_FUNCTIONS_DIR/<reaction>/<type>.py``).  The function named by
-        ``reaction.metadata["shielding"]["type"]`` is loaded dynamically and its
-        ``get_shielding(reaction, network)`` is called to produce the factor.
+        The shielding function named by
+        ``reaction.metadata["shielding"]["type"]`` is resolved from the
+        shielding registry via
+        :func:`~jaff.physics.photo_reactions.shielding._get_shielding_function`.
+        Lookup is keyed by ``(type, reaction.serialized)`` and prefers a
+        reaction-specific (local) function, falling back to a global one
+        registered with ``reaction=None``.  The resolved
+        :class:`~jaff.physics.photo_reactions.shielding._base.ShieldingFunction`
+        instance's ``get_shielding(reaction, network)`` produces the factor.
 
         The result is cached on ``reaction.metadata["shielding"]["value"]`` so
         repeated calls (e.g. once per radiation band) reuse it.
@@ -173,8 +175,8 @@ class Photochemistry:
         Raises
         ------
         ParserError
-            If the reaction has no shielding entry, or ``type`` is not listed in
-            the reaction's ``global`` or ``local`` shielding functions.
+            If no shielding function is registered for ``type`` either locally
+            (for this reaction) or as a global fallback.
         """
         sprops = reaction.metadata["shielding"]
 

@@ -20,8 +20,8 @@ Each group has datasets, all co-sorted by **ascending photon energy**:
 
 Each source Leiden file bundles both decay channels, so it is split into one
 group per channel: the dissociation reaction keeps the serialized stem, while
-the ionisation reaction is keyed ``<R>__<R+>.e-``.  NORAD files are
-photoionisation only.
+the ionisation reaction is keyed ``<R>._PHOTON__<R+>.e-`` (the ``_PHOTON``
+agent is injected on the reactant side).  NORAD files are photoionisation only.
 
 Every dataset has a ``unit`` attr ("eV" or "cm2").
 

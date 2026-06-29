@@ -87,7 +87,10 @@ class Network:
     label : str
         Human-readable label for this network (defaults to the file stem).
     species : Species
-        Ordered catalogue of all species in the network.
+        Ordered catalogue of the network's core (real) species.  Special
+        pseudo-species (``_PHOTON``, ``_CR``, ``_GRAIN``, ...) are excluded;
+        they live only inside each reaction's ``reactants``/``products`` and
+        carry the reaction's identity without entering the integrated state.
     reactions : Reactions
         Ordered catalogue of all reactions in the network.
     elements : Elements
@@ -489,7 +492,7 @@ class Network:
             Key for the optional custom-rate auxiliary function (e.g. ``"chemrate0"``).
         rate : str
             Raw rate string from the network file.
-        aux_funcs : dict[str, FunctionsDict]
+        aux_funcs : dict[str, AuxiliaryFunctionsDict]
             Parsed auxiliary functions dictionary.
         global_vars : dict[str, Basic]
             Resolved global variable map from the network file.
@@ -498,7 +501,7 @@ class Network:
 
         Returns
         -------
-        tuple[Basic, bool, int]
+        tuple[Expr, int]
             ``(rate_expr, n_photo)`` where *n_photo* is
             incremented by 1 for photo-reactions.
         """
@@ -741,7 +744,7 @@ class Network:
 
         A *sink* species appears as a reactant in at least one reaction but
         is never produced.  A *source* species is produced but never consumed.
-        The special species ``"dummy"`` is excluded from the check.
+        The special species ``"_DUMMY"`` is excluded from the check.
 
         Parameters
         ----------

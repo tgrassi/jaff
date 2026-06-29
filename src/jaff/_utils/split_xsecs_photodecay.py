@@ -5,13 +5,13 @@ Background
 ----------
 The collapsed ``data/xsecs/leiden.hdf5`` bundled **both** decay channels
 (``photodissociation`` + ``photoionization``) under one dissociation-keyed
-group (e.g. ``CH__C_H``).  Dissociation and ionisation are physically distinct
+group (e.g. ``CH__C.H``).  Dissociation and ionisation are physically distinct
 reactions with different products and rates, so a single bundled row made the
 molecular-ionisation reaction invisible to the network.  This migration splits
 each bundled group into one reaction per decay channel:
 
 - ``<R>__<dissoc products>``  -- ``photodecay`` = photodissociation xsec
-- ``<R>__<R+>_e-``            -- ``photodecay`` = photoionisation xsec
+- ``<R>._PHOTON__<R+>.e-``    -- ``photodecay`` = photoionisation xsec
 
 emitted only for channels that carry signal.  ``photoabsorption`` (shared
 between a species' channels) and ``photon_energy`` are copied into each group.
