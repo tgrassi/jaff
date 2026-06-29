@@ -321,7 +321,7 @@ class Network:
                 if sym != tgas and expr.has(tgas):
                     local_subs_dict[sym] = expr.xreplace({tgas: local_subs_dict[tgas]})
 
-            rate_expr, is_photoreaction, n_photo = self.__parse_rate(
+            rate_expr, n_photo = self.__parse_rate(
                 aux_chem_rate, rate, aux_funcs, global_vars, n_photo
             )
             rate_expr = resolve_dependencies(rate_expr, local_subs_dict, aux_funcs)
@@ -357,13 +357,13 @@ class Network:
                 self.__parse_reaction_metadata(rea)
             self.reactions.add(rea)
 
-            if is_photoreaction:
+            if rea.rtype() == "photo":
                 if self.__photochemistry is None:
                     self.__photochemistry = Photochemistry()
 
                 rea.xsecs_dict = self.__photochemistry.get_xsec(rea)
 
-            if is_photoreaction and self.radiation is not None:
+            if rea.rtype() == "photo" and self.radiation is not None:
                 if aux_chem_rate not in aux_funcs:
                     self.radiation.set_reaction_rate_coefficient(rea)
                 elif aux_chem_rate in aux_funcs and aux_delta_rad:
@@ -467,7 +467,7 @@ class Network:
         aux_funcs: dict[str, AuxiliaryFunctionsDict],
         global_vars: dict[str, Expr],
         n_photo: int,
-    ) -> tuple[Expr, bool, int]:
+    ) -> tuple[Expr, int]:
         """Convert a raw rate string to a SymPy expression.
 
         Checks, in priority order:
@@ -493,16 +493,14 @@ class Network:
         Returns
         -------
         tuple[Basic, bool, int]
-            ``(rate_expr, is_photoreaction, n_photo)`` where *n_photo* is
+            ``(rate_expr, n_photo)`` where *n_photo* is
             incremented by 1 for photo-reactions.
         """
-        is_photoreaction = False
         if aux_chem_rate in aux_funcs:
             rate_expr = aux_funcs[aux_chem_rate]["def"]
         elif rate in global_vars:
             rate_expr = symbols(rate)
         elif "photo" in rate.lower():
-            is_photoreaction = True
             f: UndefinedFunction = Function("photorates")  # type: ignore
             n_photo += 1
 
@@ -530,7 +528,7 @@ class Network:
         if not isinstance(rate_expr, Expr):
             raise ParserError(f"Rate expression is not an Expr: {rate_expr}")
 
-        return rate_expr, is_photoreaction, n_photo
+        return rate_expr, n_photo
 
     def __parse_reaction_metadata(self, reaction: Reaction) -> None:
         if reaction.serialized not in self._metadata["reaction_props"]:
