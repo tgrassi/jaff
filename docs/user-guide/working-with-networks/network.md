@@ -173,7 +173,7 @@ expanded into this form:
 
 | Shorthand           | Expands to                                                             |
 | ------------------- | ---------------------------------------------------------------------- |
-| `ntot`              | sum of `nden[i, 0]` over **all** species                               |
+| `ntot`              | sum of `nden[i, 0]` over **all core** species                          |
 | `nh` / `n_H`        | sum over H-bearing species, **weighted** by atom count                 |
 | `nhe` / `n_He`      | sum over He-bearing species, weighted                                  |
 | `n_X` (e.g. `n_CO`) | `nden[idx_X, 0]` for that one species (`Xp`→`X+`, `Xm`→`X-`, `X0`→`X`) |
