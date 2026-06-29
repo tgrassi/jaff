@@ -200,7 +200,6 @@ def to_jaff_file(filename: str | Path, net: "Network"):
                 "custom_rad_rate": r.custom_rad_rate,
                 "original_string": r.original_string,
                 "type": r.rtype(),
-                "xsecs": jsonable(r.xsecs_dict),
             }
             for r in net.reactions
         ],

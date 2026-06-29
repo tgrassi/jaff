@@ -421,9 +421,15 @@ class Network:
                 index=i,
                 type=reaction.get("reaction_type", "unknown"),
             )
-            rea.xsecs_dict = reaction["xsecs_dict"]
             rea.custom_rad_rate = reaction["custom_rad_rate"]
             self.reactions.add(rea)
+
+            if rea.rtype() == "photo":
+                if self.__photochemistry is None:
+                    self.__photochemistry = Photochemistry()
+                rea.xsecs_dict = self.__photochemistry.get_xsec(rea) or reaction.get(
+                    "xsecs_dict"
+                )
 
             if rea.rtype() == "photo" and self.radiation is not None:
                 if rea.custom_rad_rate:
