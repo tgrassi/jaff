@@ -11,6 +11,7 @@ _GRAIN                 Grain                0e0             None          None  
 _DUST                 Dust                 0e0             None          None       None        None
 _BULK                 Bulk                 0e0             None          None       None        None
 e-                    Electron             9.109383e-28    None          None       None        None
+GRAIN                 Grain                0e0             None          None       None        None
 +                     Cation               0e0             None          None       None        None
 -                     Anion                0e0             None          None       None        None
 c-                    Cyclic               0e0             None          None       None        None
