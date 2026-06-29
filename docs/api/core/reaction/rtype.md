@@ -8,19 +8,16 @@ tags:
 
 `#!python rtype()`
 
-Classifies this reaction by inspecting its rate expression and stores the result in `self.metadata["type"]`.
+Returns the reaction type concluded by the network-format parser. The type is no longer inferred from the rate expression — each parser classifies the reaction while reading the file and supplies the type, which is stored in `self.metadata["type"]`.
 
-Classification rules (evaluated in order):
-
-| Type | Condition |
-|------|-----------|
-| `"photo"` | Rate is or contains a `photorates(...)` function call |
-| `"cosmic_ray"` | Rate contains the free symbol `crate` |
-| `"photo_av"` | Rate contains the free symbol `av` |
-| `"3_body"` | Rate contains the free symbol `ntot` |
-| `"unknown"` | None of the above match |
+| Type | Meaning |
+|------|---------|
+| `"photo"` | Radiation-driven (photodissociation / photoionisation) |
+| `"cosmic_ray"` | Cosmic-ray driven |
+| `"3_body"` | Three-body reaction |
+| `"unknown"` | Unclassified |
 
 **Returns**
 
 _str_
-: One of `"photo"`, `"cosmic_ray"`, `"photo_av"`, `"3_body"`, or `"unknown"`.
+: One of `"photo"`, `"cosmic_ray"`, `"3_body"`, or `"unknown"`.
