@@ -17,14 +17,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sympy import Basic, sympify
+from sympy import Basic, Expr, sympify
 
-from ..drivers import HDF5, JaffDb
-from ..drivers.pooch import download_xsecs
+from ...drivers import HDF5, JaffDb
+from ...drivers.pooch import download_shielding, download_xsecs
 from ._typing import XsecsProps
+from .shielding import _get_shielding_function
 
 if TYPE_CHECKING:
-    from ..core import Reaction
+    from ...core import Reaction
+    from ...core.network import Network
 
 
 class Photochemistry:
@@ -36,14 +38,17 @@ class Photochemistry:
     """
 
     def __init__(self):
-        """Ensure the cross-section data files are available locally.
+        """Ensure the cross-section and shielding data files are available locally.
 
         Constructing a :class:`Photochemistry` triggers
-        :func:`~jaff.drivers.pooch.download_xsecs`, which downloads the Leiden /
-        NORAD / Verner files on first use (a network fetch unless already
-        cached). Instantiate once and reuse rather than per reaction.
+        :func:`~jaff.drivers.pooch.download_xsecs` (Leiden / NORAD / Verner
+        cross sections) and :func:`~jaff.drivers.pooch.download_shielding` (the
+        Leiden line-shielding tables), downloading both on first use (a network
+        fetch unless already cached). Instantiate once and reuse rather than per
+        reaction.
         """
         download_xsecs()
+        download_shielding()
 
     def get_verner_xsec(self, reaction: Reaction) -> Basic | None:
         """
@@ -101,10 +106,11 @@ class Photochemistry:
         -------
         XsecsProps or None
             Dict with ``units`` (photon energy in eV, cross section in cm²),
-            ``_equations`` flags (``pa``/``pi``/``pd`` for photo-absorption,
-            -ionization, -dissociation), the shared ``photon_energy`` grid, and a
-            cross-section array per process (``None`` when absent).  Returns
-            ``None`` if the reaction has no cross-section entry.
+            ``_equations`` (``pa`` photo-absorption flag and ``decay_type``,
+            either ``"dissociation"`` or ``"ionization"``), the ``photon_energy``
+            grid, the optional ``photo_absorption`` array, and the reaction's
+            single ``photodecay`` cross-section array (``None`` when absent).
+            Returns ``None`` if the reaction has no cross-section entry.
         """
         with JaffDb() as jdb:
             table = jdb.table("photo_reaction_cross_sections")
@@ -115,7 +121,7 @@ class Photochemistry:
 
         row = rows[0]
         loc: str = row["leiden"] if row["leiden"] else row["norad"]
-        jaff_dir = Path(__file__).parent.parent.resolve()
+        jaff_dir = Path(__file__).parent.parent.parent.resolve()
         h5group = str(jaff_dir / loc)
         pr_xsec = HDF5().to_dict(h5group)
 
@@ -126,13 +132,56 @@ class Photochemistry:
             },
             "_equations": {
                 "pa": bool(row["photo_absorption"]),
-                "pi": bool(row["photo_ionization"]),
-                "pd": bool(row["photo_dissociation"]),
+                "decay_type": row["decay_type"],
             },
             "photon_energy": pr_xsec.get("photon_energy", {}).get("_data", None),
             "photo_absorption": pr_xsec.get("photoabsorption", {}).get("_data", None),
-            "photo_ionization": pr_xsec.get("photoionization", {}).get("_data", None),
-            "photo_dissociation": pr_xsec.get("photodissociation", {}).get("_data", None),
+            "photodecay": pr_xsec.get("photodecay", {}).get("_data", None),
         }
 
         return xsecs
+
+    @staticmethod
+    def shielding(reaction: Reaction, network: Network) -> Expr:
+        """Build the symbolic shielding factor for a photo-reaction.
+
+        The shielding function named by
+        ``reaction.metadata["shielding"]["type"]`` is resolved from the
+        shielding registry via
+        :func:`~jaff.physics.photo_reactions.shielding._get_shielding_function`.
+        Lookup is keyed by ``(type, reaction.serialized)`` and prefers a
+        reaction-specific (local) function, falling back to a global one
+        registered with ``reaction=None``.  The resolved
+        :class:`~jaff.physics.photo_reactions.shielding._base.ShieldingFunction`
+        instance's ``get_shielding(reaction, network)`` produces the factor.
+
+        The result is cached on ``reaction.metadata["shielding"]["value"]`` so
+        repeated calls (e.g. once per radiation band) reuse it.
+
+        Parameters
+        ----------
+        reaction : Reaction
+            Reaction to shield; its ``metadata["shielding"]["type"]`` selects
+            the shielding function.
+        network : Network
+            Network the reaction belongs to, forwarded to the shielding
+            function for species/column-density look-ups.
+
+        Returns
+        -------
+        sympy.Expr
+            Dimensionless shielding factor multiplying the photo-rate.
+
+        Raises
+        ------
+        ParserError
+            If no shielding function is registered for ``type`` either locally
+            (for this reaction) or as a global fallback.
+        """
+        sprops = reaction.metadata["shielding"]
+
+        shielding_fn = _get_shielding_function(sprops["type"], reaction.serialized)
+        shielding_expr = shielding_fn.get_shielding(reaction, network)
+        reaction.metadata["shielding"]["value"] = shielding_expr
+
+        return shielding_expr

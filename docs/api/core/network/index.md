@@ -54,7 +54,7 @@ _FileNotFoundError_
 | ----------------- | ------------------- | -------------------------------------------------------------------------------------------- |
 | `label`           | `str`               | Human-readable network identifier; defaults to the source file stem                          |
 | `file_name`       | `Path`              | Resolved absolute path to the source network file                                            |
-| `species`         | `Species`           | Ordered catalogue of all species in the network                                              |
+| `species`         | `Species`           | Ordered catalogue of the network's core (real) species; special pseudo-species (`_PHOTON`, `_CR`, ...) are excluded |
 | `reactions`       | `Reactions`         | Ordered catalogue of all reactions in the network                                            |
 | `elements`        | `Elements`          | Element catalogue derived from all species; used for composition matrices                    |
 | `reactant_matrix` | `ndarray`           | Shape (n_reactions, n_species) stoichiometry matrix for reactants                            |

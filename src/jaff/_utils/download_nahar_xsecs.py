@@ -4,7 +4,7 @@ For every ion of elements Z = 1..26 this fetches the *ground-state*
 photoionisation cross section from the NORAD-Atomic-Data archive at Ohio State
 (S. N. Nahar), reformats it, and writes one text file per ion into
 ``data/xsecs/op/`` using the serialized reaction naming convention
-``<ion>__<ion+>_e-.dat`` (e.g. ``H__H+_e-.dat``, ``He+__He++_e-.dat``).
+``<ion>__<ion+>.e-.dat`` (e.g. ``H__H+.e-.dat``, ``He+__He++.e-.dat``).
 
 Source URL scheme
 -----------------
@@ -142,12 +142,14 @@ def serialized_name(symbol: str, charge: int) -> str:
     Returns
     -------
     str
-        e.g. ``charge=0`` -> ``"He__He+_e-"``, ``charge=1`` ->
-        ``"He+__He++_e-"``.
+        e.g. ``charge=0`` -> ``"He__He+.e-"``, ``charge=1`` ->
+        ``"He+__He++.e-"``.
     """
     ion = symbol + "+" * charge
     product = symbol + "+" * (charge + 1)
-    return f"{ion}__{'_'.join(sorted([product, 'e-']))}"
+    return (
+        f"{'.'.join(sorted([ion, '_PHOTON']))}__{'.'.join(sorted([product, 'e-']))}"
+    )
 
 
 def fetch(url: str) -> str | None:

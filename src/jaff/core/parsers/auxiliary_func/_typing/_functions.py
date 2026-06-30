@@ -2,8 +2,8 @@ from typing import NotRequired, TypedDict
 
 from sympy import Basic
 
-FunctionsDict = TypedDict(
-    "FunctionsDict",
+AuxiliaryFunctionsDict = TypedDict(
+    "AuxiliaryFunctionsDict",
     {
         "def": Basic,
         "args": list[Basic],

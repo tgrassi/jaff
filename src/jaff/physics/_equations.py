@@ -27,7 +27,7 @@ from ..io._logger import jaff_progress
 
 if TYPE_CHECKING:
     from .. import Reactions, Species
-    from ._radiation import Radiation
+    from .photo_reactions._radiation import Radiation
 
 
 def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
@@ -39,7 +39,8 @@ def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
         flux_i = k_i * nden[idx_A] * nden[idx_B]
 
     The number densities are represented as entries of the SymPy
-    ``MatrixSymbol`` ``nden`` (shape ``(species.count, 1)``), so the returned
+    ``MatrixSymbol`` ``nden`` (shape ``(species.core.count, 1)`` — only core
+    species enter the integrated state), so the returned
     expressions reference ``nden[j]`` symbolically and can be differentiated or
     printed by any SymPy backend.
 
@@ -67,15 +68,14 @@ def get_sfluxes(reactions: "Reactions", species: Species) -> list[Expr]:
     are applied in :func:`get_sodes`.
     """
     fluxes: list[Expr] = [Float(0.0) for _ in range(reactions.count)]
-    nden_matrix = MatrixSymbol("nden", species.count, 1)
+    nden_matrix = MatrixSymbol("nden", species.core.count, 1)
 
     for i, reaction in enumerate(reactions):
         flux = reaction.rate
-        # Multiply by number density of every reactant (mass-action kinetics)
-        for reactant in reaction.reactants:
+        for reactant in reaction.reactants.core:
             flux *= nden_matrix[species[str(reactant)].index]
 
-        fluxes[i] = flux  # type: ignore
+        fluxes[i] = flux
 
     return fluxes
 
@@ -99,8 +99,9 @@ def get_sodes(reactions: "Reactions", species: Species) -> list[Basic]:
     Returns
     -------
     list of sympy.Basic
-        List of length ``species.count``.  ``sodes[j]`` is the symbolic
-        time-derivative of the *j*-th species number density.
+        List of length ``species.core.count`` (special pseudo-species are not
+        integrated).  ``sodes[j]`` is the symbolic time-derivative of the
+        *j*-th core species number density.
 
     Notes
     -----
@@ -116,11 +117,10 @@ def get_sodes(reactions: "Reactions", species: Species) -> list[Basic]:
     and fixed-layout networks produced by certain code-generation backends.
     """
     fluxes = get_sfluxes(reactions, species)
-    sodes: list[Basic] = [Float(0.0) for _ in range(species.count)]
+    sodes: list[Basic] = [Float(0.0) for _ in range(species.core.count)]
 
     for i, reaction in enumerate(reactions):
-        # Subtract flux from every reactant (destruction term)
-        for rr in reaction.reactants:
+        for rr in reaction.reactants.core:
             # Choose the output-array slot: either the species' runtime index
             # (when fidx is a "idx_*" tag) or a literal integer position.
             idx = (
@@ -131,7 +131,7 @@ def get_sodes(reactions: "Reactions", species: Species) -> list[Basic]:
             sodes[idx] -= fluxes[i]
 
         # Add flux to every product (creation term)
-        for pp in reaction.products:
+        for pp in reaction.products.core:
             idx = (
                 pp.index
                 if isinstance(pp.fidx, str) and pp.fidx.startswith("idx_")
@@ -218,7 +218,7 @@ def get_sradodes(
         raise ValueError("Invalid order: Supported orders are 0, 1, 2, 3")
 
     rad_groups = radiation.groups
-    nden = MatrixSymbol("nden", species.count, 1)
+    nden = MatrixSymbol("nden", species.core.count, 1)
 
     # Choose the symbolic name for the radiation density variable based on
     # whether the field is tracked as energy density (erg/cm³) or photon
@@ -245,9 +245,9 @@ def get_sradodes(
         for reaction, props in group.props.items():
             rrate = props["k"]
             # Accumulate any user-supplied radiation source terms
-            group_dRad_dt_extra += rrate * props["delta_rad"]  # type: ignore
+            group_dRad_dt_extra += rrate * props["delta_rad"]
             # Multiply by all reactant number densities (mass-action kinetics)
-            for reactant in reaction.reactants:
+            for reactant in reaction.reactants.core:
                 rrate *= nden[Idx(species[str(reactant)].index)]
 
             # Photochemical reactions *remove* radiation, hence the minus sign.

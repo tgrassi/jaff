@@ -68,9 +68,9 @@ class TestNetworkParsers:
         found = False
         for reaction in network.reactions:
             if (
-                reaction.reactants.count == 1
-                and reaction.reactants[0].name == "H2"
-                and reaction.products.count == 2
+                reaction.reactants.core.count == 1
+                and reaction.reactants.core[0].name == "H2"
+                and reaction.products.core.count == 2
                 and "H" in reaction.products
             ):
                 found = True
@@ -169,7 +169,7 @@ class TestNetworkParsers:
             if (
                 reaction.reactants.count == 2
                 and "H2" in reaction.reactants
-                and "CR" in reaction.reactants
+                and "_CR" in reaction.reactants
             ):
                 found = True
                 # The rate should be the zeta value (1.3e-17)
@@ -292,9 +292,9 @@ class TestNetworkParsers:
         species_names = [s.name for s in network.species]
 
         for reaction in network.reactions:
-            for reactant in reaction.reactants:
+            for reactant in reaction.reactants.core:
                 assert reactant.name in species_names
-            for product in reaction.products:
+            for product in reaction.products.core:
                 assert product.name in species_names
 
         # Check species dictionary
@@ -349,4 +349,11 @@ class TestNetworkParsers:
                 special in network.reactions[i].verbatim
                 for i in range(len(network.reactions))
             ):
-                assert special in species_names
+                if special == "PHOTON":
+                    mapped = f"_{special}"
+                    assert any(
+                        mapped in network.reactions[i].verbatim
+                        for i in range(len(network.reactions))
+                    ), f"{mapped} should appear in reaction verbatim"
+                else:
+                    assert special in species_names

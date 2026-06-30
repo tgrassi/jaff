@@ -110,12 +110,12 @@ class Pooch:
         Notes
         -----
         ``__new__`` returns cached instances, but Python still re-invokes
-        ``__init__`` on each construction. The ``__initialized`` guard makes
+        ``__init__`` on each construction. The ``_initialized`` guard makes
         repeat calls a no-op so the fetcher and registry are built only once.
         """
-        if getattr(self, "__initialized", False):
+        if getattr(self, "_initialized", False):
             return
-        self.__initialized = True
+        self._initialized = True
 
         self.pooch: pooch.Pooch = pooch.create(
             path=cache_path,
@@ -146,8 +146,24 @@ def download_xsecs() -> None:
     already present and hash-valid are not re-downloaded.
     """
     pooch = Pooch(
-        "https://www.mso.anu.edu.au/~anishs/",
-        Path(__file__).parent.parent / "data" / "xsecs",
+        "https://www.mso.anu.edu.au/~anishs",
+        Path(__file__).parent.parent / "data",
     )
-    for file in ["leiden.hdf5", "norad.hdf5", "verner_1996.csv"]:
+    for file in ["xsecs/leiden.hdf5", "xsecs/norad.hdf5", "xsecs/verner_1996.csv"]:
+        pooch.fetch_file(file)
+
+
+def download_shielding() -> None:
+    """Fetch the line-shielding data files into ``data/shielding``.
+
+    Downloads the collapsed Leiden line-shielding HDF5 file from the ANU
+    mirror, caching it under the package ``data/shielding`` directory. Files
+    already present and hash-valid are not re-downloaded.
+    """
+    pooch = Pooch(
+        "https://www.mso.anu.edu.au/~anishs",
+        Path(__file__).parent.parent / "data",
+    )
+
+    for file in ["shielding/leiden.hdf5"]:
         pooch.fetch_file(file)

@@ -29,8 +29,18 @@ from jaff import Network
 net = Network("networks/h_photoionization/h_photo.jet")
 
 net.reactions.count            # 2
-net.reactions.verbatim()       # ['H -> H+ + e-', 'H+ + e- -> H']
+net.reactions.verbatim()       # ['H + _PHOTON -> H+ + e-', 'H+ + e- -> H']
 ```
+
+<!-- prettier-ignore -->
+!!! note "The `_PHOTON` pseudo-species"
+    The photo-ionization reads `H + _PHOTON -> H+ + e-`, not `H -> H+ + e-`.
+    `_PHOTON` is a **special pseudo-species** (its name starts with `_`) that
+    marks the driving photon; cosmic-ray reactions carry `_CR` likewise. These
+    pseudo-species give a photo/CR reaction its distinct identity and
+    serialization, but they are **not** real species — they are excluded from
+    the kinetics and the integrated ODE state, and never appear in
+    `net.species`. See [reaction types](#reaction-types).
 
 ---
 
@@ -47,7 +57,7 @@ attribute into a flat array for the solver and code generator.
 
 ```text
 net.reactions                       ← the Reactions catalogue (the set)
-  ├── net.reactions[0]  → Reaction  ← one transformation (H -> H+ + e-)
+  ├── net.reactions[0]  → Reaction  ← one transformation (H + _PHOTON -> H+ + e-)
   └── net.reactions[1]  → Reaction  ← one transformation (H+ + e- -> H)
 ```
 
@@ -81,8 +91,9 @@ rec.get_sympy()                          # 1.65941781598291e-10/tgas**0.7
 sympy.diff(rec.get_sympy(), "tgas")      # analytic dk/dT, also symbolic
 ```
 
-A photo-reaction's rate is instead an unevaluated `photorates(...)` call, which
-is what marks it as photochemical (see [reaction types](#reaction-types)):
+A photo-reaction's rate is instead an unevaluated `photorates(...)` call. The
+reaction is classified as photochemical by the parser (via its `_PHOTON`
+reactant), not by inspecting the rate — see [reaction types](#reaction-types):
 
 ```python
 net.reactions[0].rate       # photorates(1, 13.6, 1.0e+99)
@@ -107,9 +118,9 @@ net.reactions[0].rate       # photorates(1, 13.6, 1.0e+99)
 | `index`               | `int`           | Zero-based position of this reaction inside `net.reactions`               |
 | `serialized`          | `str`           | Canonical **name-level** identity (isomer-sensitive)                      |
 | `serialized_exploded` | `str`           | Canonical **atom-level** identity (isomer-insensitive)                    |
-| `metadata`            | `dict`          | Key/value store; `metadata["type"]` holds the classified reaction type    |
+| `metadata`            | `dict`          | Key/value store; `metadata["type"]` holds the parser-concluded reaction type |
 | `custom_rad_rate`     | `bool`          | `True` when the radiation rate came from a `.jfunc`, not cross-sections   |
-| `xsecs_dict`          | `XsecsProps or None` | Photo cross-section data: `photon_energy` (eV) plus `photo_absorption`/`photo_ionization`/`photo_dissociation` (cm²); else `None` |
+| `xsecs_dict`          | `XsecsProps or None` | Photo cross-section data for the reaction's single decay channel: `photon_energy` (eV) plus `photo_absorption` and `photodecay` (cm²); else `None` |
 
 <!-- prettier-ignore -->
 !!! tip "`reactants` and `products` are `Species` Catalogues"
@@ -121,8 +132,8 @@ net.reactions[0].rate       # photorates(1, 13.6, 1.0e+99)
 ```python
 rxn = net.reactions[0]
 
-rxn.verbatim                 # 'H -> H+ + e-'
-rxn.reactants.names()        # ['H']
+rxn.verbatim                 # 'H + _PHOTON -> H+ + e-'
+rxn.reactants.names()        # ['H', '_PHOTON']
 rxn.products.names()         # ['H+', 'e-']
 rxn.tmin, rxn.tmax           # (None, None)
 rxn.index                    # 0
@@ -150,12 +161,14 @@ Just as a [`Specie`](species.md) has a canonical `serialized` identity, so does
 a reaction — but a reaction has **two**, and the difference is the whole point.
 
 ```python
-rxn.serialized            # 'H__H+_e-'    ← name-level  (isomer-sensitive)
-rxn.serialized_exploded   # 'H__+/H_e-'   ← atom-level  (isomer-insensitive)
+rxn.serialized            # 'H._PHOTON__H+.e-'    ← name-level  (isomer-sensitive)
+rxn.serialized_exploded   # 'H._PHOTON__+/H.e-'   ← atom-level  (isomer-insensitive)
 ```
 
-Both sort the species on each side and join reactants `__` products. They differ
-in _what_ they sort:
+Both sort the species on each side, join the species on a side with `.`, and
+separate reactants from products with `__`. (The `.` joiner — not `_` — is used
+because special pseudo-species names start with `_`.) They differ in _what_ they
+sort:
 
 - **`serialized`** uses species **names**. `HCO+` and `HOC+` are different here.
   This is the form used for `==`, hashing, and the catalogue's serialized
@@ -187,7 +200,7 @@ r0 == r1               # False — different serialized forms
 r0 == net.reactions[0] # True  — same reaction
 
 r0 < r1                # compares serialized strings, not index order
-sorted([r1, r0])       # [ReactionObject(H+ + e- -> H), ReactionObject(H -> H+ + e-)]
+sorted([r1, r0])       # [ReactionObject(H+ + e- -> H), ReactionObject(H + _PHOTON -> H+ + e-)]
 ```
 
 <!-- prettier-ignore -->
@@ -203,9 +216,9 @@ runs at load time.
 Printing a reaction gives its human-readable equation; `repr` wraps it:
 
 ```python
-str(net.reactions[0])    # 'H -> H+ + e-'            ← __str__ is the verbatim
-repr(net.reactions[0])   # 'ReactionObject(H -> H+ + e-)'
-print(net.reactions[0])  # H -> H+ + e-
+str(net.reactions[0])    # 'H + _PHOTON -> H+ + e-'            ← __str__ is the verbatim
+repr(net.reactions[0])   # 'ReactionObject(H + _PHOTON -> H+ + e-)'
+print(net.reactions[0])  # H + _PHOTON -> H+ + e-
 ```
 
 `str(reaction)` returning the verbatim equation is what lets you drop a
@@ -215,16 +228,18 @@ print(net.reactions[0])  # H -> H+ + e-
 
 ## Reaction types
 
-`rtype()` classifies a reaction by **inspecting its rate expression** — there is
-no separate type field in the file. The result is cached in `metadata["type"]`.
+`rtype()` returns the type **concluded by the network-format parser** as it read
+the file — it does not inspect the rate expression. The parser decides
+structurally (a `_PHOTON` reactant → photo, a `_CR`/`_CRP`/`_CRPHOT` reactant →
+cosmic-ray, three or more real reactants → 3-body), so the type survives even
+custom rates. The value is stored in `metadata["type"]`.
 
-| Type           | Trigger in the rate expression    | Example rate                |
-| -------------- | --------------------------------- | --------------------------- |
-| `"photo"`      | a `photorates(...)` function call | `photorates(1, 13.6, 1e99)` |
-| `"cosmic_ray"` | contains the symbol `crate`       | `0.46*crate`                |
-| `"photo_av"`   | contains the symbol `av`          | `7.1e-7*exp(-0.5*av)`       |
-| `"3_body"`     | contains the symbol `ntot`        | `k0 + k1*ntot`              |
-| `"unknown"`    | none of the above                 | `1.66e-10/tgas**0.7`        |
+| Type           | Meaning                                          |
+| -------------- | ------------------------------------------------ |
+| `"photo"`      | Radiation-driven (photodissociation/ionisation)  |
+| `"cosmic_ray"` | Cosmic-ray driven                                |
+| `"3_body"`     | Three-body reaction                              |
+| `"unknown"`    | Unclassified                                     |
 
 ```python
 net.reactions[0].rtype()   # 'photo'
@@ -243,15 +258,16 @@ photo = net.reactions[0]
 
 photo.rate                              # photorates(1, 13.6, 1.0e+99)
 photo.xsecs_dict.keys()                 # units, _equations, photon_energy,
-                                        #   photo_absorption, photo_ionization,
-                                        #   photo_dissociation
+                                        #   photo_absorption, photodecay
 len(photo.xsecs_dict["photon_energy"])  # number of grid points (energies in eV)
-photo.xsecs_dict["photo_ionization"]    # cross sections in cm^2 (or None)
+photo.xsecs_dict["photodecay"]          # cross sections in cm^2 (or None)
 ```
 
 The `photon_energy` grid is in eV and each process array is in cm² (or `None`
 when that process has no data for the reaction). The `_equations` sub-dict
-carries boolean `pa`/`pi`/`pd` flags marking which processes apply.
+carries the boolean `pa` photo-absorption flag and `decay_type`
+(`"ionization"` or `"dissociation"`), identifying the single decay channel held
+in `photodecay`.
 
 The catalogue gives you dedicated ways to pick them out:
 
@@ -278,18 +294,18 @@ stoichiometry matrices) and can be looked up two ways.
 ### Two ways to find a reaction
 
 ```python
-net.reactions[0]                  # by index        → Reaction
-net.reactions[-1]                 # negative index  → last reaction
-net.reactions["H -> H+ + e-"]     # by verbatim string
-net.reactions["H__H+_e-"]         # by serialized form
+net.reactions[0]                       # by index        → Reaction
+net.reactions[-1]                      # negative index  → last reaction
+net.reactions["H + _PHOTON -> H+ + e-"]  # by verbatim string
+net.reactions["H._PHOTON__H+.e-"]        # by serialized form
 ```
 
 The typed helpers do the same with an optional type filter:
 
 ```python
-net.reactions.from_verbatim("H -> H+ + e-")
-net.reactions.from_serialized("H__H+_e-")
-net.reactions.get("H -> H+ + e-", rtype="photo")   # None if type mismatches
+net.reactions.from_verbatim("H + _PHOTON -> H+ + e-")
+net.reactions.from_serialized("H._PHOTON__H+.e-")
+net.reactions.get("H + _PHOTON -> H+ + e-", rtype="photo")   # None if type mismatches
 ```
 
 ### Iteration and count
@@ -314,14 +330,14 @@ Each returns a `Vector` aligned to catalogue order.
 
 | Method                  | Returns                 | h_photo result                       |
 | ----------------------- | ----------------------- | ------------------------------------ |
-| `verbatim()`            | `Vector[str]`           | `['H -> H+ + e-', 'H+ + e- -> H']`   |
+| `verbatim()`            | `Vector[str]`           | `['H + _PHOTON -> H+ + e-', 'H+ + e- -> H']` |
 | `rtypes()`              | `Vector[str]`           | `['photo', 'unknown']`               |
 | `rates()`               | `Vector[Basic]`         | the two symbolic rate expressions    |
 | `reactants()`           | `Vector[Species]`       | one `Species` catalogue per reaction |
 | `products()`            | `Vector[Species]`       | one `Species` catalogue per reaction |
 | `tmins()` / `tmaxes()`  | `Vector[float or None]` | `[None, None]` / `[None, None]`      |
 | `dE()` / `dRad()`       | `Vector[Basic]`         | energy / radiation expressions       |
-| `serialized()`          | `Vector[str]`           | `['H__H+_e-', 'H+_e-__H']`           |
+| `serialized()`          | `Vector[str]`           | `['H._PHOTON__H+.e-', 'H+.e-__H']`   |
 | `serialized_exploded()` | `Vector[str]`           | atom-level serialized strings        |
 
 <!-- prettier-ignore -->
@@ -337,8 +353,8 @@ net.reactions.with_rtype("cosmic_ray")       # cosmic-ray reactions
 net.reactions.with_rtype("unknown")          # everything unclassified
 ```
 
-Note the type keys are `"photo"`, `"cosmic_ray"`, `"photo_av"`, `"3_body"`,
-`"unknown"` — there is no `"CR"`.
+Note the type keys are `"photo"`, `"cosmic_ray"`, `"3_body"`, `"unknown"` —
+there is no `"CR"`.
 
 ---
 
@@ -364,10 +380,10 @@ rec.has_any_species("e-")         # True  — on either side
 ```python
 rxn = net.reactions[0]
 
-rxn.verbatim                # 'H -> H+ + e-'   (also rxn.get_verbatim())
-rxn.get_latex()             # '${\\rm H}\\,\\to\\,{\\rm H^{+}} + {\\rm e^{-}}$'
-rxn.serialize()             # 'H__H+_e-'
-rxn.serialize_exploded()    # 'H__+/H_e-'
+rxn.verbatim                # 'H + _PHOTON -> H+ + e-'   (also rxn.get_verbatim())
+rxn.get_latex()             # '${\\rm H} + {\\rm _PHOTON}\\,\\to\\,{\\rm H^{+}} + {\\rm e^{-}}$'
+rxn.serialize()             # 'H._PHOTON__H+.e-'
+rxn.serialize_exploded()    # 'H._PHOTON__+/H.e-'
 ```
 
 ### Code generation
@@ -406,7 +422,7 @@ rec.plot_rate_coefficient()         # rate vs temperature (log–log)
 
 photo = net.reactions[0]
 photo.plot_xsecs()                              # all processes, overlay, eV vs Mb
-photo.plot_xsecs(processes="photo_ionization")  # one process only
+photo.plot_xsecs(processes="photodecay")        # one process only
 photo.plot_xsecs(layout="subplots")             # one stacked panel per process
 photo.plot_xsecs(energy_unit="nm", xsec_unit="cm^2")  # wavelength + cm² axes
 photo.plot_xsecs(save=True, filename="h_xsec.pdf")    # write to disk

@@ -429,9 +429,7 @@ class Table:
         database.
     """
 
-    def __init__(
-        self, name: str, conn: sqlite3.Connection, cur: sqlite3.Cursor
-    ):
+    def __init__(self, name: str, conn: sqlite3.Connection, cur: sqlite3.Cursor):
         """Validate the connection and cursor, then bind to *name* in the database.
 
         Parameters
@@ -566,6 +564,164 @@ class Table:
         """
         for row in rows:
             self.insert_row(row)
+
+    def add_column(
+        self,
+        col_name: str,
+        col_type: str = "TEXT",
+        default: str | float | int | None = None,
+    ) -> None:
+        """
+        Add a new column to the table.
+
+        Issues an ``ALTER TABLE ... ADD COLUMN`` statement.  Existing rows
+        receive *default* (or ``NULL`` if *default* is not given) for the new
+        column.
+
+        Parameters
+        ----------
+        col_name : str
+            Name of the column to add.
+        col_type : str, optional
+            SQLite column type/affinity (e.g. ``"TEXT"``, ``"INTEGER"``,
+            ``"REAL"``).  Defaults to ``"TEXT"``.
+        default : str, float, int, or None, optional
+            Default value applied to existing rows and used when no value is
+            supplied on insert.  If ``None`` (the default), no ``DEFAULT``
+            clause is emitted and existing rows receive ``NULL``.
+
+        Returns
+        -------
+        None
+        """
+        comm = f"ALTER TABLE {self.name} ADD COLUMN {col_name} {col_type}"
+        if default is not None:
+            literal = f"'{default}'" if isinstance(default, str) else default
+            comm += f" DEFAULT {literal}"
+        self.cur.execute(comm)
+        self.conn.commit()
+
+    def get_cell(
+        self,
+        index_col: str,
+        index_value: str | float | int,
+        col_name: str,
+    ) -> Any:
+        """
+        Fetch the value of a single cell, located by row and column.
+
+        The target row is identified by the value of its index column
+        (typically the primary key), and the target column by name.
+
+        Parameters
+        ----------
+        index_col : str
+            Name of the index/primary-key column used to locate the row.
+        index_value : str, float, or int
+            Value of *index_col* identifying the target row.
+        col_name : str
+            Name of the column whose cell is fetched.
+
+        Returns
+        -------
+        Any
+            The cell value if exactly one row matches; ``None`` if no row
+            matches; a list of values if multiple rows match *index_value*.
+
+        Raises
+        ------
+        ValueError
+            If *col_name* does not exist in the table.
+        """
+        # Validate the target column exists (consistent ValueError on typo).
+        self.cur.execute(
+            f"SELECT type FROM pragma_table_info('{self.name}') WHERE name = ?",
+            [col_name],
+        )
+        if self.cur.fetchone() is None:
+            raise ValueError(f"Invalid column name: {col_name}")
+
+        comm = f"SELECT {col_name} FROM {self.name} WHERE {index_col} = ?"
+        self.cur.execute(comm, [index_value])
+        rows = self.cur.fetchall()
+
+        if not rows:
+            return None
+        if len(rows) == 1:
+            return rows[0][col_name]
+
+        return [row[col_name] for row in rows]
+
+    def set_cell(
+        self,
+        index_col: str,
+        index_value: str | float | int,
+        col_name: str,
+        value: str | float | int | bytes,
+    ) -> None:
+        """
+        Set the value of a single cell, located by row and column.
+
+        The target row is identified by the value of its index column
+        (typically the primary key), and the target column by name.  Before
+        writing, the Python type of *value* is checked against the declared
+        SQLite type of *col_name*.
+
+        Parameters
+        ----------
+        index_col : str
+            Name of the index/primary-key column used to locate the row.
+        index_value : str, float, or int
+            Value of *index_col* identifying the target row.
+        col_name : str
+            Name of the column whose cell is being set.
+        value : str, float, int, or bytes
+            New value for the cell.  Its type must match the declared type of
+            *col_name* (TEXT->str, INTEGER->int, REAL->int/float, BLOB->bytes).
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        ValueError
+            If *col_name* does not exist in the table.
+        TypeError
+            If the type of *value* does not match the column's declared type.
+        """
+        # Map declared SQLite type -> acceptable Python type(s).
+        type_map: dict[str, tuple[type, ...]] = {
+            "TEXT": (str,),
+            "INTEGER": (int,),
+            "REAL": (int, float),
+            "BLOB": (bytes,),
+        }
+
+        # Look up the declared type of the target column.
+        self.cur.execute(
+            f"SELECT type FROM pragma_table_info('{self.name}') WHERE name = ?",
+            [col_name],
+        )
+        col = self.cur.fetchone()
+        if col is None:
+            raise ValueError(f"Invalid column name: {col_name}")
+        col_type = col["type"].upper()
+
+        # Validate the value's Python type against the column affinity.
+        # bool is a subclass of int but is rejected for INTEGER/REAL columns.
+        allowed = type_map.get(col_type)
+        if allowed is not None and (
+            isinstance(value, bool) or not isinstance(value, allowed)
+        ):
+            raise TypeError(
+                f"Value {value!r} ({type(value).__name__}) does not match "
+                f"column '{col_name}' type {col_type}"
+            )
+
+        comm = f"UPDATE {self.name} SET {col_name} = ? WHERE {index_col} = ?"
+        self.cur.execute(comm, [value, index_value])
+        self.conn.commit()
 
     def delete(self) -> None:
         """

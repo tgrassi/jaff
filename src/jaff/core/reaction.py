@@ -11,20 +11,26 @@ The serialized form of a reaction is::
 
     "<sorted_reactant_names>__<sorted_product_names>"
 
-where species names are sorted alphabetically and joined with ``"_"``.
-For example ``H + H2O+ -> H2O + H+`` serializes as
-``"H_H2O+__H+_H2O"``.  This canonical form is used for equality testing,
-hashing, and duplicate detection.
+where species names are sorted alphabetically and joined with ``"."``, and
+the two sides are separated by ``"__"``.  For example
+``H + H2O+ -> H2O + H+`` serializes as ``"H.H2O+__H+.H2O"``.  This canonical
+form is used for equality testing, hashing, and duplicate detection.
+
+The ``"."`` species joiner (rather than ``"_"``) is required because special
+pseudo-species names start with an underscore (e.g. ``_PHOTON``, ``_GRAIN``)
+and underscore-suffixed grain/ice species exist (``X_DUST``); a ``"_"`` joiner
+would collide with those and make the form ambiguous.
 
 Reaction types
 --------------
-``rtype()`` classifies reactions by inspecting the symbolic rate expression:
+The reaction type is concluded by the network-format parser and passed to the
+``Reaction`` constructor; ``rtype()`` returns that stored value (it no longer
+inspects the rate expression).  One of:
 
-- ``"photo"``       — rate contains a ``photorates(...)`` function call
-- ``"cosmic_ray"``  — rate contains the symbol ``crate``
-- ``"photo_av"``    — rate contains the symbol ``av``
-- ``"3_body"``      — rate contains the symbol ``ntot``
-- ``"unknown"``     — none of the above
+- ``"photo"``       — radiation-driven (photodissociation/ionisation)
+- ``"cosmic_ray"``  — cosmic-ray driven
+- ``"3_body"``      — three-body reaction
+- ``"unknown"``     — unclassified
 """
 
 from __future__ import annotations
@@ -36,6 +42,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from sympy import (
     Basic,
+    Expr,
     Function,
     ccode,
     cxxcode,
@@ -45,12 +52,11 @@ from sympy import (
     pycode,
     rcode,
     rust_code,
-    symbols,
     sympify,
 )
 
 from ..io import JaffLogger
-from ..physics._typing import XsecsProps
+from ..physics.photo_reactions._typing import XsecsProps
 from ..types import Catalogue, Vector
 from .elements import Elements
 from .species import Specie, Species
@@ -92,14 +98,15 @@ class Reaction:
         Like ``serialized`` but built from the atom-level serialized forms of
         each species (isomer-insensitive comparison).
     metadata : dict
-        Arbitrary key/value store; ``metadata["type"]`` is populated by
-        ``rtype()``.
+        Arbitrary key/value store; ``metadata["type"]`` holds the
+        parser-supplied reaction type returned by ``rtype()``.
     custom_rad_rate : bool
         ``True`` when the radiation rate was supplied via a ``.jfunc`` aux
         function rather than computed from cross-sections.
     xsecs_dict : dict or None
-        Photo-ionisation cross-section data: ``{"energy": [...], "xsecs":
-        [...]}``, energies in erg and cross-sections in cm².  ``None`` for
+        Photo cross-section data for the reaction's single decay channel:
+        ``photon_energy`` (eV), optional ``photo_absorption`` and the
+        ``photodecay`` array (cm²), plus ``_equations`` metadata.  ``None`` for
         non-photo reactions.
     """
 
@@ -107,13 +114,14 @@ class Reaction:
         self,
         reactants: list[Specie],
         products: list[Specie],
-        rate: Basic,
+        rate: Expr,
         tmin: float | None,
         tmax: float | None,
         dE: Basic,
         dRad: Basic,
         original_string: str,
         index: int,
+        type: str = "unknown",
         errors: bool = False,
     ):
         """Construct a ``Reaction`` and validate mass/charge conservation.
@@ -138,6 +146,11 @@ class Reaction:
             The raw network-file line that produced this reaction.
         index : int
             Zero-based position in the parent ``Reactions`` catalogue.
+        type : str, optional
+            Reaction type as concluded by the network-format parser (e.g.
+            ``"photo"``, ``"cosmic_ray"``, ``"3_body"``, ``"unknown"``).
+            Stored verbatim and returned by :meth:`rtype`; defaults to
+            ``"unknown"``.
         errors : bool, optional
             If ``True``, terminate the process on mass or charge conservation
             violations instead of merely logging a warning, by default
@@ -151,7 +164,7 @@ class Reaction:
         self.logger = JaffLogger().get_logger()
         self.reactants: Species = Species(reactants, check_length=False)
         self.products: Species = Species(products, check_length=False)
-        self.rate: Basic = rate
+        self.rate: Expr = rate
         self.tmin: float | None = tmin
         self.tmax: float | None = tmax
         self.dE: Basic = dE
@@ -167,10 +180,9 @@ class Reaction:
         self.check(errors)
         self.serialized_exploded: str = self.serialize_exploded()
         self.serialized: str = self.serialize()
-        self.metadata: dict = {}
-
-        # Eagerly classify the reaction so metadata["type"] is populated.
-        self.rtype()
+        # The reaction type is concluded by the parser and supplied here, not
+        # inferred from the rate expression.
+        self.metadata: dict = {"type": type}
 
     def __repr__(self):
         """Return detailed string representation of this reaction.
@@ -270,47 +282,19 @@ class Reaction:
         return Elements(self.reactants._list + self.products._list)
 
     def rtype(self) -> str:
-        """Classify this reaction by inspecting its rate expression.
+        """Return the reaction type concluded by the network-format parser.
+
+        The type is no longer inferred from the rate expression; each parser
+        classifies the reaction and supplies the type via the ``type``
+        constructor argument, which is stored in ``self.metadata["type"]``.
 
         Returns
         -------
         str
-            One of ``"photo"``, ``"cosmic_ray"``, ``"photo_av"``,
-            ``"3_body"``, or ``"unknown"``.
-
-        Notes
-        -----
-        Classification rules (evaluated in order):
-
-        - ``"photo"``       — rate is or contains ``photorates(...)``
-        - ``"cosmic_ray"``  — rate contains the free symbol ``crate``
-        - ``"photo_av"``    — rate contains the free symbol ``av``
-        - ``"3_body"``      — rate contains the free symbol ``ntot``
-        - ``"unknown"``     — none of the above match
-
-        The result is also cached in ``self.metadata["type"]``.
+            One of ``"photo"``, ``"cosmic_ray"``, ``"3_body"``, or
+            ``"unknown"``.
         """
-        rtype = "unknown"
-
-        if type(self.rate) is str:
-            if "photo" in self.rate:
-                rtype = "photo"
-        else:
-            if hasattr(self.rate, "func") and isinstance(
-                self.rate.func, type(Function("f"))
-            ):
-                if self.rate.func.__name__ == "photorates":
-                    rtype = "photo"
-            elif self.rate.has(symbols("crate")):
-                rtype = "cosmic_ray"
-            elif self.rate.has(symbols("av")):
-                rtype = "photo_av"
-            elif self.rate.has(symbols("ntot")):
-                rtype = "3_body"
-
-        self.metadata["type"] = rtype
-
-        return rtype
+        return self.metadata.get("type", "unknown")
 
     def is_isomer_version(self, other: "Reaction") -> bool:
         """Check whether *other* is an isomer variant of this reaction.
@@ -343,29 +327,29 @@ class Reaction:
 
         Each species is replaced by its ``Specie.serialized`` form (e.g.
         H2O+ → ``"+/H/H/O"``), then species tokens are sorted and joined
-        with ``"_"``.  Reactants and products are separated by ``"__"``.
+        with ``"."``.  Reactants and products are separated by ``"__"``.
 
         Returns
         -------
         str
         """
-        sr = "_".join(sorted([x.serialized for x in self.reactants]))
-        sp = "_".join(sorted([x.serialized for x in self.products]))
+        sr = ".".join(sorted([x.serialized for x in self.reactants]))
+        sp = ".".join(sorted([x.serialized for x in self.products]))
 
         return f"{sr}__{sp}"
 
     def serialize(self) -> str:
         """Build the name-level serialized form (isomer-sensitive).
 
-        Species names are sorted alphabetically and joined with ``"_"``.
+        Species names are sorted alphabetically and joined with ``"."``.
         Reactants and products are separated by ``"__"``.
 
         Returns
         -------
         str
         """
-        sr = "_".join(sorted([x.name for x in self.reactants]))
-        sp = "_".join(sorted([x.name for x in self.products]))
+        sr = ".".join(sorted([x.name for x in self.reactants]))
+        sp = ".".join(sorted([x.name for x in self.products]))
 
         return f"{sr}__{sp}"
 
@@ -457,7 +441,9 @@ class Reaction:
         """Return a source-code string for the reaction flux.
 
         The flux has the form ``k[idx] * y[idx_R1] * y[idx_R2] * ...``,
-        where ``idx_Ri`` is derived from each reactant's ``fidx`` attribute.
+        where ``idx_Ri`` is derived from each core reactant's ``fidx``
+        attribute.  Special pseudo-species (``_PHOTON``, ``_CR``, ...) are
+        excluded — they carry the reaction's identity but not its kinetics.
 
         Parameters
         ----------
@@ -490,7 +476,10 @@ class Reaction:
 
         lb, rb = brackets[0], brackets[1]
         flux = f"{rate_variable}{lb}{idx}{rb} * " + " * ".join(
-            [f"{species_variable}{lb}{idx_prefix + x.fidx}{rb}" for x in self.reactants]
+            [
+                f"{species_variable}{lb}{idx_prefix + x.fidx}{rb}"
+                for x in self.reactants.core
+            ]
         )
 
         return flux
@@ -711,9 +700,8 @@ class Reaction:
         processes : str | list[str] | None, optional
             Which cross-section processes to draw.  ``"all"`` (default) or
             ``None`` plots every process with data; a single key (e.g.
-            ``"photo_ionization"``) or a list of keys selects a subset.
-            Valid keys: ``"photo_absorption"``, ``"photo_dissociation"``,
-            ``"photo_ionization"``.
+            ``"photodecay"``) or a list of keys selects a subset.
+            Valid keys: ``"photo_absorption"``, ``"photodecay"``.
         layout : str, optional
             ``"overlay"`` (default) draws all processes on one axes;
             ``"subplots"`` gives each process its own stacked panel.
@@ -747,8 +735,7 @@ class Reaction:
 
         _XSEC_PROCESSES = (
             "photo_absorption",
-            "photo_dissociation",
-            "photo_ionization",
+            "photodecay",
         )
 
         # Normalise the process selection to a list of valid keys.
@@ -907,8 +894,7 @@ class Reactions(Catalogue[Reaction]):
         Parameters
         ----------
         rtype : str
-            One of ``"photo"``, ``"cosmic_ray"``, ``"photo_av"``,
-            ``"3_body"``, ``"unknown"``.
+            One of ``"photo"``, ``"cosmic_ray"``, ``"3_body"``, ``"unknown"``.
 
         Returns
         -------

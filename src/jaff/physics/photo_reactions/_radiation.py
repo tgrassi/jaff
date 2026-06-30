@@ -52,13 +52,14 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import sympy as sp
 
-from jaff.physics._typing._photochemistry import XsecsProps
-
-from ..common._integrators import arr_integrate, smart_integrate
-from ._typing import RadiationGroupReactionProps
+from ...common._integrators import arr_integrate, smart_integrate
+from .._typing import RadiationGroupReactionProps
+from ._photochemistry import Photochemistry
+from ._typing._photochemistry import XsecsProps
 
 if TYPE_CHECKING:
-    from ..core.reaction import Reaction
+    from ...core.network import Network
+    from ...core.reaction import Reaction
 
 
 class RadiationGroup:
@@ -98,7 +99,8 @@ class RadiationGroup:
         :class:`~jaff.physics._typing.RadiationGroupReactionProps` dict with
         keys:
 
-        - ``"k"``         : symbolic rate coefficient for this band.
+        - ``"k"``         : symbolic rate coefficient (SymPy ``Expr``) for
+          this band.
         - ``"xsec"``      : photon-number-weighted band-average cross section
           (cm²), or ``None`` for custom-rate reactions.
         - ``"xsec_frac"`` : fraction of the total cross section (or total
@@ -201,6 +203,7 @@ class Radiation:
 
     def __init__(
         self,
+        network: Network,
         bands: list[int | float | str | sp.Basic],
         powerlaw_idx: int | float,
         energy_density: bool,
@@ -222,6 +225,7 @@ class Radiation:
         c : float
             Speed of light in cm/s (CGS).
         """
+        self.network: Network = network
         self.bands: list[int | float | sp.Basic] = []
         self.powerlaw_idx: int | float = powerlaw_idx
         self.energy_density: bool = energy_density
@@ -258,8 +262,7 @@ class Radiation:
         type) is written to ``reaction.rate``.
 
         If the reaction has no tabulated cross section (no ``xsecs_dict``, or
-        neither a photoionisation nor photodissociation array) the method
-        returns silently (no-op).
+        no ``photodecay`` array) the method returns silently (no-op).
 
         Parameters
         ----------
@@ -293,14 +296,9 @@ class Radiation:
         if xsec is None:
             return
 
-        if xsec["photo_ionization"] is None and xsec["photo_dissociation"] is None:
-            return
-
-        if xsec["_equations"]["pi"]:
-            pr_xsec = xsec["photo_ionization"]
-        elif xsec["_equations"]["pd"]:
-            pr_xsec = xsec["photo_dissociation"]
-        else:
+        # Each reaction carries a single decay-channel cross section.
+        pr_xsec = xsec["photodecay"]
+        if pr_xsec is None:
             return
 
         assert isinstance(xsec["photon_energy"], np.ndarray)
@@ -353,6 +351,11 @@ class Radiation:
             # Symbolic rate coefficient: k_i = c · den[i] · <σ>_i
             # (units: s⁻¹ for photon-density mode, cm³ s⁻¹ for two-body)
             k = self.c * den[sp.Idx(i)] * rad_xsec_avg
+            if "shielding" in reaction.metadata:
+                if "value" in reaction.metadata["shielding"]:
+                    k *= reaction.metadata["shielding"]["value"]
+                else:
+                    k *= Photochemistry.shielding(reaction, self.network)
 
             self.groups[i].props[reaction] = {
                 "k": k,
@@ -428,7 +431,7 @@ class Radiation:
                 0.0 if delta_rad_total_is_zero else delta_rad_band / delta_rad_total
             )
             # Scale the total user-supplied rate by the band fraction.
-            k = reaction.rate * xsec_frac  # type: ignore
+            k = reaction.rate * xsec_frac
 
             self.groups[i].props[reaction] = {
                 "k": k,

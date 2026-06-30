@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING, TypedDict
 
-from sympy import Basic
+from sympy import Basic, Expr
 
 if TYPE_CHECKING:
-    from ...physics._typing._photochemistry import XsecsProps
+    from ...physics.photo_reactions._photochemistry import XsecsProps
     from .. import Network, Reaction, Specie, Species
 else:
     Specie = "Specie"
@@ -17,10 +17,11 @@ ReactionProps = TypedDict(
     {
         "reactants": list["Specie"],
         "products": list["Specie"],
-        "rate": Basic,
+        "rate": Expr,
         "dE": Basic,
         "dRad": Basic,
         "custom_rad_rate": bool,
+        "reaction_type": str,
         "tmin": float | None,
         "tmax": float | None,
         "original_string": str,

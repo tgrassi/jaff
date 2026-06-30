@@ -59,6 +59,7 @@ from ..codegen import Codegen as cg
 from ..codegen import TemplateParser
 from ..common import motd
 from ..drivers import HDF5, Toml
+from ..errors import ParserError
 from ..io import JaffLogger, jaff_progress
 from ..types import HDF5Dict
 from ._typing import JaffgenProps
@@ -210,6 +211,16 @@ class JaffGen:
             table_props = self.jaffgen_config_raw.get_key("table")
             if table_props:
                 self.__handle_data_tables(table_props)
+
+        reaction_props = None
+        if self.jaffgen_config_raw:
+            reaction_props = self.jaffgen_config_raw.get_key("reaction")
+
+        if reaction_props:
+            self.jaffgen_config["netprops"]["_metadata"] = {
+                "reaction_props": reaction_props,
+                "jaffgen_object": self,
+            }
 
         # Create the Network instance and immediately run code generation.
         self.net: Network = Network(**self.jaffgen_config["netprops"])

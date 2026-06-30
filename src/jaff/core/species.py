@@ -237,6 +237,33 @@ class Specie:
             else f"idx_{self.name.replace('+', 'j').replace('-', 'k').strip().lower()}"
         )
 
+    @property
+    def is_special(self) -> bool:
+        """Whether this is a special pseudo-species.
+
+        Special pseudo-species (``_PHOTON``, ``_CR``, ``_GRAIN``, ``_DUMMY``,
+        ...) are radiation/cosmic-ray/grain agents and markers; they carry the
+        reaction's identity but do not participate in the mass-action kinetics
+        or the integrated ODE state.  They are identified by a leading
+        underscore — real species never start with ``_`` (underscore-suffixed
+        grain/ice species such as ``H2O_DUST`` have the underscore mid-name).
+
+        Returns
+        -------
+        bool
+        """
+        return self.name.startswith("_")
+
+    @property
+    def is_core(self) -> bool:
+        """Whether this is a core (real) species, i.e. not :attr:`is_special`.
+
+        Returns
+        -------
+        bool
+        """
+        return not self.is_special
+
     def serialize(self) -> str:
         """Build and store the canonical serialized form of this species.
 
@@ -357,7 +384,7 @@ class Specie:
         if "_DUST" in latex:
             latex = latex.replace("_DUST", "") + "ice"
 
-        latex = latex.replace("GRAIN", "g")
+        latex = latex.replace("_GRAIN", "g")
 
         self.__latex = f"{{\\rm {latex}}}"
 
@@ -461,6 +488,33 @@ class Species(Catalogue[Specie]):
             self._by_serialized[specie.serialized] = specie
             self._list.append(specie)
             self.count = len(self._list)
+            # Invalidate the cached core/special sub-catalogues on mutation.
+            self.__dict__.pop("core", None)
+            self.__dict__.pop("special", None)
+
+    @cached_property
+    def special(self) -> "Species":
+        """Sub-catalogue of the special pseudo-species (``is_special``).
+
+        Returns
+        -------
+        Species
+        """
+        return Species([s for s in self._list if s.is_special], check_length=False)
+
+    @cached_property
+    def core(self) -> "Species":
+        """Sub-catalogue of the core (real) species (``is_core``).
+
+        Used wherever only physically integrated species should participate —
+        e.g. the mass-action density product and the ODE assembly — so the
+        special pseudo-species are excluded from the kinetics.
+
+        Returns
+        -------
+        Species
+        """
+        return Species([s for s in self._list if s.is_core], check_length=False)
 
     def from_serialized(self, serialized: str) -> Specie:
         """Return the species matching the given serialized form.

@@ -21,7 +21,9 @@ from __future__ import annotations
 import logging
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from sympy import (
@@ -39,7 +41,6 @@ from sympy import (
 from sympy.core.function import AppliedUndef, UndefinedFunction
 
 from ..common import is_jaff_file, load_mass_dict, motd, resolve_dependencies
-from ._typing import ElementProps
 from ..errors import ParserError
 from ..io import JaffLogger, jaff_progress
 from ..io._io import JaffProps, from_jaff_file, to_jaff_file, write_data_table
@@ -51,11 +52,27 @@ from ..physics import (
     get_sodes,
     get_sradodes,
 )
-from ._auxiliary_engine import AuxiliaryFunctionParser, FunctionsDict
-from ._network_engine import NetworkParser
 from .elements import Elements
+from .parsers import AuxiliaryFunctionParser, NetworkParser
 from .reaction import Reaction, Reactions
 from .species import Specie, Species
+
+if TYPE_CHECKING:
+    from ._typing import ElementProps
+    from .parsers.auxiliary_func._typing import AuxiliaryFunctionsDict
+
+
+@lru_cache(maxsize=200000)
+def _parse_rate_expr(rate: str) -> Expr:
+    """Parse a rate string into a (non-evaluated) SymPy expression, memoized.
+
+    Large networks contain many reactions with identical rate strings (≈40% of
+    KIDA-2024 rates repeat), and the parsed expression depends only on the
+    string — species substitution happens later in ``_standardize_symbols`` —
+    so results are cached across reactions and networks.  SymPy expressions are
+    immutable, making the shared objects safe to reuse.
+    """
+    return parse_expr(rate, evaluate=False)
 
 
 class Network:
@@ -70,7 +87,10 @@ class Network:
     label : str
         Human-readable label for this network (defaults to the file stem).
     species : Species
-        Ordered catalogue of all species in the network.
+        Ordered catalogue of the network's core (real) species.  Special
+        pseudo-species (``_PHOTON``, ``_CR``, ``_GRAIN``, ...) are excluded;
+        they live only inside each reaction's ``reactants``/``products`` and
+        carry the reaction's identity without entering the integrated state.
     reactions : Reactions
         Ordered catalogue of all reactions in the network.
     elements : Elements
@@ -107,6 +127,7 @@ class Network:
         rad_energy_density: bool = False,
         c: float = constants.c.cgs.value,  # Speed of light in cgs unit
         _from_cli: bool = False,
+        _metadata: dict[str, Any] = {},
     ):
         """Load a reaction network from *fname*.
 
@@ -168,6 +189,8 @@ class Network:
         if not _from_cli:
             print(motd())
 
+        self._metadata: dict[str, Any] = _metadata
+        self._replace_nH: bool = replace_nH
         self.mass_dict: dict[str, ElementProps] = {}
         self.species: Species = Species()
         self.reactions: Reactions = Reactions()
@@ -177,11 +200,16 @@ class Network:
         self.dEdt_other: Basic = Float(0.0)
         self.dRad_dt_extra: Basic = Float(0.0)
         self.radiation: Radiation | None = (
-            Radiation(rad_bands, rad_powerlaw_index, rad_energy_density, c)
+            Radiation(self, rad_bands, rad_powerlaw_index, rad_energy_density, c)
             if len(rad_bands) > 0
             else None
         )
         self.__photochemistry: None | Photochemistry = None
+
+        self.__nden_symbol: MatrixSymbol | None = None
+        self.__ntot_sum: Expr | None = None
+        self.__element_sums: dict[str, Expr | None] = {}
+        self.__tgas_clamp_cache: dict[tuple[float | None, float | None], Expr] = {}
 
         self.logger.info(f"Loading network from {fname}")
         self.logger.info(f"Network label: [yellow]{self.label}[/]")
@@ -193,7 +221,7 @@ class Network:
             self.__load_network(fname, funcfile, replace_nH)
         else:
             self.__load_network_from_jaff_file(jaff_props)
-        self.__normalize_nework_extras(replace_nH)
+        self.__normalize_network_extras(replace_nH)
 
         self.check_sink_sources(errors)
         self.check_recombinations(errors)
@@ -224,6 +252,7 @@ class Network:
             When ``True``, expand ``nh`` to a sum over H-bearing species.
         """
         specie_names = set()
+        special_species: dict[str, Specie] = {}
         free_symbols = set()
         undef_funcs = set()
         interp_funcs = set()
@@ -260,29 +289,42 @@ class Network:
             aux_delta_e = f"deltae{i}"
 
             for s in reactants + products:
-                if s not in specie_names:
-                    specie_names.add(s)
-                    self.species.add(Specie(s, len(specie_names) - 1))
+                if s in specie_names:
+                    continue
+                specie_names.add(s)
+                if s.startswith("_"):
+                    special_species[s] = Specie(s, -1)
+                else:
+                    self.species.add(Specie(s, self.species.count))
 
-            rr = [self.species[r] for r in reactants]
-            pp = [self.species[p] for p in products]
+            rr = [
+                special_species[r] if r.startswith("_") else self.species[r]
+                for r in reactants
+            ]
+            pp = [
+                special_species[p] if p.startswith("_") else self.species[p]
+                for p in products
+            ]
 
             local_subs_dict = {**subs_dict}
 
-            local_subs_dict[tgas] = (
-                Max(Min(tgas, tmax), tmin)
-                if tmin and tmax
-                else Max(tgas, tmin)
-                if tmin
-                else Min(tgas, tmax)
-                if tmax
-                else tgas
-            )
+            clamp_key = (tmin, tmax)
+            if clamp_key not in self.__tgas_clamp_cache:
+                self.__tgas_clamp_cache[clamp_key] = (
+                    Max(Min(tgas, tmax), tmin)
+                    if tmin and tmax
+                    else Max(tgas, tmin)
+                    if tmin
+                    else Min(tgas, tmax)
+                    if tmax
+                    else tgas
+                )
+            local_subs_dict[tgas] = self.__tgas_clamp_cache[clamp_key]
             for sym, expr in local_subs_dict.items():
                 if sym != tgas and expr.has(tgas):
                     local_subs_dict[sym] = expr.xreplace({tgas: local_subs_dict[tgas]})
 
-            rate_expr, is_photoreaction, n_photo = self.__parse_rate(
+            rate_expr, n_photo = self.__parse_rate(
                 aux_chem_rate, rate, aux_funcs, global_vars, n_photo
             )
             rate_expr = resolve_dependencies(rate_expr, local_subs_dict, aux_funcs)
@@ -303,17 +345,28 @@ class Network:
                 self.__detect_undefined_functions(expr, undef_funcs, interp_funcs)
 
             rea = Reaction(
-                rr, pp, rate_expr, tmin, tmax, deltaE, deltaRad, reaction["string"], i
+                reactants=rr,
+                products=pp,
+                rate=rate_expr,
+                tmin=tmin,
+                tmax=tmax,
+                dE=deltaE,
+                dRad=deltaRad,
+                original_string=reaction["string"],
+                index=i,
+                type=reaction.get("type", "unknown"),
             )
+            if "reaction_props" in self._metadata:
+                self.__parse_reaction_metadata(rea)
             self.reactions.add(rea)
 
-            if is_photoreaction:
+            if rea.rtype() == "photo":
                 if self.__photochemistry is None:
                     self.__photochemistry = Photochemistry()
 
                 rea.xsecs_dict = self.__photochemistry.get_xsec(rea)
 
-            if is_photoreaction and self.radiation is not None:
+            if rea.rtype() == "photo" and self.radiation is not None:
                 if aux_chem_rate not in aux_funcs:
                     self.radiation.set_reaction_rate_coefficient(rea)
                 elif aux_chem_rate in aux_funcs and aux_delta_rad:
@@ -329,7 +382,7 @@ class Network:
 
         if "heatingcoolingrate" in aux_funcs:
             self.dEdt_other = aux_funcs["heatingcoolingrate"]["def"]
-            self.dEdt_other = self.__standardize_symbols(self.dEdt_other, replace_nH)
+            self.dEdt_other = self._standardize_symbols(self.dEdt_other, replace_nH)
             free_symbols |= self.free_symbols(self.dEdt_other)
             self.__detect_undefined_functions(self.dEdt_other, undef_funcs, interp_funcs)
 
@@ -369,10 +422,17 @@ class Network:
                 tmax=reaction["tmax"],
                 original_string=reaction["original_string"],
                 index=i,
+                type=reaction.get("reaction_type", "unknown"),
             )
-            rea.xsecs_dict = reaction["xsecs_dict"]
             rea.custom_rad_rate = reaction["custom_rad_rate"]
             self.reactions.add(rea)
+
+            if rea.rtype() == "photo":
+                if self.__photochemistry is None:
+                    self.__photochemistry = Photochemistry()
+                rea.xsecs_dict = self.__photochemistry.get_xsec(rea) or reaction.get(
+                    "xsecs_dict"
+                )
 
             if rea.rtype() == "photo" and self.radiation is not None:
                 if rea.custom_rad_rate:
@@ -381,7 +441,7 @@ class Network:
 
                 self.radiation.set_reaction_rate_coefficient(rea)
 
-    def __normalize_nework_extras(self, replace_nH):
+    def __normalize_network_extras(self, replace_nH):
         """Standardize convenience symbols in all rate and auxiliary expressions.
 
         Replaces shorthand symbols (``nh``, ``ne``, ``ntot``, ``n_X``, …) with
@@ -397,26 +457,26 @@ class Network:
         """
         nden = MatrixSymbol("nden", self.species.count, 1)
         for r in self.reactions:
-            r.rate = self.__standardize_symbols(r.rate, replace_nH)
+            r.rate = self._standardize_symbols(r.rate, replace_nH)
 
-            dE_dt = r.dE * r.rate  # type: ignore
-            dRad_dt = r.dRad * r.rate  # type: ignore
-            for s in r.reactants:
+            dE_dt = r.dE * r.rate
+            dRad_dt = r.dRad * r.rate
+            for s in r.reactants.core:
                 dE_dt *= nden[self.species[s.name].index]
                 dRad_dt *= nden[self.species[s.name].index]
             self.dEdt_chem += dE_dt
             self.dRad_dt_extra += r.dRad  # type: ignore
-        self.dEdt_chem = self.__standardize_symbols(self.dEdt_chem, replace_nH)
-        self.dRad_dt_extra = self.__standardize_symbols(self.dRad_dt_extra, replace_nH)
+        self.dEdt_chem = self._standardize_symbols(self.dEdt_chem, replace_nH)
+        self.dRad_dt_extra = self._standardize_symbols(self.dRad_dt_extra, replace_nH)
 
     @staticmethod
     def __parse_rate(
         aux_chem_rate: str,
         rate: str,
-        aux_funcs: dict[str, FunctionsDict],
-        global_vars: dict[str, Basic],
+        aux_funcs: dict[str, AuxiliaryFunctionsDict],
+        global_vars: dict[str, Expr],
         n_photo: int,
-    ) -> tuple[Basic, bool, int]:
+    ) -> tuple[Expr, int]:
         """Convert a raw rate string to a SymPy expression.
 
         Checks, in priority order:
@@ -432,7 +492,7 @@ class Network:
             Key for the optional custom-rate auxiliary function (e.g. ``"chemrate0"``).
         rate : str
             Raw rate string from the network file.
-        aux_funcs : dict[str, FunctionsDict]
+        aux_funcs : dict[str, AuxiliaryFunctionsDict]
             Parsed auxiliary functions dictionary.
         global_vars : dict[str, Basic]
             Resolved global variable map from the network file.
@@ -441,17 +501,15 @@ class Network:
 
         Returns
         -------
-        tuple[Basic, bool, int]
-            ``(rate_expr, is_photoreaction, n_photo)`` where *n_photo* is
+        tuple[Expr, int]
+            ``(rate_expr, n_photo)`` where *n_photo* is
             incremented by 1 for photo-reactions.
         """
-        is_photoreaction = False
         if aux_chem_rate in aux_funcs:
             rate_expr = aux_funcs[aux_chem_rate]["def"]
         elif rate in global_vars:
             rate_expr = symbols(rate)
         elif "photo" in rate.lower():
-            is_photoreaction = True
             f: UndefinedFunction = Function("photorates")  # type: ignore
             n_photo += 1
 
@@ -474,9 +532,33 @@ class Network:
 
                 rate_expr = f(n_photo, photo_args[1], photo_args[2])
         else:
-            rate_expr = parse_expr(rate, evaluate=False)
+            rate_expr = _parse_rate_expr(rate)
 
-        return rate_expr, is_photoreaction, n_photo
+        if not isinstance(rate_expr, Expr):
+            raise ParserError(f"Rate expression is not an Expr: {rate_expr}")
+
+        return rate_expr, n_photo
+
+    def __parse_reaction_metadata(self, reaction: Reaction) -> None:
+        if reaction.serialized not in self._metadata["reaction_props"]:
+            return
+
+        rprops = self._metadata["reaction_props"][reaction.serialized]
+        if "shielding" in rprops:
+            if reaction.rtype() != "photo":
+                raise ParserError(f"{reaction} is not a photo reaction")
+
+            shielding_props = rprops["shielding"]
+            if "type" not in shielding_props:
+                shielding_props["type"] = "leiden"
+
+            reaction.metadata["shielding"] = {
+                k: (v.lower() if isinstance(v, str) else v)
+                for k, v in shielding_props.items()
+            }
+            reaction.metadata["jaffgen"] = {
+                "jaffgen_object": self._metadata["jaffgen_object"]
+            }
 
     @staticmethod
     def __detect_undefined_functions(
@@ -536,7 +618,7 @@ class Network:
             raise FileNotFoundError(funcfile)
 
         with AuxiliaryFunctionParser(funcfile) as afp:
-            func_dict: FunctionsDict = afp.get_dict()
+            func_dict: AuxiliaryFunctionsDict = afp.get_dict()
 
         return func_dict
 
@@ -662,7 +744,7 @@ class Network:
 
         A *sink* species appears as a reactant in at least one reaction but
         is never produced.  A *source* species is produced but never consumed.
-        The special species ``"dummy"`` is excluded from the check.
+        The special species ``"_DUMMY"`` is excluded from the check.
 
         Parameters
         ----------
@@ -671,7 +753,7 @@ class Network:
         """
         produced = {p.name for rea in self.reactions for p in rea.products}
         consumed = {r.name for rea in self.reactions for r in rea.reactants}
-        species_names = {s.name for s in self.species if s.name != "dummy"}
+        species_names = {s.name for s in self.species if s.name != "_DUMMY"}
 
         sinks = species_names - produced
         sources = species_names - consumed
@@ -770,9 +852,15 @@ class Network:
             If ``True``, call ``sys.exit(1)`` when duplicates are detected.
         """
         has_duplicates = False
-        for i, rea1 in enumerate(self.reactions):
-            for rea2 in self.reactions[i + 1 :]:
-                if rea1 == rea2:
+        buckets: dict[str, list] = {}
+        for rea in self.reactions:
+            buckets.setdefault(rea.serialized, []).append(rea)
+
+        for group in buckets.values():
+            if len(group) < 2:
+                continue
+            for i, rea1 in enumerate(group):
+                for rea2 in group[i + 1 :]:
                     if rea1.tmin != rea2.tmin or rea1.tmax != rea2.tmax:
                         continue
                     if rea1.is_isomer_version(rea2):
@@ -798,32 +886,40 @@ class Network:
         )
 
         for i, reaction in enumerate(self.reactions):
-            for reactant in reaction.reactants:
+            for reactant in reaction.reactants.core:
                 self.reactant_matrix[i, reactant.index] += 1
 
-            for product in reaction.products:
+            for product in reaction.products.core:
                 self.product_matrix[i, product.index] += 1
 
-    def __standardize_symbols(self, expr: Basic, replace_nH: bool) -> Basic:
+    def _standardize_symbols(self, expr: Basic, replace_nH: bool) -> Expr:
         """Replace convenience symbols (nh, ne, ntot, n_X, …) with nden[i] references.
 
         When replace_nH is False, H/He element sums become ``nh``/``nhe`` symbols
         instead of being expanded over all species.
         """
         if expr == Float(0.0):
-            return expr
+            return Float(0.0)
 
-        nden = MatrixSymbol("nden", self.species.count, 1)
+        if self.__nden_symbol is None:
+            self.__nden_symbol = MatrixSymbol("nden", self.species.count, 1)
+        nden = self.__nden_symbol
         reps = {}
 
-        def get_element_sum(element):
-            terms = []
-            for i, spec in enumerate(self.species):
-                count = spec.exploded.count(element)
-                if count > 0:
-                    terms.append(count * nden[Idx(i)])
+        def get_ntot_sum():
+            if self.__ntot_sum is None:
+                self.__ntot_sum = sum(nden[Idx(i)] for i in range(self.species.count))
+            return self.__ntot_sum
 
-            return sum(terms) if terms else None
+        def get_element_sum(element):
+            if element not in self.__element_sums:
+                terms = []
+                for i, spec in enumerate(self.species):
+                    count = spec.exploded.count(element)
+                    if count > 0:
+                        terms.append(count * nden[Idx(i)])
+                self.__element_sums[element] = sum(terms) if terms else None
+            return self.__element_sums[element]
 
         simple_map = {
             "nh0": "H",
@@ -841,7 +937,7 @@ class Network:
             repl = None
 
             if low_name == "ntot":
-                repl = sum(nden[Idx(i)] for i in range(self.species.count))
+                repl = get_ntot_sum()
 
             elif low_name == "nh":
                 repl = get_element_sum("H") if replace_nH else symbols("nh")

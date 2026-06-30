@@ -30,7 +30,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
-from sympy import Basic, Symbol, __version__, expand_log, lambdify, log, srepr, symbols
+from sympy import (
+    Basic,
+    Float,
+    Heaviside,
+    Max,
+    Min,
+    Piecewise,
+    Symbol,
+    __version__,
+    expand_log,
+    lambdify,
+    log,
+    symbols,
+)
 from sympy.core.function import AppliedUndef
 
 from .. import __version__ as jaff_version
@@ -177,8 +190,8 @@ def to_jaff_file(filename: str | Path, net: "Network"):
         ],
         "reactions": [
             {
-                "reactants": [int(s.index) for s in r.reactants],
-                "products": [int(s.index) for s in r.products],
+                "reactants": [s.name for s in r.reactants],
+                "products": [s.name for s in r.products],
                 "rate": encode_maybe_sympy(r.rate),
                 "tmin": r.tmin,
                 "tmax": r.tmax,
@@ -186,7 +199,7 @@ def to_jaff_file(filename: str | Path, net: "Network"):
                 "dRad": encode_maybe_sympy(r.dRad),
                 "custom_rad_rate": r.custom_rad_rate,
                 "original_string": r.original_string,
-                "xsecs": jsonable(r.xsecs_dict),
+                "type": r.rtype(),
             }
             for r in net.reactions
         ],
@@ -281,16 +294,23 @@ def from_jaff_file(filename: str | Path, errors=False):
             raise ValueError(f"Duplicate species index {idx}")
         by_index[idx] = name
 
-    species_by_index = {}
     species_list = Species()
 
     for idx in sorted(by_index.keys()):
         name = by_index[idx]
-        sp_obj = Specie(name, idx)
-        species_list.add(sp_obj)
-        species_by_index[idx] = sp_obj
+        species_list.add(Specie(name, idx))
 
     net_data["species"] = species_list
+
+    species_by_name = {sp.name: sp for sp in species_list}
+    special_by_name: dict[str, "Specie"] = {}
+
+    def resolve_specie(name: str) -> "Specie":
+        if name in species_by_name:
+            return species_by_name[name]
+        if name not in special_by_name:
+            special_by_name[name] = Specie(name, -1)
+        return special_by_name[name]
 
     rate_symbols_payload = payload.get("rate_symbols") or []
     rate_symbol_assumptions = {}
@@ -366,15 +386,15 @@ def from_jaff_file(filename: str | Path, errors=False):
     for rj in reactions_payload:
         if not isinstance(rj, dict):
             raise ValueError("Invalid reaction entry in JSON")
-        reactants_idx = rj.get("reactants") or []
-        products_idx = rj.get("products") or []
-        if not isinstance(reactants_idx, list) or not isinstance(products_idx, list):
+        reactants_names = rj.get("reactants") or []
+        products_names = rj.get("products") or []
+        if not isinstance(reactants_names, list) or not isinstance(products_names, list):
             raise ValueError("Invalid reactants/products list in JSON")
         try:
-            reactants = [species_by_index[int(i)] for i in reactants_idx]
-            products = [species_by_index[int(i)] for i in products_idx]
+            reactants = [resolve_specie(str(n)) for n in reactants_names]
+            products = [resolve_specie(str(n)) for n in products_names]
         except Exception as e:
-            raise ValueError(f"Invalid species indices in reaction: {e}") from e
+            raise ValueError(f"Invalid species in reaction: {e}") from e
 
         rate = decode_maybe_sympy(rj.get("rate"))
         dE = decode_maybe_sympy(rj.get("dE"))
@@ -383,6 +403,7 @@ def from_jaff_file(filename: str | Path, errors=False):
         tmin = rj.get("tmin")
         tmax = rj.get("tmax")
         original_string = rj.get("original_string") or ""
+        reaction_type = rj.get("type") or "unknown"
         xsecs = rj.get("xsecs")
 
         # Cross-section arrays are JSON-serialized as plain lists; restore them
@@ -391,8 +412,7 @@ def from_jaff_file(filename: str | Path, errors=False):
             for key in (
                 "photon_energy",
                 "photo_absorption",
-                "photo_ionization",
-                "photo_dissociation",
+                "photodecay",
             ):
                 if xsecs.get(key) is not None:
                     xsecs[key] = np.asarray(xsecs[key], dtype=float)
@@ -408,6 +428,7 @@ def from_jaff_file(filename: str | Path, errors=False):
                 "tmin": tmin,
                 "tmax": tmax,
                 "original_string": original_string,
+                "reaction_type": reaction_type,
                 "xsecs_dict": xsecs,
             }
         )
@@ -522,26 +543,46 @@ def get_table(
 
     react_sympy = [r.get_sympy() for r in reactions]
 
-    react_subst = []
-    for r in react_sympy:
-        r = r.subs(symbols("av"), 0.0)
-        r = r.subs(symbols("crate"), 1.0)
-        react_subst.append(r)
+    trivial_subs = {symbols("av"): Float(0.0), symbols("crate"): Float(1.0)}
+    react_subst = [r.xreplace(trivial_subs) for r in react_sympy]
 
+    tgas = symbols("tgas")
     react_func = []
+    react_vectorizable = []
+    branchy = (Piecewise, Heaviside, Min, Max)
     for r in jaff_progress.track(react_subst, description="Compiling rate functions"):
-        if len(r.free_symbols) == 0:
+        free_symbols = r.free_symbols
+        if len(free_symbols) == 0:
             react_func.append(np.log(float(r)))
+            react_vectorizable.append(False)
         elif (
-            (len(r.free_symbols) > 1)
-            or (symbols("tgas") not in r.free_symbols)
-            or ("Function" in srepr(r))
+            (len(free_symbols) > 1)
+            or (tgas not in free_symbols)
+            or bool(r.atoms(AppliedUndef))
         ):
             react_func.append(None)
+            react_vectorizable.append(False)
         else:
             # log-expand before lambdify to avoid overflow; exponentiate at the end
             logr = expand_log(log(r))
-            react_func.append(lambdify(symbols("tgas"), logr, "numpy"))
+            react_func.append(lambdify(tgas, logr, "numpy"))
+            react_vectorizable.append(not logr.has(*branchy))
+
+    def eval_rate(i, f, grid):
+        """Evaluate lambdified rate *f* (index *i*) over a temperature array.
+
+        Uses a single vectorised call for analytic rates and falls back to a
+        scalar Python loop for branching rates.  The vectorised result is
+        verified against the scalar one the first time it is used so that a
+        mis-broadcasting lambdified function silently demotes itself to scalar.
+        """
+        if not react_vectorizable[i]:
+            return np.array([f(t) for t in grid])
+        vec = np.asarray(f(grid), dtype=float)
+        if vec.shape != grid.shape:
+            react_vectorizable[i] = False
+            return np.array([f(t) for t in grid])
+        return vec
 
     nTemp = nT
     if not fast_log:
@@ -560,11 +601,7 @@ def get_table(
         elif f is None:
             log_rates[i, :] = np.nan
         else:
-            # Note: it would be much faster to do this via an array operation
-            # rather than a list comprehension, but sympy (as of v1.13) does
-            # not consistently generate numpy expressions that work properly
-            # with vector inputs, so restricting the input to scalars is safer.
-            f_eval = np.array([f(t) for t in temp])
+            f_eval = eval_rate(i, f, temp)
             log_rates[i, :] = np.clip(f_eval, a_min=None, a_max=np.log(rate_max))
 
     # Fifth step: do adaptive growth of table
@@ -592,7 +629,7 @@ def get_table(
                         log_rates_grow[i, 1::2] = np.nan
                         log_rates_approx[i, :] = np.nan
                     else:
-                        f_eval = np.array([f(t) for t in temp_grow[1::2]])
+                        f_eval = eval_rate(i, f, temp_grow[1::2])
                         log_rates_grow[i, 1::2] = np.clip(
                             f_eval, a_min=None, a_max=np.log(rate_max)
                         )
@@ -845,7 +882,7 @@ def write_data_table(
             }
         )
 
-        HDF5().from_dict(fname, hdfdict)
+        HDF5().from_dict(fname, hdfdict, mode="w")
 
     # Write output in appropriate format
     if out_type == "txt":

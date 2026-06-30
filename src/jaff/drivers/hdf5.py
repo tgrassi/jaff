@@ -68,7 +68,13 @@ class HDF5:
     # Public interface
     # ------------------------------------------------------------------
 
-    def to_dict(self, h5file: h5py.File | h5py.Group | Path | str) -> HDF5Dict:
+    def to_dict(
+        self,
+        h5file: h5py.File | h5py.Group | Path | str,
+        *,
+        include: str | list[str] | None = None,
+        exclude: str | list[str] | None = None,
+    ) -> HDF5Dict:
         """
         Load an HDF5 file (or sub-group) into a nested :class:`~jaff.types.HDF5Dict`.
 
@@ -79,20 +85,33 @@ class HDF5:
             from that group onward), or a path to an HDF5 file on disk.  A
             ``"file.h5::/internal/group"`` string (``::`` delimiter) parses
             from the named internal group onward.
+        include : str, list of str, or None, optional
+            Keep only datasets whose own name — or the name of any parent group
+            — matches one of these bare-name patterns (:func:`fnmatch.fnmatch`,
+            so exact names and ``*``/``?``/``[seq]`` wildcards both work).
+            Datasets filtered out are never read into memory.  ``None``
+            (default) keeps everything.
+        exclude : str, list of str, or None, optional
+            Drop any dataset or group whose name, or any ancestor group name,
+            matches one of these bare-name patterns.  Excluding a group drops
+            its whole subtree.  Takes precedence over *include*.  ``None``
+            (default) drops nothing.
 
         Returns
         -------
         HDF5Dict
             Nested dictionary representation of the HDF5 contents.
         """
-        return HDF5Dict(h5file)
+        return HDF5Dict(h5file, include=include, exclude=exclude)
 
-    def from_dict(self, h5file: str | Path, h5dict: dict | HDF5Dict) -> None:
+    def from_dict(
+        self, h5file: str | Path, h5dict: dict | HDF5Dict, *, mode: str = "a"
+    ) -> None:
         """
         Write an :class:`~jaff.types.HDF5Dict` to an HDF5 file.
 
-        Opens (or creates) *h5file* in append mode and recursively resolves
-        all datasets and groups from *h5dict*.
+        Opens (or creates) *h5file* and recursively resolves all datasets and
+        groups from *h5dict*.
 
         Parameters
         ----------
@@ -102,6 +121,10 @@ class HDF5:
         h5dict : dict or HDF5Dict
             Data to write.  Plain ``dict`` objects are automatically converted
             to :class:`~jaff.types.HDF5Dict`.
+        mode : str, optional
+            File open mode passed to :class:`h5py.File`.  Defaults to ``"a"``
+            (append, keeping existing contents).  Use ``"w"`` to truncate the
+            file first so stale contents are not retained.
 
         Returns
         -------
@@ -109,7 +132,7 @@ class HDF5:
         """
         if not isinstance(h5dict, HDF5Dict):
             h5dict = HDF5Dict(h5dict)
-        with h5py.File(h5file, "a") as f:
+        with h5py.File(h5file, mode) as f:
             self.__resolve_to_h5(f, h5dict)
 
     def to_csv(self, h5file: str | Path, outdir: str | Path, sep: str = " ") -> None:

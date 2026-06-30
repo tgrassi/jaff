@@ -15,18 +15,19 @@ This module provides:
 
 from __future__ import annotations
 
+import importlib.util
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sympy import Basic, Piecewise
+from sympy import Basic, Expr, Piecewise
 from sympy.core.function import AppliedUndef
 
 from ..errors import ParserError
 
 if TYPE_CHECKING:
-    from ..core._auxiliary_engine import FunctionsDict
     from ..core._typing import ElementProps
+    from ..core.parsers.auxiliary_func._typing import AuxiliaryFunctionsDict
 
 # ---------------------------------------------------------------------------
 # File-extension groups used by parsers and code generators
@@ -201,8 +202,8 @@ def resolve_symbolic_dependencies(
 def resolve_dependencies(
     expr: Basic,
     subs_dict: dict[Basic, Basic] | None = None,
-    aux_funcs: dict[str, FunctionsDict] | None = None,
-) -> Basic:
+    aux_funcs: dict[str, AuxiliaryFunctionsDict] | None = None,
+) -> Expr:
     """
     Resolve undefined SymPy function calls inside a single expression.
 
@@ -223,14 +224,14 @@ def resolve_dependencies(
     subs_dict : dict[sympy.Basic, sympy.Basic] or None, optional
         Pre-populated substitution table.  Modified in-place as new
         substitutions are discovered.  Defaults to an empty dict.
-    aux_funcs : dict[str, FunctionsDict] or None, optional
+    aux_funcs : dict[str, AuxiliaryFunctionsDict] or None, optional
         Auxiliary function definitions keyed by lowercase function name.
         Each entry must have ``"def"`` (the body expression) and ``"args"``
         (the ordered parameter list).  Defaults to an empty dict.
 
     Returns
     -------
-    sympy.Basic
+    sympy.Expr
         The expression with all recognized undefined function calls replaced.
         Unrecognized functions are left unchanged.
     """
@@ -275,9 +276,7 @@ def resolve_dependencies(
 
             subs_dict[f] = func_def.xreplace(arg_map)
 
-    expr = expr.xreplace(subs_dict)
-
-    return expr
+    return expr.xreplace(subs_dict)
 
 
 def is_jaff_file(file: Path) -> bool:
@@ -300,3 +299,44 @@ def is_jaff_file(file: Path) -> bool:
         ".jaff",
         ".gz",
     ]
+
+
+def load_module_from_path(path: str | Path, module_name: str):
+    mpath: Path = path  # type: ignore
+    if isinstance(path, str):
+        mpath = Path(path).resolve()
+
+    spec = importlib.util.spec_from_file_location(module_name, mpath)
+
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load module from {mpath}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module
+
+
+def import_subpackages(package_name: str) -> None:
+    """Import every non-private subpackage of *package_name*.
+
+    Iterates the package directory and imports each non-private subpackage,
+    which triggers any registration side-effects (e.g. the ``@register``
+    decorator in ``_formats``).
+
+    Uses :func:`Path.iterdir` (not :func:`pkgutil.walk_packages`) to avoid
+    eagerly importing private subpackages while walking — a pitfall of
+    :func:`pkgutil.walk_packages` which calls :func:`__import__` internally
+    for every package it encounters.
+
+    Args:
+        package_name: Fully-qualified package name
+                      (e.g. ``"jaff.core.parsers.network._formats"``).
+    """
+    from importlib import import_module
+
+    pkg = import_module(package_name)
+    pkg_path = Path(pkg.__path__[0])
+    for entry in pkg_path.iterdir():
+        if entry.is_dir() and not entry.name.startswith("_"):
+            import_module(f"{package_name}.{entry.name}")

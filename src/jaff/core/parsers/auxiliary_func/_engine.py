@@ -14,7 +14,7 @@ that augment a reaction network.  The format uses two directives:
 
 Continuation lines end with ``\\``.  Inline comments start with ``#``.
 
-The parsed results are stored as a ``FunctionsDict`` mapping function names
+The parsed results are stored as a ``AuxiliaryFunctionsDict`` mapping function names
 to their symbolic definitions, argument lists, and argument comments.  Global
 variables are resolved into the function bodies so that callers receive
 fully-substituted SymPy expressions.
@@ -31,9 +31,9 @@ from typing import Any, Callable
 import sympy as sp
 from sympy.core.function import AppliedUndef
 
-from ..common import resolve_symbolic_dependencies
-from ..errors import ParserError
-from ._typing import FunctionsDict
+from ....common import resolve_symbolic_dependencies
+from ....errors import ParserError
+from ._typing import AuxiliaryFunctionsDict
 
 
 class AuxiliaryFunctionParser:
@@ -49,9 +49,9 @@ class AuxiliaryFunctionParser:
         Absolute path to the parsed ``.jfunc`` file.
     globals : dict[str, sp.Basic]
         Global symbolic constants defined with ``@var``, keyed by name.
-    func_dict : dict[str, FunctionsDict]
+    func_dict : dict[str, AuxiliaryFunctionsDict]
         Parsed functions, keyed by lower-cased function name.  Each entry
-        is a ``FunctionsDict`` with keys ``"def"`` (SymPy expression),
+        is a ``AuxiliaryFunctionsDict`` with keys ``"def"`` (SymPy expression),
         ``"args"`` (list of SymPy symbols), and ``"argcomments"`` (dict of
         argument doc strings).
 
@@ -91,13 +91,13 @@ class AuxiliaryFunctionParser:
             raise FileNotFoundError(file)
 
         self.file: Path = file
-        self.og_line: str = ""   # raw line from file (before continuation merge)
-        self.line: str = ""       # processed line ready for parsing
-        self.cline: str = ""      # accumulator for continuation lines
-        self.nline: int = 0       # current 1-based line number (for error messages)
+        self.og_line: str = ""  # raw line from file (before continuation merge)
+        self.line: str = ""  # processed line ready for parsing
+        self.cline: str = ""  # accumulator for continuation lines
+        self.nline: int = 0  # current 1-based line number (for error messages)
         self.globals: dict[str, sp.Basic] = {}
         self.globals_parsed: bool = False  # True once global vars are resolved
-        self.func_dict: dict[str, FunctionsDict] = {}
+        self.func_dict: dict[str, AuxiliaryFunctionsDict] = {}
         self.scope: str = "global"  # "global" | "function"
         self.current_func: str = ""  # name of the function block being parsed
 
@@ -138,7 +138,7 @@ class AuxiliaryFunctionParser:
 
         Returns
         -------
-        dict[str, FunctionsDict]
+        dict[str, AuxiliaryFunctionsDict]
             Maps lower-cased function names to their symbolic definitions,
             argument lists, and argument documentation strings.
         """
